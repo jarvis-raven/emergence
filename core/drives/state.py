@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .models import DriveState, create_default_state, validate_drive
+from .models import DriveState, create_default_state, validate_drive, ensure_drive_defaults
 
 
 def load_state(state_path: Path) -> DriveState:
@@ -61,6 +61,10 @@ def load_state(state_path: Path) -> DriveState:
         data["triggered_drives"] = []
     if "last_tick" not in data:
         data["last_tick"] = datetime.now(timezone.utc).isoformat()
+    
+    # Apply defaults to existing drives for backwards compatibility
+    for name, drive in list(data["drives"].items()):
+        data["drives"][name] = ensure_drive_defaults(drive)
     
     # Validate individual drives
     invalid_drives = []

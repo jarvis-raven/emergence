@@ -201,6 +201,25 @@ def generate_default_config(agent_name: str, human_name: str, workspace: Optiona
             "model": None
         },
         "drives": {
+            # Budget controls for cost management
+            "budget": {
+                "daily_limit_usd": 50,
+                "throttle_at_percent": 80,
+                "session_cost_estimate": 2.5
+            },
+            # Minimum intervals between drive triggers
+            "intervals": {
+                "core_min_hours": 4,
+                "discovered_min_hours": 6,
+                "global_cooldown_hours": 1
+            },
+            # Rate configuration for aspect system
+            "rates": {
+                "base_rate": 1.5,
+                "aspect_increment": 0.3,
+                "max_rate_core": 3.0,
+                "max_rate_discovered": 2.5
+            },
             # Core universal drives only (per critical correction #3)
             "CARE": {
                 "threshold": 25,
@@ -427,6 +446,40 @@ def validate_config(config: dict) -> list[str]:
     # Validate drives section
     drives = config.get("drives", {})
     
+    # Validate budget configuration (optional but recommended)
+    budget = drives.get("budget", {})
+    if budget:
+        if "daily_limit_usd" in budget and not isinstance(budget.get("daily_limit_usd"), (int, float)):
+            errors.append("drives.budget.daily_limit_usd must be a number")
+        if "throttle_at_percent" in budget:
+            tap = budget.get("throttle_at_percent")
+            if not isinstance(tap, (int, float)) or not (0 <= tap <= 100):
+                errors.append("drives.budget.throttle_at_percent must be between 0 and 100")
+        if "session_cost_estimate" in budget and not isinstance(budget.get("session_cost_estimate"), (int, float)):
+            errors.append("drives.budget.session_cost_estimate must be a number")
+    
+    # Validate intervals configuration (optional)
+    intervals = drives.get("intervals", {})
+    if intervals:
+        if "core_min_hours" in intervals and not isinstance(intervals.get("core_min_hours"), (int, float)):
+            errors.append("drives.intervals.core_min_hours must be a number")
+        if "discovered_min_hours" in intervals and not isinstance(intervals.get("discovered_min_hours"), (int, float)):
+            errors.append("drives.intervals.discovered_min_hours must be a number")
+        if "global_cooldown_hours" in intervals and not isinstance(intervals.get("global_cooldown_hours"), (int, float)):
+            errors.append("drives.intervals.global_cooldown_hours must be a number")
+    
+    # Validate rates configuration (optional)
+    rates = drives.get("rates", {})
+    if rates:
+        if "base_rate" in rates and not isinstance(rates.get("base_rate"), (int, float)):
+            errors.append("drives.rates.base_rate must be a number")
+        if "aspect_increment" in rates and not isinstance(rates.get("aspect_increment"), (int, float)):
+            errors.append("drives.rates.aspect_increment must be a number")
+        if "max_rate_core" in rates and not isinstance(rates.get("max_rate_core"), (int, float)):
+            errors.append("drives.rates.max_rate_core must be a number")
+        if "max_rate_discovered" in rates and not isinstance(rates.get("max_rate_discovered"), (int, float)):
+            errors.append("drives.rates.max_rate_discovered must be a number")
+    
     # Check for required core drives (per critical correction #3)
     required_drives = ["CARE", "MAINTENANCE", "REST"]
     for drive_name in required_drives:
@@ -618,7 +671,51 @@ def _generate_commented_json(config: dict) -> str:
         '  "drives": {',
     ])
     drives = config.get("drives", {})
-    drive_names = list(drives.keys())
+    
+    # Budget configuration
+    if "budget" in drives:
+        budget = drives["budget"]
+        lines.extend([
+            '',
+            '    // Budget controls for autonomous sessions',
+            '    "budget": {',
+            f'      "daily_limit_usd": {budget.get("daily_limit_usd", 50)},',
+            f'      "throttle_at_percent": {budget.get("throttle_at_percent", 80)},',
+            f'      "session_cost_estimate": {budget.get("session_cost_estimate", 2.5)}',
+            '    },',
+        ])
+    
+    # Intervals configuration
+    if "intervals" in drives:
+        intervals = drives["intervals"]
+        lines.extend([
+            '',
+            '    // Minimum intervals between drive triggers (hours)',
+            '    "intervals": {',
+            f'      "core_min_hours": {intervals.get("core_min_hours", 4)},',
+            f'      "discovered_min_hours": {intervals.get("discovered_min_hours", 6)},',
+            f'      "global_cooldown_hours": {intervals.get("global_cooldown_hours", 1)}',
+            '    },',
+        ])
+    
+    # Rates configuration
+    if "rates" in drives:
+        rates = drives["rates"]
+        lines.extend([
+            '',
+            '    // Rate configuration for aspect system',
+            '    "rates": {',
+            f'      "base_rate": {rates.get("base_rate", 1.5)},',
+            f'      "aspect_increment": {rates.get("aspect_increment", 0.3)},',
+            f'      "max_rate_core": {rates.get("max_rate_core", 3.0)},',
+            f'      "max_rate_discovered": {rates.get("max_rate_discovered", 2.5)}',
+            '    },',
+        ])
+    
+    # Core drives
+    drive_names = [k for k in drives.keys() if k not in ("budget", "intervals", "rates")]
+    if drive_names:
+        lines.append('')
     for i, drive_name in enumerate(drive_names):
         drive_cfg = drives[drive_name]
         is_last = (i == len(drive_names) - 1)
@@ -1004,6 +1101,56 @@ def interactive_config_wizard(
     else:
         config["first_light"]["model"] = None  # Inherit from agent
     
+    # --- Drive Budget Configuration ---
+    print_header("Drive Budget")
+    print_dim("Drives trigger autonomous sessions. Configure cost controls.")
+    if HAS_RICH_BRANDING:
+        console.print()
+    else:
+        print()
+    
+    # Daily budget limit
+    daily_limit = float(_prompt_with_default(
+        "Daily budget limit (USD)",
+        "50"
+    ))
+    config["drives"]["budget"]["daily_limit_usd"] = max(10, daily_limit)
+    
+    # Core drive interval
+    core_hours = float(_prompt_with_default(
+        "Minimum hours between core drive triggers (CARE, MAINTENANCE, REST)",
+        "4"
+    ))
+    config["drives"]["intervals"]["core_min_hours"] = max(1, core_hours)
+    
+    # Discovered drive interval  
+    discovered_hours = float(_prompt_with_default(
+        "Minimum hours between discovered drive triggers",
+        "6"
+    ))
+    config["drives"]["intervals"]["discovered_min_hours"] = max(2, discovered_hours)
+    
+    # Global cooldown
+    cooldown_hours = float(_prompt_with_default(
+        "Global cooldown between any triggers (hours)",
+        "1"
+    ))
+    config["drives"]["intervals"]["global_cooldown_hours"] = max(0.5, cooldown_hours)
+    
+    if HAS_RICH_BRANDING:
+        console.print()
+        console.print(f"[dim_gray]With these settings:[/]")
+        console.print(f"  [dim_gray]• Max ~{int(config['drives']['budget']['daily_limit_usd'] / config['drives']['budget']['session_cost_estimate'])} sessions/day[/]")
+        console.print(f"  [dim_gray]• Core drives: every {config['drives']['intervals']['core_min_hours']}+ hours[/]")
+        console.print(f"  [dim_gray]• Discovered drives: every {config['drives']['intervals']['discovered_min_hours']}+ hours[/]")
+    else:
+        print()
+        print(f"With these settings:")
+        print(f"  • Max ~{int(config['drives']['budget']['daily_limit_usd'] / config['drives']['budget']['session_cost_estimate'])} sessions/day")
+        print(f"  • Core drives: every {config['drives']['intervals']['core_min_hours']}+ hours")
+        print(f"  • Discovered drives: every {config['drives']['intervals']['discovered_min_hours']}+ hours")
+    print()
+    
     # --- Review ---
     print_header("Configuration Review")
     if HAS_RICH_BRANDING:
@@ -1019,6 +1166,9 @@ def interactive_config_wizard(
         console.print(f"    [white]Sessions/day:[/] [aurora_mint]{config['first_light']['sessions_per_day']}[/]")
         console.print(f"    [white]Session size:[/] [aurora_mint]{config['first_light']['session_size']}[/]")
         console.print(f"    [white]Duration:[/] [aurora_mint]{config['first_light'].get('session_duration_minutes', 15)} min[/]")
+        console.print(f"\n  [white]Drive Budget:[/] [aurora_mint]${config['drives']['budget']['daily_limit_usd']}/day[/]")
+        console.print(f"    [white]Core interval:[/] [aurora_mint]{config['drives']['intervals']['core_min_hours']}h[/]")
+        console.print(f"    [white]Discovered interval:[/] [aurora_mint]{config['drives']['intervals']['discovered_min_hours']}h[/]")
     else:
         print(f"\n  Agent Name: {config['agent']['name']}")
         print(f"  Human Name: {config['agent']['human_name']}")
@@ -1032,6 +1182,9 @@ def interactive_config_wizard(
         print(f"    Sessions/day: {config['first_light']['sessions_per_day']}")
         print(f"    Session size: {config['first_light']['session_size']}")
         print(f"    Duration: {config['first_light'].get('session_duration_minutes', 15)} min")
+        print(f"\n  Drive Budget: ${config['drives']['budget']['daily_limit_usd']}/day")
+        print(f"    Core interval: {config['drives']['intervals']['core_min_hours']}h")
+        print(f"    Discovered interval: {config['drives']['intervals']['discovered_min_hours']}h")
     
     # Validate before finalizing
     errors = validate_config(config)

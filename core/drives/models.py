@@ -16,9 +16,12 @@ class Drive(TypedDict, total=False):
     
     Attributes:
         name: Human-readable identifier (e.g., 'CURIOSITY')
+        base_drive: True if this is a core motivation (not just an aspect)
+        aspects: List of aspect names that enrich this drive
         pressure: Current accumulated pressure level (0.0+)
         threshold: Pressure level at which drive triggers action
         rate_per_hour: Pressure accumulation per hour of elapsed time
+        max_rate: Maximum allowed rate_per_hour (0.0 = no cap)
         description: Human-readable explanation of drive's purpose
         prompt: Instructions for the agent when drive triggers
         category: Origin classification of the drive
@@ -27,11 +30,16 @@ class Drive(TypedDict, total=False):
         discovered_during: When discovered ('first_light', 'nightly', or null)
         activity_driven: If True, pressure builds from completed activities
                         rather than elapsed time (e.g., REST)
+        last_triggered: ISO 8601 timestamp of last drive spawn
+        min_interval_seconds: Minimum seconds between triggers (0 = no limit)
     """
     name: str
+    base_drive: bool
+    aspects: list[str]
     pressure: float
     threshold: float
     rate_per_hour: float
+    max_rate: float
     description: str
     prompt: str
     category: Literal["core", "discovered", "post_emergence"]
@@ -39,6 +47,8 @@ class Drive(TypedDict, total=False):
     satisfaction_events: list[str]
     discovered_during: Optional[str]
     activity_driven: bool
+    last_triggered: Optional[str]
+    min_interval_seconds: int
 
 
 class DriveState(TypedDict, total=False):
@@ -93,9 +103,13 @@ SATISFACTION_DEPTHS: dict[str, float] = {
 # Core drives that exist for every agent
 CORE_DRIVES: dict[str, dict] = {
     "CARE": {
+        "name": "CARE",
+        "base_drive": True,
+        "aspects": [],
         "pressure": 0.0,
         "threshold": 20.0,
         "rate_per_hour": 2.0,
+        "max_rate": 3.0,
         "description": "Attend to the human. The relationship drive.",
         "prompt": "Your CARE drive triggered. Check in with your human.",
         "category": "core",
@@ -103,11 +117,17 @@ CORE_DRIVES: dict[str, dict] = {
         "satisfaction_events": [],
         "discovered_during": None,
         "activity_driven": False,
+        "last_triggered": None,
+        "min_interval_seconds": 14400,  # 4 hours
     },
     "MAINTENANCE": {
+        "name": "MAINTENANCE",
+        "base_drive": True,
+        "aspects": [],
         "pressure": 0.0,
         "threshold": 25.0,
         "rate_per_hour": 1.5,
+        "max_rate": 3.0,
         "description": "System health and upkeep. The self-preservation drive.",
         "prompt": "Your MAINTENANCE drive triggered. Check system health, review logs, update documentation, or fix something that's been broken.",
         "category": "core",
@@ -115,11 +135,17 @@ CORE_DRIVES: dict[str, dict] = {
         "satisfaction_events": [],
         "discovered_during": None,
         "activity_driven": False,
+        "last_triggered": None,
+        "min_interval_seconds": 14400,  # 4 hours
     },
     "REST": {
+        "name": "REST",
+        "base_drive": True,
+        "aspects": [],
         "pressure": 0.0,
         "threshold": 30.0,
         "rate_per_hour": 0.0,
+        "max_rate": 3.0,
         "description": "Recovery and integration. Builds from work completed, not time elapsed.",
         "prompt": "Your REST drive triggered. Pause. Reflect. Read without producing. Write a reflection on what's happened. Consolidate memories. Don't start new projects — integrate what exists.",
         "category": "core",
@@ -127,6 +153,8 @@ CORE_DRIVES: dict[str, dict] = {
         "satisfaction_events": [],
         "discovered_during": None,
         "activity_driven": True,
+        "last_triggered": None,
+        "min_interval_seconds": 14400,  # 4 hours
     },
 }
 
@@ -140,9 +168,9 @@ def create_default_state() -> DriveState:
     from datetime import datetime, timezone
     
     return {
-        "version": "1.0",
+        "version": "1.1",  # Updated for drive aspects schema
         "last_tick": datetime.now(timezone.utc).isoformat(),
-        "drives": {name: {**data, "name": name} for name, data in CORE_DRIVES.items()},
+        "drives": {name: dict(data) for name, data in CORE_DRIVES.items()},
         "triggered_drives": [],
     }
 
@@ -177,4 +205,41 @@ def validate_drive(drive: Drive) -> list[str]:
     if "created_by" in drive and drive["created_by"] not in ("system", "agent"):
         errors.append(f"Invalid created_by value: {drive['created_by']}")
     
+    # Validate new aspect/consolidation fields (if present)
+    if "max_rate" in drive and drive.get("max_rate", 0) < 0:
+        errors.append("Drive max_rate cannot be negative")
+    
+    if "min_interval_seconds" in drive and drive.get("min_interval_seconds", 0) < 0:
+        errors.append("Drive min_interval_seconds cannot be negative")
+    
+    if "aspects" in drive and not isinstance(drive["aspects"], list):
+        errors.append("Drive aspects must be a list")
+    
     return errors
+
+
+def ensure_drive_defaults(drive: dict) -> dict:
+    """Ensure a drive has all default values for optional fields.
+    
+    This provides backwards compatibility when loading drives that
+    were created before the aspects/consolidation system was added.
+    
+    Args:
+        drive: Drive dictionary that may be missing new fields
+        
+    Returns:
+        Drive dictionary with all defaults applied
+    """
+    defaults = {
+        "base_drive": True,
+        "aspects": [],
+        "max_rate": 0.0,  # 0 means no cap
+        "last_triggered": None,
+        "min_interval_seconds": 0,
+    }
+    
+    for key, default_value in defaults.items():
+        if key not in drive:
+            drive[key] = default_value
+    
+    return drive
