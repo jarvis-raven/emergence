@@ -747,6 +747,12 @@ def main():
     # pause command
     subparsers.add_parser("pause", help="Pause First Light phase")
     
+    # analyze command
+    analyze_parser = subparsers.add_parser("analyze", help="Analyze sessions for drive discoveries")
+    analyze_parser.add_argument("--session", type=Path, help="Specific session file to analyze")
+    analyze_parser.add_argument("--limit", type=int, default=5, help="Number of recent sessions to analyze (default: 5)")
+    analyze_parser.add_argument("--no-activate", action="store_true", help="Register but don't activate drives")
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -803,6 +809,19 @@ def main():
     elif args.command == "pause":
         success = pause_first_light(config)
         sys.exit(0 if success else 1)
+    
+    elif args.command == "analyze":
+        from .post_session import analyze_session, analyze_recent_sessions
+        
+        workspace = Path(config.get("workspace", Path.cwd()))
+        auto_activate = not args.no_activate
+        
+        if args.session:
+            analyze_session(workspace, args.session, auto_activate=auto_activate)
+        else:
+            analyze_recent_sessions(workspace, limit=args.limit, auto_activate=auto_activate)
+        
+        sys.exit(0)
 
 
 if __name__ == "__main__":

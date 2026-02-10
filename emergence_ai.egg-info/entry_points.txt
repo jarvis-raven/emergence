@@ -1,0 +1,2 @@
+[console_scripts]
+emergence = core.cli:main
