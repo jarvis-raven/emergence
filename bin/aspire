@@ -1,0 +1,373 @@
+#!/usr/bin/env python3
+"""
+aspire — CLI for managing aspirations & projects
+
+Usage:
+    aspire                           # Overview: aspirations with project counts
+    aspire dreams                    # List all aspirations
+    aspire projects                  # List all projects grouped by status
+    aspire tree                      # Tree view: aspirations → projects
+    
+    aspire add-dream "title" [options]
+    aspire add-project "name" --for "aspiration-id" [options]
+    aspire link "project-id" "aspiration-id"
+    aspire status "project-id" <status>
+    
+    aspire orphans                   # Projects with no/invalid aspiration link
+    aspire barren                    # Aspirations with zero projects
+
+Examples:
+    aspire add-dream "Understand myself" --category philosophical --desc "Deep introspection"
+    aspire add-project "Dream Engine" --for understand-self --status active
+    aspire status dream-engine completed
+"""
+
+import json
+import sys
+import os
+from pathlib import Path
+from datetime import datetime
+import argparse
+
+# Paths
+STATE_DIR = Path.home() / ".emergence" / "state"
+ASPIRATIONS_FILE = STATE_DIR / "aspirations.json"
+
+# Valid enums
+ASPIRATION_CATEGORIES = ["philosophical", "creative", "growth", "social", "community", "practical"]
+PROJECT_STATUSES = ["active", "idea", "paused", "completed"]
+PROJECT_CATEGORIES = ["framework", "tool", "creative", "community", "personal"]
+
+def load_data():
+    """Load aspirations.json or create empty structure."""
+    if not ASPIRATIONS_FILE.exists():
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        data = {
+            "aspirations": [],
+            "projects": [],
+            "meta": {
+                "version": 1,
+                "updatedAt": datetime.utcnow().isoformat() + "Z"
+            }
+        }
+        save_data(data)
+        return data
+    
+    with open(ASPIRATIONS_FILE, 'r') as f:
+        return json.load(f)
+
+def save_data(data):
+    """Save aspirations.json with updated timestamp."""
+    data["meta"]["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    with open(ASPIRATIONS_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def slugify(text):
+    """Convert title to kebab-case slug."""
+    return text.lower().replace(' ', '-').replace('_', '-')
+
+def find_aspiration(data, aspiration_id):
+    """Find aspiration by ID."""
+    return next((a for a in data["aspirations"] if a["id"] == aspiration_id), None)
+
+def find_project(data, project_id):
+    """Find project by ID."""
+    return next((p for p in data["projects"] if p["id"] == project_id), None)
+
+def get_project_count(data, aspiration_id):
+    """Count projects linked to an aspiration."""
+    return sum(1 for p in data["projects"] if p.get("aspirationId") == aspiration_id)
+
+# ============================================================================
+# Commands
+# ============================================================================
+
+def cmd_overview(data):
+    """Show aspirations with project counts."""
+    aspirations = data["aspirations"]
+    if not aspirations:
+        print("No aspirations yet. Add one with: aspire add-dream \"title\"")
+        return
+    
+    print(f"\n✨ {len(aspirations)} aspirations:\n")
+    for asp in aspirations:
+        count = get_project_count(data, asp["id"])
+        projects_text = f"{count} projects" if count != 1 else "1 project"
+        category = asp.get("category", "")
+        throughline = asp.get("throughline", "")
+        
+        print(f"  {asp['title']}")
+        print(f"    {asp['description']}")
+        print(f"    [{category}] {projects_text}", end="")
+        if throughline:
+            print(f" · throughline: {throughline}", end="")
+        print()
+        print()
+
+def cmd_dreams(data):
+    """List all aspirations."""
+    aspirations = data["aspirations"]
+    if not aspirations:
+        print("No aspirations yet.")
+        return
+    
+    print(f"\n✨ Aspirations ({len(aspirations)}):\n")
+    for asp in aspirations:
+        print(f"  {asp['id']}")
+        print(f"    {asp['title']}")
+        print(f"    {asp['description']}")
+        print(f"    Category: {asp.get('category', 'unknown')}")
+        if asp.get('throughline'):
+            print(f"    Throughline: {asp['throughline']}")
+        print()
+
+def cmd_projects(data):
+    """List all projects grouped by status."""
+    projects = data["projects"]
+    if not projects:
+        print("No projects yet.")
+        return
+    
+    grouped = {}
+    for p in projects:
+        status = p.get("status", "idea")
+        if status not in grouped:
+            grouped[status] = []
+        grouped[status].append(p)
+    
+    status_order = ["active", "paused", "idea", "completed"]
+    for status in status_order:
+        if status not in grouped:
+            continue
+        print(f"\n{status.upper()} ({len(grouped[status])}):\n")
+        for p in grouped[status]:
+            print(f"  {p['name']} ({p['id']})")
+            print(f"    {p.get('description', '')}")
+            print(f"    → {p.get('aspirationId', 'orphan')}")
+            print()
+
+def cmd_tree(data):
+    """Tree view: aspirations → projects."""
+    aspirations = data["aspirations"]
+    if not aspirations:
+        print("No aspirations yet.")
+        return
+    
+    print("\n✨ Vision Tree:\n")
+    for asp in aspirations:
+        print(f"{asp['title']} ({asp['id']})")
+        projects = [p for p in data["projects"] if p.get("aspirationId") == asp["id"]]
+        for i, p in enumerate(projects):
+            is_last = (i == len(projects) - 1)
+            prefix = "└─" if is_last else "├─"
+            print(f"  {prefix} {p['name']} [{p.get('status', 'idea')}]")
+        if not projects:
+            print(f"  (no projects)")
+        print()
+
+def cmd_add_dream(args):
+    """Add a new aspiration."""
+    data = load_data()
+    
+    title = args.title
+    slug = slugify(title)
+    
+    # Check for duplicate ID
+    if find_aspiration(data, slug):
+        print(f"Error: Aspiration with ID '{slug}' already exists.")
+        sys.exit(1)
+    
+    aspiration = {
+        "id": slug,
+        "title": title,
+        "description": args.desc or "",
+        "category": args.category or "philosophical",
+        "createdAt": datetime.utcnow().date().isoformat(),
+    }
+    
+    if args.throughline:
+        aspiration["throughline"] = args.throughline
+    
+    data["aspirations"].append(aspiration)
+    save_data(data)
+    print(f"✅ Added aspiration: {title} ({slug})")
+
+def cmd_add_project(args):
+    """Add a new project."""
+    data = load_data()
+    
+    name = args.name
+    slug = slugify(name)
+    
+    # Check for duplicate ID
+    if find_project(data, slug):
+        print(f"Error: Project with ID '{slug}' already exists.")
+        sys.exit(1)
+    
+    # Validate aspiration link
+    aspiration_id = args.aspiration_for
+    if not find_aspiration(data, aspiration_id):
+        print(f"Error: Aspiration '{aspiration_id}' not found.")
+        sys.exit(1)
+    
+    project = {
+        "id": slug,
+        "name": name,
+        "aspirationId": aspiration_id,
+        "status": args.status or "idea",
+        "category": args.category or "personal",
+        "description": args.desc or "",
+        "updatedAt": datetime.utcnow().date().isoformat(),
+    }
+    
+    if args.start_date:
+        project["startDate"] = args.start_date
+    
+    data["projects"].append(project)
+    save_data(data)
+    print(f"✅ Added project: {name} ({slug}) → {aspiration_id}")
+
+def cmd_link(args):
+    """Re-link a project to a different aspiration."""
+    data = load_data()
+    
+    project = find_project(data, args.project_id)
+    if not project:
+        print(f"Error: Project '{args.project_id}' not found.")
+        sys.exit(1)
+    
+    if not find_aspiration(data, args.aspiration_id):
+        print(f"Error: Aspiration '{args.aspiration_id}' not found.")
+        sys.exit(1)
+    
+    old_aspiration = project.get("aspirationId", "orphan")
+    project["aspirationId"] = args.aspiration_id
+    project["updatedAt"] = datetime.utcnow().date().isoformat()
+    save_data(data)
+    print(f"✅ Relinked {args.project_id}: {old_aspiration} → {args.aspiration_id}")
+
+def cmd_status(args):
+    """Update project status."""
+    data = load_data()
+    
+    project = find_project(data, args.project_id)
+    if not project:
+        print(f"Error: Project '{args.project_id}' not found.")
+        sys.exit(1)
+    
+    if args.new_status not in PROJECT_STATUSES:
+        print(f"Error: Invalid status. Must be one of: {', '.join(PROJECT_STATUSES)}")
+        sys.exit(1)
+    
+    old_status = project.get("status", "idea")
+    project["status"] = args.new_status
+    project["updatedAt"] = datetime.utcnow().date().isoformat()
+    save_data(data)
+    print(f"✅ {project['name']}: {old_status} → {args.new_status}")
+
+def cmd_orphans(data):
+    """List projects with no/invalid aspiration link."""
+    orphans = []
+    for p in data["projects"]:
+        aspiration_id = p.get("aspirationId")
+        if not aspiration_id or not find_aspiration(data, aspiration_id):
+            orphans.append(p)
+    
+    if not orphans:
+        print("✅ No orphan projects.")
+        return
+    
+    print(f"\n⚠️  {len(orphans)} orphan projects:\n")
+    for p in orphans:
+        print(f"  {p['name']} ({p['id']})")
+        print(f"    Link: {p.get('aspirationId', 'missing')}")
+        print()
+
+def cmd_barren(data):
+    """List aspirations with zero projects."""
+    barren = []
+    for asp in data["aspirations"]:
+        if get_project_count(data, asp["id"]) == 0:
+            barren.append(asp)
+    
+    if not barren:
+        print("✅ All aspirations have at least one project.")
+        return
+    
+    print(f"\n🌵 {len(barren)} barren aspirations:\n")
+    for asp in barren:
+        print(f"  {asp['title']} ({asp['id']})")
+        print()
+
+# ============================================================================
+# Main
+# ============================================================================
+
+def main():
+    parser = argparse.ArgumentParser(description="Manage aspirations & projects")
+    subparsers = parser.add_subparsers(dest="command", help="Command")
+    
+    # add-dream
+    add_dream_parser = subparsers.add_parser("add-dream", help="Add a new aspiration")
+    add_dream_parser.add_argument("title", help="Aspiration title")
+    add_dream_parser.add_argument("--desc", help="Description")
+    add_dream_parser.add_argument("--category", choices=ASPIRATION_CATEGORIES, help="Category")
+    add_dream_parser.add_argument("--throughline", help="Thematic throughline")
+    
+    # add-project
+    add_project_parser = subparsers.add_parser("add-project", help="Add a new project")
+    add_project_parser.add_argument("name", help="Project name")
+    add_project_parser.add_argument("--for", dest="aspiration_for", required=True, help="Aspiration ID this serves")
+    add_project_parser.add_argument("--desc", help="Description")
+    add_project_parser.add_argument("--status", choices=PROJECT_STATUSES, help="Status")
+    add_project_parser.add_argument("--category", choices=PROJECT_CATEGORIES, help="Category")
+    add_project_parser.add_argument("--start-date", help="Start date (YYYY-MM-DD)")
+    
+    # link
+    link_parser = subparsers.add_parser("link", help="Re-link a project to an aspiration")
+    link_parser.add_argument("project_id", help="Project ID")
+    link_parser.add_argument("aspiration_id", help="Aspiration ID")
+    
+    # status
+    status_parser = subparsers.add_parser("status", help="Update project status")
+    status_parser.add_argument("project_id", help="Project ID")
+    status_parser.add_argument("new_status", choices=PROJECT_STATUSES, help="New status")
+    
+    # Simple subcommands
+    subparsers.add_parser("dreams", help="List all aspirations")
+    subparsers.add_parser("projects", help="List all projects")
+    subparsers.add_parser("tree", help="Tree view")
+    subparsers.add_parser("orphans", help="List orphan projects")
+    subparsers.add_parser("barren", help="List barren aspirations")
+    
+    args = parser.parse_args()
+    
+    # Load data
+    data = load_data()
+    
+    # Route commands
+    if args.command is None:
+        cmd_overview(data)
+    elif args.command == "dreams":
+        cmd_dreams(data)
+    elif args.command == "projects":
+        cmd_projects(data)
+    elif args.command == "tree":
+        cmd_tree(data)
+    elif args.command == "add-dream":
+        cmd_add_dream(args)
+    elif args.command == "add-project":
+        cmd_add_project(args)
+    elif args.command == "link":
+        cmd_link(args)
+    elif args.command == "status":
+        cmd_status(args)
+    elif args.command == "orphans":
+        cmd_orphans(data)
+    elif args.command == "barren":
+        cmd_barren(data)
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

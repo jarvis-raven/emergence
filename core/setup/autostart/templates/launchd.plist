@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Service Identifier -->
+    <key>Label</key>
+    <string>com.emergence.room.{{AGENT_NAME_SLUG}}</string>
+    
+    <!-- Run at login/boot -->
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <!-- Keep alive -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+    
+    <!-- Throttle respawn to prevent crash loops -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+    
+    <!-- Working directory -->
+    <key>WorkingDirectory</key>
+    <string>{{WORKSPACE_PATH}}</string>
+    
+    <!-- Environment variables -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+        <key>NODE_ENV</key>
+        <string>production</string>
+        <key>EMERGENCE_STATE</key>
+        <string>{{STATE_PATH}}</string>
+        <key>PORT</key>
+        <string>{{ROOM_PORT}}</string>
+    </dict>
+    
+    <!-- Program to run -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{NODE_PATH}}</string>
+        <string>{{SERVER_PATH}}</string>
+    </array>
+    
+    <!-- Standard output/error logging -->
+    <key>StandardOutPath</key>
+    <string>{{LOG_DIR}}/room.out.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>{{LOG_DIR}}/room.err.log</string>
+    
+    <!-- Run as user (not root) -->
+    <key>UserName</key>
+    <string>{{USER_NAME}}</string>
+</dict>
+</plist>

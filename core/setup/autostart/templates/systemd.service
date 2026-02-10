@@ -1,0 +1,37 @@
+[Unit]
+Description=Emergence Room Dashboard ({{AGENT_NAME}})
+Documentation=https://github.com/openclaw/emergence
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User={{USER_NAME}}
+WorkingDirectory={{WORKSPACE_PATH}}
+
+# Node.js execution
+ExecStart={{NODE_PATH}} {{SERVER_PATH}}
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=10
+
+# Environment
+Environment="NODE_ENV=production"
+Environment="EMERGENCE_STATE={{STATE_PATH}}"
+Environment="PORT={{ROOM_PORT}}"
+
+# Resource limits (generous defaults)
+LimitNOFILE=65535
+
+# Logging
+StandardOutput=append:{{LOG_DIR}}/room.out.log
+StandardError=append:{{LOG_DIR}}/room.err.log
+SyslogIdentifier=emergence-room
+
+# Security hardening (relaxed for Raspberry Pi compatibility)
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,8 @@
+# Emergence Dependencies
+# Install with: pip install -r requirements.txt
+
+# Styled terminal output (Digital Primordial theme)
+rich>=13.0.0
+
+# Interactive CLI prompts (arrow-key navigation)
+questionary>=2.0.0

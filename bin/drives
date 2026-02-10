@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Emergence drives CLI wrapper
+# Resolve through symlinks to find the real Emergence root
+SCRIPT_PATH="$(python3 -c "import os; print(os.path.realpath('$0'))")"
+EMERGENCE_ROOT="$(dirname "$(dirname "$SCRIPT_PATH")")"
+export EMERGENCE_STATE="${EMERGENCE_STATE:-$HOME/.openclaw/state}"
+cd "$EMERGENCE_ROOT" || exit 1
+exec python3 -m core.drives "$@"

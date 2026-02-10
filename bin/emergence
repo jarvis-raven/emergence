@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Emergence CLI — main entry point
+# Usage: emergence <command> [args]
+
+set -e
+
+# Resolve through symlinks to find the real Emergence root
+SCRIPT_PATH="$(python3 -c "import os; print(os.path.realpath('$0'))")"
+EMERGENCE_ROOT="$(dirname "$(dirname "$SCRIPT_PATH")")"
+export EMERGENCE_STATE="${EMERGENCE_STATE:-$HOME/.openclaw/state}"
+
+cd "$EMERGENCE_ROOT" || exit 1
+
+case "${1:-help}" in
+  awaken|init)
+    shift
+    exec python3 -m core.setup.init_wizard "$@"
+    ;;
+  drives)
+    shift
+    exec python3 -m core.drives "$@"
+    ;;
+  dream)
+    shift
+    exec python3 -m core.dream_engine "$@"
+    ;;
+  first-light|fl)
+    shift
+    exec python3 -m core.first_light "$@"
+    ;;
+  memory)
+    shift
+    exec python3 -m core.memory "$@"
+    ;;
+  consolidate)
+    shift
+    exec python3 -m core.memory.consolidation "$@"
+    ;;
+  nightly|nightly-build)
+    shift
+    exec python3 -m core.memory.nightly_build "$@"
+    ;;
+  status)
+    echo "Emergence Status"
+    echo "================"
+    echo "Root: $EMERGENCE_ROOT"
+    echo "State: $EMERGENCE_STATE"
+    echo ""
+    python3 -m core.drives status 2>/dev/null || echo "Drives: not initialized"
+    echo ""
+    python3 -m core.first_light status 2>/dev/null || echo "First Light: not initialized"
+    ;;
+  version|--version|-v)
+    python3 -c "from core import __version__; print(f'Emergence {__version__}')" 2>/dev/null || echo "Emergence (version unknown)"
+    ;;
+  help|--help|-h|"")
+    cat << 'EOF'
+Emergence — AI Agent Selfhood Toolkit
+
+Usage: emergence <command> [options]
+
+Commands:
+  awaken          Initialize a new agent (interactive wizard)
+  init            Alias for awaken
+  drives          Manage internal drives (tick, status, satisfy)
+  dream           Run dream engine
+  first-light     First Light orchestrator (run, status, start, pause)
+  fl              Alias for first-light
+  memory          Memory lifecycle management
+  consolidate     Run memory consolidation
+  nightly         Run nightly build routine
+  status          Show overall Emergence status
+  version         Show version
+
+Examples:
+  emergence awaken                    # Start the setup wizard
+  emergence awaken --non-interactive --name Aurora --human Dan
+  emergence drives status             # Check drive pressures
+  emergence first-light run           # Trigger First Light tick
+  emergence status                    # Show overall status
+
+Documentation: https://github.com/your-org/emergence
+EOF
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Run 'emergence help' for usage." >&2
+    exit 1
+    ;;
+esac
