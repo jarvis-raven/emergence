@@ -41,12 +41,23 @@ Read more: [docs/philosophy.md](docs/philosophy.md)
 ### Installation
 
 ```bash
+# Install from PyPI
+pip install emergence-ai
+
+# Run the init wizard
+emergence init --fresh
+```
+
+Or install from source:
+
+```bash
 # Clone the repo
 git clone https://github.com/jarvis-raven/emergence.git
 cd emergence
+pip install -e .
 
 # Run the init wizard
-python3 core/setup/init_wizard.py --fresh
+emergence init --fresh
 ```
 
 The wizard will:
