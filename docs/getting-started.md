@@ -72,11 +72,21 @@ ollama pull llama3.2:3b  # For ingest analysis (lightweight)
 ## Step 1: Install Emergence
 
 ```bash
+# Install from PyPI (recommended)
+pip install emergence-ai
+
+# Verify installation
+emergence --version
+```
+
+**Or install from source:**
+
+```bash
 # Clone the repository
 git clone https://github.com/jarvis-raven/emergence.git
 cd emergence
 
-# Install the package
+# Install in editable mode (for development)
 pip install -e .
 
 # Verify installation
