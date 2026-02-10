@@ -113,7 +113,7 @@ def activate_drive(emergence_dir: Path, drive_meta: dict):
         "description": drive_meta["description"],
         "prompt": f"Your {drive_meta['name']} drive has triggered. {drive_meta['description']}",
         "category": "discovered",
-        "created_by": "first_light_analyzer",
+        "created_by": "agent",
         "created_at": drive_meta["timestamp"],
         "satisfaction_events": [],
         "discovered_during": f"first_light_{drive_meta['session_number']}",
