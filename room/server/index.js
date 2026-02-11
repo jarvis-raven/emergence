@@ -56,9 +56,16 @@ const SSL_DIR = join(__dirname, '..', 'ssl');
 const wsClients = new Set();
 
 // Get drives state file path
-const drivesStatePath = process.env.EMERGENCE_STATE 
-  ? join(process.env.EMERGENCE_STATE, 'drives.json')
-  : join(os.homedir(), '.openclaw/state', 'drives.json');
+// Use config-resolved path first, then env var, then legacy fallback
+let drivesStatePath;
+try {
+  drivesStatePath = getStatePath(config, 'drives.json');
+} catch (err) {
+  // Fallback to env var or legacy path
+  drivesStatePath = process.env.EMERGENCE_STATE 
+    ? join(process.env.EMERGENCE_STATE, 'drives.json')
+    : join(os.homedir(), '.openclaw/state', 'drives.json');
+}
 
 // Middleware
 app.use(cors({
@@ -237,19 +244,8 @@ function setupWebSocket(server) {
  */
 function watchDrivesState() {
   if (!existsSync(drivesStatePath)) {
-    console.warn(`[Watch] Drives state file not found: ${drivesStatePath}`);
-    // Try to resolve through config as fallback
-    try {
-      const configPath = getStatePath(config, 'drives.json');
-      if (existsSync(configPath)) {
-        console.log(`[Watch] Found drives state at: ${configPath}`);
-        setupWatch(configPath);
-        return;
-      }
-    } catch (err) {
-      // Fall through to error
-    }
-    console.error('[Watch] Unable to find drives state file to watch');
+    console.error(`[Watch] Drives state file not found: ${drivesStatePath}`);
+    console.error('[Watch] Run drives engine to initialize state file');
     return;
   }
   
