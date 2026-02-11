@@ -756,6 +756,10 @@ def main():
     # complete command
     complete_parser = subparsers.add_parser("complete", help="Complete First Light phase (graduation)")
     complete_parser.add_argument("--force", action="store_true", help="Complete even if gates not met")
+    complete_parser.add_argument("--grandfather", action="store_true", help="Grandfather pre-v0.2.0 agents with historical sessions")
+    
+    # grandfather command (alias for complete --grandfather)
+    subparsers.add_parser("grandfather", help="Complete First Light for pre-v0.2.0 agents with historical sessions")
     
     args = parser.parse_args()
     
@@ -816,11 +820,33 @@ def main():
         sys.exit(0)
 
     elif args.command == "complete":
-        from .completion import manual_complete_first_light, get_first_light_status, format_status_display
+        from .completion import manual_complete_first_light, grandfather_first_light, get_first_light_status, format_status_display
         
         workspace = Path(config.get("workspace", Path.cwd()))
         
-        if args.force:
+        if args.grandfather:
+            # Grandfather mode - scan historical sessions
+            print("🔍 Scanning for historical First Light sessions...")
+            print()
+            result = grandfather_first_light(workspace)
+            
+            if result["success"]:
+                print(result["message"])
+                sys.exit(0)
+            else:
+                print(f"❌ {result['message']}")
+                if "evidence" in result:
+                    evidence = result["evidence"]
+                    print()
+                    print("Historical evidence found:")
+                    print(f"  • Sessions: {evidence.get('historical_sessions', 0)}")
+                    print(f"  • Unique days: {evidence.get('unique_days', 0)}")
+                    print(f"  • Drives: {evidence.get('discovered_drives', 0)}")
+                    if evidence.get('drive_names'):
+                        print(f"    ({', '.join(evidence['drive_names'])})")
+                sys.exit(1)
+        
+        elif args.force:
             # Show current status first
             print(format_status_display(get_first_light_status(workspace)))
             print("⚠️  Force completion requested. This will:")
@@ -836,6 +862,31 @@ def main():
             sys.exit(0)
         else:
             print(f"Error: {result['message']}")
+            sys.exit(1)
+    
+    elif args.command == "grandfather":
+        from .completion import grandfather_first_light
+        
+        workspace = Path(config.get("workspace", Path.cwd()))
+        
+        print("🔍 Scanning for historical First Light sessions...")
+        print()
+        result = grandfather_first_light(workspace)
+        
+        if result["success"]:
+            print(result["message"])
+            sys.exit(0)
+        else:
+            print(f"❌ {result['message']}")
+            if "evidence" in result:
+                evidence = result["evidence"]
+                print()
+                print("Historical evidence found:")
+                print(f"  • Sessions: {evidence.get('historical_sessions', 0)}")
+                print(f"  • Unique days: {evidence.get('unique_days', 0)}")
+                print(f"  • Drives: {evidence.get('discovered_drives', 0)}")
+                if evidence.get('drive_names'):
+                    print(f"    ({', '.join(evidence['drive_names'])})")
             sys.exit(1)
 
 

@@ -4,12 +4,14 @@ Handles the transition when an agent completes First Light:
 - Tracks session count and completion gates
 - Performs graduation ceremony
 - Notifies agent in next session
+- Grandfathering for agents upgrading from pre-v0.2.0
 """
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 
 # Default completion gates
@@ -612,3 +614,173 @@ def manual_complete_first_light(workspace: Path, force: bool = False) -> dict:
         }
     else:
         return result
+
+
+def scan_historical_sessions(workspace: Path) -> Tuple[int, int, list]:
+    """Scan memory/sessions/ for historical First Light sessions.
+    
+    Args:
+        workspace: Path to workspace root
+        
+    Returns:
+        Tuple of (session_count, unique_days, drive_names)
+    """
+    sessions_dir = workspace / "memory" / "sessions"
+    
+    if not sessions_dir.exists():
+        return (0, 0, [])
+    
+    # Pattern: YYYY-MM-DD-HHMM-DRIVE_NAME.md or first-light variants
+    first_light_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}.*\.md$')
+    
+    session_files = []
+    for file in sessions_dir.glob("*.md"):
+        if first_light_pattern.match(file.name):
+            session_files.append(file)
+    
+    # Count unique days
+    unique_dates = set()
+    drive_names = set()
+    
+    for file in session_files:
+        # Extract date from filename (YYYY-MM-DD)
+        date_match = re.match(r'^(\d{4}-\d{2}-\d{2})', file.name)
+        if date_match:
+            unique_dates.add(date_match.group(1))
+        
+        # Try to extract drive name from filename or frontmatter
+        drive_match = re.search(r'-(\w+)\.md$', file.name)
+        if drive_match:
+            drive_names.add(drive_match.group(1))
+        
+        # Also try reading frontmatter for drive name
+        try:
+            content = file.read_text(encoding='utf-8')
+            drive_fm_match = re.search(r'^drive:\s*(\w+)', content, re.MULTILINE)
+            if drive_fm_match:
+                drive_names.add(drive_fm_match.group(1))
+        except Exception:
+            pass
+    
+    return (len(session_files), len(unique_dates), list(drive_names))
+
+
+def check_grandfather_eligibility(workspace: Path) -> dict:
+    """Check if agent is eligible for grandfathering based on historical sessions.
+    
+    Args:
+        workspace: Path to workspace root
+        
+    Returns:
+        Dict with eligibility status and evidence
+    """
+    session_count, unique_days, drive_names = scan_historical_sessions(workspace)
+    
+    # Load current First Light state
+    fl_data = load_first_light_json(workspace)
+    gates = fl_data.get("gates", DEFAULT_GATES)
+    
+    # Check gates
+    sessions_met = session_count >= gates.get("min_sessions", 10)
+    days_met = unique_days >= gates.get("min_days_elapsed", 7)
+    drives_met = len(drive_names) >= gates.get("min_discovered_drives", 3)
+    
+    eligible = sessions_met and days_met and drives_met
+    
+    return {
+        "eligible": eligible,
+        "evidence": {
+            "historical_sessions": session_count,
+            "unique_days": unique_days,
+            "discovered_drives": len(drive_names),
+            "drive_names": drive_names
+        },
+        "gates": {
+            "sessions": {"required": gates.get("min_sessions", 10), "found": session_count, "met": sessions_met},
+            "days": {"required": gates.get("min_days_elapsed", 7), "found": unique_days, "met": days_met},
+            "drives": {"required": gates.get("min_discovered_drives", 3), "found": len(drive_names), "met": drives_met}
+        }
+    }
+
+
+def grandfather_first_light(workspace: Path) -> dict:
+    """Complete First Light for agents with pre-v0.2.0 history.
+    
+    Scans historical sessions and auto-completes if gates are met.
+    
+    Args:
+        workspace: Path to workspace root
+        
+    Returns:
+        Result dictionary with success status
+    """
+    # Check eligibility
+    eligibility = check_grandfather_eligibility(workspace)
+    
+    if not eligibility["eligible"]:
+        gates = eligibility["gates"]
+        missing = []
+        if not gates["sessions"]["met"]:
+            missing.append(f"sessions ({gates['sessions']['found']}/{gates['sessions']['required']})")
+        if not gates["days"]["met"]:
+            missing.append(f"days ({gates['days']['found']}/{gates['days']['required']})")
+        if not gates["drives"]["met"]:
+            missing.append(f"drives ({gates['drives']['found']}/{gates['drives']['required']})")
+        
+        return {
+            "success": False,
+            "error": "not_eligible",
+            "message": f"Not eligible for grandfathering: missing {', '.join(missing)}",
+            "evidence": eligibility["evidence"]
+        }
+    
+    # Load current state
+    fl_data = load_first_light_json(workspace)
+    
+    # Skip if already completed
+    if fl_data["status"] == "completed":
+        return {
+            "success": False,
+            "error": "already_completed",
+            "message": "First Light already completed"
+        }
+    
+    # Perform grandfathered completion
+    evidence = eligibility["evidence"]
+    fl_data["status"] = "completed"
+    fl_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+    fl_data["session_count"] = evidence["historical_sessions"]
+    fl_data["discovered_drives"] = evidence["drive_names"]
+    fl_data["completion_transition"] = {
+        "notified": True,
+        "locked_drives": evidence["drive_names"],
+        "transition_message": (
+            f"🌅 First Light completed via grandfathering\n\n"
+            f"Historical evidence:\n"
+            f"  • {evidence['historical_sessions']} First Light sessions\n"
+            f"  • {evidence['unique_days']} unique days\n"
+            f"  • {len(evidence['drive_names'])} discovered drives: {', '.join(evidence['drive_names'])}\n\n"
+            f"You've already done the work. Gates removed."
+        ),
+        "grandfathered": True,
+        "grandfather_evidence": evidence
+    }
+    
+    # Update gate status
+    fl_data["gate_status"] = {
+        "sessions_met": True,
+        "days_met": True,
+        "drives_met": True,
+        "over_soft_limit": len(evidence["drive_names"]) > fl_data.get("gates", {}).get("max_drives_soft_limit", 8)
+    }
+    
+    # Save
+    fl_path = get_first_light_path(workspace)
+    fl_path.parent.mkdir(parents=True, exist_ok=True)
+    fl_path.write_text(json.dumps(fl_data, indent=2), encoding="utf-8")
+    
+    return {
+        "success": True,
+        "message": fl_data["completion_transition"]["transition_message"],
+        "evidence": evidence
+    }

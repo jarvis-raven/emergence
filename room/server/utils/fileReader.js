@@ -35,12 +35,16 @@ export function readTextFile(path) {
 export function readJsonFile(path) {
   try {
     if (!existsSync(path)) {
+      // Silently return null - missing files are expected during init/startup
       return null;
     }
     const content = readFileSync(path, 'utf-8');
     return JSON.parse(content);
   } catch (err) {
-    console.error(`Error parsing JSON ${path}:`, err.message);
+    // Only log actual errors (not ENOENT which is handled above)
+    if (err.code !== 'ENOENT') {
+      console.error(`Error parsing JSON ${path}:`, err.message);
+    }
     return null;
   }
 }
