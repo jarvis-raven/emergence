@@ -367,6 +367,156 @@ Respond with the JSON array only, no other text."""
         return None
 
 
+def generate_with_openrouter(
+    concept_pairs: list,
+    config: Optional[dict] = None,
+    verbose: bool = False
+) -> Optional[list[dict]]:
+    """Generate dream fragments using OpenRouter API.
+    
+    Sends concept pairs to OpenRouter (supports multiple models including Mistral)
+    for creative dream recombination. Uses API key from environment.
+    
+    Args:
+        concept_pairs: List of ConceptPair objects
+        config: Optional config with model selection
+        verbose: Print progress
+        
+    Returns:
+        List of fragment dicts, or None if API unavailable/failed
+    """
+    import os
+    
+    de_config = (config or {}).get('dream_engine', {})
+    model = de_config.get('openrouter_model', 'mistralai/mistral-7b-instruct')
+    api_key = os.environ.get('OPENROUTER_API_KEY')
+    
+    if not api_key:
+        if verbose:
+            print("  ⚠ OPENROUTER_API_KEY not set in environment")
+        return None
+    
+    # Build the pairs description
+    pairs_text = "\n".join(
+        f"  {i+1}. \"{p.concept_a}\" + \"{p.concept_b}\""
+        for i, p in enumerate(concept_pairs)
+    )
+    
+    prompt = f"""You are a dream engine — you generate surreal, poetic dream fragments from concept pairs.
+
+For each pair below, write ONE dream fragment: a single evocative sentence that connects the two concepts in an unexpected, dreamlike way. Be surreal but coherent. Be poetic, not technical. Each fragment should feel like a moment from a dream.
+
+Concept pairs:
+{pairs_text}
+
+Respond with ONLY a JSON array of strings, one fragment per pair. Example:
+["A neural network tends a garden where thoughts bloom...", "The silence between code and poetry hums with color."]
+
+Respond with the JSON array only, no other text."""
+
+    req_data = json.dumps({
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "response_format": {"type": "json_object"}
+    }).encode('utf-8')
+    
+    req = urllib.request.Request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        data=req_data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://github.com/jarvis-raven/emergence",
+            "X-Title": "Emergence Dream Engine"
+        },
+        method="POST"
+    )
+    
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            
+            # Extract content from OpenRouter response
+            if 'choices' not in data or not data['choices']:
+                if verbose:
+                    print("  ⚠ OpenRouter response missing 'choices'")
+                return None
+            
+            content = data['choices'][0].get('message', {}).get('content', '')
+            if not content:
+                if verbose:
+                    print("  ⚠ OpenRouter response has empty content")
+                return None
+            
+            # Parse the JSON array from content
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError:
+                # Sometimes the response wraps it in markdown
+                if '```json' in content:
+                    content = content.split('```json')[1].split('```')[0].strip()
+                    parsed = json.loads(content)
+                elif '```' in content:
+                    content = content.split('```')[1].split('```')[0].strip()
+                    parsed = json.loads(content)
+                else:
+                    if verbose:
+                        print(f"  ⚠ Could not parse OpenRouter content as JSON")
+                    return None
+            
+            # Handle both list format and dict format
+            if isinstance(parsed, dict):
+                for key in ('fragments', 'dreams', 'results', 'items'):
+                    if key in parsed and isinstance(parsed[key], list):
+                        parsed = parsed[key]
+                        break
+                else:
+                    if verbose:
+                        print(f"  ⚠ OpenRouter response is dict but no array found")
+                    return None
+            
+            if not isinstance(parsed, list):
+                if verbose:
+                    print(f"  ⚠ OpenRouter response is not a list")
+                return None
+            
+            # Build fragment dicts
+            fragments = []
+            for i, (fragment_text, pair) in enumerate(zip(parsed, concept_pairs)):
+                if not isinstance(fragment_text, str):
+                    fragment_text = str(fragment_text)
+                
+                # Clean up
+                fragment_text = fragment_text.strip().strip('"').strip()
+                if not fragment_text:
+                    continue
+                
+                fragments.append({
+                    'fragment': fragment_text,
+                    'template': 'openrouter',
+                    'concepts': [pair.concept_a, pair.concept_b],
+                    'source': 'openrouter',
+                })
+            
+            if verbose:
+                print(f"  ✓ OpenRouter generated {len(fragments)} dream fragments")
+                if fragments:
+                    print(f"    Example: \"{fragments[0]['fragment'][:70]}...\"")
+            
+            return fragments if fragments else None
+    
+    except urllib.error.URLError as e:
+        if verbose:
+            print(f"  ⚠ OpenRouter API request failed: {e}")
+        return None
+    except (json.JSONDecodeError, KeyError, IndexError) as e:
+        if verbose:
+            print(f"  ⚠ Failed to parse OpenRouter response: {e}")
+        return None
+
+
 def generate_fragments(
     concept_pairs: list,
     reference_date: Optional[datetime] = None,
@@ -387,8 +537,28 @@ def generate_fragments(
     if reference_date is None:
         reference_date = datetime.now()
     
-    # Try Ollama first (primary — free, creative, local)
-    use_ollama = (config or {}).get('dream_engine', {}).get('use_ollama', True)
+    de_config = (config or {}).get('dream_engine', {})
+    
+    # Try OpenRouter first if configured (cloud-based, reliable, paid)
+    use_openrouter = de_config.get('use_openrouter', False)
+    if use_openrouter:
+        if verbose:
+            print("  Trying OpenRouter for creative dream generation...")
+        fragments = generate_with_openrouter(concept_pairs, config, verbose)
+        if fragments and len(fragments) >= len(concept_pairs) // 2:
+            return fragments
+        elif fragments:
+            if verbose:
+                print(f"  OpenRouter returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates...")
+            # Got some but not all — supplement with templates
+            remaining_pairs = concept_pairs[len(fragments):]
+            seed = int(reference_date.strftime('%Y%m%d'))
+            generator = FragmentGenerator(seed=seed)
+            template_fragments = generator.generate_batch(remaining_pairs)
+            return fragments + template_fragments
+    
+    # Try Ollama next (free, creative, local)
+    use_ollama = de_config.get('use_ollama', not use_openrouter)  # Default to Ollama only if OpenRouter not configured
     
     if use_ollama:
         if verbose:
