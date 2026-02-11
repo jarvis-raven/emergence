@@ -40,6 +40,10 @@ case "${1:-help}" in
     shift
     exec python3 -m core.memory.nightly_build "$@"
     ;;
+  update)
+    shift
+    exec python3 -m core.update "$@"
+    ;;
   status)
     echo "Emergence Status"
     echo "================"
@@ -69,6 +73,7 @@ Commands:
   memory          Memory lifecycle management
   consolidate     Run memory consolidation
   nightly         Run nightly build routine
+  update          Update Emergence with automatic backups and migrations
   status          Show overall Emergence status
   version         Show version
 
