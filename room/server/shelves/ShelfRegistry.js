@@ -8,6 +8,7 @@
 
 import { readdirSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
+import os from 'os';
 import { readJsonFile } from '../utils/fileReader.js';
 
 export class ShelfRegistry {
@@ -16,6 +17,7 @@ export class ShelfRegistry {
     this.shelvesPath = join(statePath, 'shelves');
     this.builtins = new Map();
     this.custom = new Map();
+    this.userConfig = null;
   }
 
   /**
@@ -82,6 +84,112 @@ export class ShelfRegistry {
   }
 
   /**
+   * Load user shelf configuration from ~/.openclaw/config/shelves.json
+   * @returns {object} User config or empty defaults
+   */
+  loadUserConfig() {
+    const configPath = join(os.homedir(), '.openclaw', 'config', 'shelves.json');
+    const config = readJsonFile(configPath);
+    
+    if (!config) {
+      return { builtins: {}, custom: {} };
+    }
+    
+    this.userConfig = config;
+    return config;
+  }
+
+  /**
+   * Apply user preferences to registered shelves
+   * @param {object} userConfig - User configuration object
+   */
+  applyUserPreferences(userConfig) {
+    // Apply preferences to built-ins
+    for (const [id, pref] of Object.entries(userConfig.builtins || {})) {
+      if (this.builtins.has(id)) {
+        const shelf = this.builtins.get(id);
+        if (pref.enabled === false) {
+          shelf.status = 'disabled';
+        }
+        if (typeof pref.priority === 'number') {
+          shelf.manifest.priority = pref.priority;
+        }
+      }
+    }
+    
+    // Apply preferences to custom shelves
+    for (const [id, pref] of Object.entries(userConfig.custom || {})) {
+      if (this.custom.has(id)) {
+        const shelf = this.custom.get(id);
+        if (pref.enabled === false) {
+          shelf.status = 'disabled';
+        }
+        if (typeof pref.priority === 'number') {
+          shelf.manifest.priority = pref.priority;
+        }
+      }
+    }
+  }
+
+  /**
+   * Disable a shelf (marks as disabled, won't appear in UI)
+   * @param {string} id - Shelf id
+   * @returns {boolean} Success
+   */
+  disableShelf(id) {
+    if (this.builtins.has(id)) {
+      this.builtins.get(id).status = 'disabled';
+      return true;
+    }
+    
+    if (this.custom.has(id)) {
+      this.custom.get(id).status = 'disabled';
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Enable a shelf
+   * @param {string} id - Shelf id
+   * @returns {boolean} Success
+   */
+  enableShelf(id) {
+    if (this.builtins.has(id)) {
+      this.builtins.get(id).status = 'active';
+      return true;
+    }
+    
+    if (this.custom.has(id)) {
+      this.custom.get(id).status = 'active';
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Set shelf priority (higher numbers appear first)
+   * @param {string} id - Shelf id
+   * @param {number} priority - Priority value
+   * @returns {boolean} Success
+   */
+  setShelfPriority(id, priority) {
+    if (this.builtins.has(id)) {
+      this.builtins.get(id).manifest.priority = priority;
+      return true;
+    }
+    
+    if (this.custom.has(id)) {
+      this.custom.get(id).manifest.priority = priority;
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
    * Validate and clean a manifest object
    * @param {object} raw - Raw manifest data
    * @param {string} dirName - Directory name for auto-deriving id
@@ -126,25 +234,30 @@ export class ShelfRegistry {
 
   /**
    * Get all shelves (built-in and custom) sorted by priority desc
+   * @param {boolean} includeDisabled - Include disabled shelves
    * @returns {Array} Array of { manifest, status, isBuiltin }
    */
-  getAll() {
+  getAll(includeDisabled = false) {
     const all = [];
     
     for (const [id, shelf] of this.builtins) {
-      all.push({
-        manifest: shelf.manifest,
-        status: shelf.status,
-        isBuiltin: shelf.isBuiltin,
-      });
+      if (includeDisabled || shelf.status !== 'disabled') {
+        all.push({
+          manifest: shelf.manifest,
+          status: shelf.status,
+          isBuiltin: shelf.isBuiltin,
+        });
+      }
     }
     
     for (const [id, shelf] of this.custom) {
-      all.push({
-        manifest: shelf.manifest,
-        status: shelf.status,
-        isBuiltin: shelf.isBuiltin,
-      });
+      if (includeDisabled || shelf.status !== 'disabled') {
+        all.push({
+          manifest: shelf.manifest,
+          status: shelf.status,
+          isBuiltin: shelf.isBuiltin,
+        });
+      }
     }
     
     return all.sort((a, b) => b.manifest.priority - a.manifest.priority);

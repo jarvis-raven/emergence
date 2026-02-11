@@ -20,7 +20,10 @@ export async function initializeShelves(config) {
   const statePath = getStatePath(config, '');
   const registry = new ShelfRegistry(statePath);
   
-  // Register built-in shelves (order matters for priority)
+  // Load user preferences
+  const userConfig = registry.loadUserConfig();
+  
+  // Register built-in shelves (order matters for default priority)
   registry.registerBuiltin(BudgetTransparencyShelf);
   registry.registerBuiltin(DrivesShelf);
   registry.registerBuiltin(PendingReviewsShelf);
@@ -28,12 +31,20 @@ export async function initializeShelves(config) {
   registry.registerBuiltin(MemoryShelf);
   registry.registerBuiltin(AspirationsShelf);
   
+  // Discover custom shelves from filesystem
   await registry.discover();
   
-  const all = registry.getAll();
-  const builtinCount = all.filter(s => s.isBuiltin).length;
-  const customCount = all.filter(s => !s.isBuiltin).length;
-  console.log(`📚 Shelves: ${builtinCount} built-in, ${customCount} custom discovered`);
+  // Apply user preferences (enable/disable, priority overrides)
+  registry.applyUserPreferences(userConfig);
+  
+  const all = registry.getAll(true); // Include disabled for counting
+  const active = all.filter(s => s.status !== 'disabled');
+  const builtinCount = active.filter(s => s.isBuiltin).length;
+  const customCount = active.filter(s => !s.isBuiltin).length;
+  const disabledCount = all.length - active.length;
+  
+  console.log(`📚 Shelves: ${builtinCount} built-in, ${customCount} custom discovered` + 
+              (disabledCount > 0 ? `, ${disabledCount} disabled` : ''));
   
   return registry;
 }
