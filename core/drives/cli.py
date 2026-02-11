@@ -385,8 +385,8 @@ def cmd_status(args) -> int:
     show_latent = getattr(args, 'show_latent', False)
     show_latent = getattr(args, 'show_latent', False)
     
-    # Get last tick info
-    last_tick_str = state.get("last_tick", "")
+    # Get last tick info from runtime state
+    last_tick_str = runtime_state.get("last_tick", "")
     try:
         last_tick = datetime.fromisoformat(last_tick_str)
         now = datetime.now(timezone.utc)
