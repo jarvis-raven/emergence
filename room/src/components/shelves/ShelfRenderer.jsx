@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import MemoryShelfView from './MemoryShelfView';
-import { LibraryShelfView } from './LibraryShelfView';
 import GenericShelfView from './GenericShelfView';
+
+// Custom shelves (agent-specific, in custom/ directory)
+import { LibraryShelfView } from './custom/LibraryShelfView';
 
 const RENDERER_MAP = {
   memory: MemoryShelfView,
