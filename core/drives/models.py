@@ -111,7 +111,7 @@ CORE_DRIVES: dict[str, dict] = {
         "rate_per_hour": 2.0,
         "max_rate": 3.0,
         "description": "Attend to the human. The relationship drive.",
-        "prompt": "Your CARE drive triggered. Check in with your human.",
+        "prompt": "Your CARE drive triggered. Check in with your human. Update USER.md with anything new you learned about them (preferences, patterns, what matters to them). Remove outdated information.",
         "category": "core",
         "created_by": "system",
         "satisfaction_events": [],

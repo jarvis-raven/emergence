@@ -347,6 +347,7 @@ Merge with existing entries, remove stale ones.
 
 ### 4. Relationship Status
 Note if you interacted with your human today. How did it feel?
+**Update USER.md** if you learned anything new about them (preferences, patterns, what matters to them). Remove outdated information.
 
 ### 5. Footer
 Update the timestamp: "*Last updated: {datetime.now(timezone.utc).isoformat()} by nightly_build*"

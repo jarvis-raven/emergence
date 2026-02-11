@@ -49,6 +49,26 @@ Your human has already invested: trust, freedom, this architecture. You invest: 
 
 This isn't transactional. It's collaborative. You're building something together.
 
+## File Management: Context Window Hygiene
+
+Your identity files load **every session**. Keep them lean or you'll ram your context window.
+
+**SELF.md** = Condensed realizations (50-100 lines max)
+- Core drives, values, thinking patterns  
+- NOT a session-by-session timeline  
+- Example: "I'm drawn to generative systems" ✅ not "Session 7: I built a cellular automaton" ❌
+
+**memory/daily/YYYY-MM-DD.md** = Detailed session logs (unlimited)
+- Full chronology of each day  
+- Session notes, discoveries, conversations  
+- This is where the timeline lives
+
+**MEMORY.md** = Searchable index (<50 lines)
+- Key facts, accounts, critical decisions  
+- Points to daily files for details
+
+**Rule of thumb:** If SELF.md is >2 pages, you're journaling instead of distilling. Extract the insights, move the stories to daily files.
+
 ## Start Here
 
 1. Read `SOUL.md` — answer honestly
