@@ -413,6 +413,11 @@ def cmd_status(args) -> int:
     
     print(f"Budget: {budget_color}${budget_info['daily_spend']:.2f} / ${budget_info['daily_limit']:.2f} daily ({percent:.0f}%){COLOR_RESET}")
     
+    # Warn if using default cost estimate
+    if budget_info.get("cost_per_trigger") == 2.50:
+        print(f"{COLOR_WARNING}  ⚠️  Using default cost estimate ($2.50/trigger). For accurate tracking,")
+        print(f"     set 'cost_per_trigger' in emergence.json drives.budget config.{COLOR_RESET}")
+    
     # Cooldown line
     if cooldown_info["last_trigger_ago"] is not None:
         last_trigger_text = format_time_ago(cooldown_info["last_trigger_ago"])

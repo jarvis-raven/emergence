@@ -36,8 +36,10 @@ core/drives/utils.py
 core/first_light/__init__.py
 core/first_light/__main__.py
 core/first_light/analyzer.py
+core/first_light/completion.py
 core/first_light/discovery.py
 core/first_light/gates.py
+core/first_light/irreducibility.py
 core/first_light/orchestrator.py
 core/first_light/post_session.py
 core/first_light/status.py

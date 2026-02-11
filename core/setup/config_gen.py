@@ -19,6 +19,7 @@ try:
         print_header, print_subheader, print_success, print_warning, 
         print_dim, console
     )
+    from .model_pricing import get_suggested_budget
     HAS_RICH_BRANDING = True
 except ImportError:
     # Fallback if branding module not available
@@ -217,10 +218,10 @@ def generate_default_config(agent_name: str, human_name: str, workspace: Optiona
         },
         "drives": {
             # Budget controls for cost management
+            # Note: Cost estimates are model-aware (set during init based on your model)
             "budget": {
-                "daily_limit_usd": 50,
-                "throttle_at_percent": 80,
-                "session_cost_estimate": 2.5
+                "daily_limit": 50,  # Will be adjusted based on model cost
+                "cost_per_trigger": 2.5  # Will be adjusted based on model cost
             },
             # Minimum intervals between drive triggers
             "intervals": {
@@ -253,6 +254,16 @@ def generate_default_config(agent_name: str, human_name: str, workspace: Optiona
             }
         }
     }
+    
+    # Apply model-aware budget defaults
+    model = config["agent"].get("model", DEFAULT_MODEL)
+    try:
+        suggested_budget = get_suggested_budget(model)
+        config["drives"]["budget"]["daily_limit"] = suggested_budget["daily_limit"]
+        config["drives"]["budget"]["cost_per_trigger"] = suggested_budget["cost_per_trigger"]
+    except Exception:
+        # Fallback to defaults if pricing lookup fails
+        pass
     
     return config
 
