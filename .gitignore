@@ -28,6 +28,20 @@ TOOLS.md
 ASPIRATIONS.md
 SECURITY.md
 
+# Custom shelves (agent-specific components)
+# These are personal to each agent and should not be committed
+room/src/components/shelves/custom/*.jsx
+room/src/components/shelves/custom/*.js
+room/src/components/shelves/custom/*.ts
+room/src/components/shelves/custom/*.tsx
+# Allow the README, examples, and directory structure
+!room/src/components/shelves/custom/README.md
+!room/src/components/shelves/custom/.gitkeep
+!room/src/components/shelves/custom/*.example.jsx
+!room/src/components/shelves/custom/*.example.js
+!room/src/components/shelves/custom/*.example.ts
+!room/src/components/shelves/custom/*.example.tsx
+
 # Internal docs and working files (local only)
 docs/internal/
 docs/development-plan/
