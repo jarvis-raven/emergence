@@ -182,6 +182,21 @@ def generate_default_config(agent_name: str, human_name: str, workspace: Optiona
             "human_name": human_name,
             "model": DEFAULT_MODEL
         },
+        "embeddings": {
+            # Provider: "ollama" (local, free) or "openai" (API-based, paid)
+            "provider": "ollama",
+            # Ollama endpoint (local)
+            "ollama": {
+                "base_url": "http://localhost:11434/v1",
+                "model": "nomic-embed-text"
+            },
+            # OpenAI-compatible endpoint (OpenRouter, etc.)
+            "openai": {
+                "base_url": "https://openrouter.ai/api/v1",
+                "model": "text-embedding-3-small",
+                "api_key_env": "OPENROUTER_API_KEY"
+            }
+        },
         "room": {
             "port": 7373,
             "https": False,

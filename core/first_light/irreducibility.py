@@ -5,6 +5,7 @@ generate irreducibility test prompts for agent decision-making.
 """
 
 import json
+import os
 import re
 import urllib.request
 import urllib.error
@@ -18,31 +19,102 @@ ASPECT_RATE_INCREMENT = 0.2  # Rate increase per aspect (/hr)
 MAX_RATE_CAP = 2.5  # Maximum rate per hour
 MAX_ASPECTS = 5  # 6th aspect triggers review
 
-# Ollama defaults
-OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
-DEFAULT_EMBED_MODEL = "nomic-embed-text"
 
-
-def get_embedding(text: str, model: str = DEFAULT_EMBED_MODEL, 
-                 ollama_url: str = OLLAMA_EMBED_URL) -> Optional[list[float]]:
-    """Get embedding vector for text using Ollama.
+def load_embeddings_config(workspace: Path) -> dict:
+    """Load embeddings configuration from emergence.json.
     
     Args:
-        text: Text to embed
-        model: Ollama model name for embeddings
-        ollama_url: Ollama API endpoint
+        workspace: Path to workspace root
+        
+    Returns:
+        Embeddings config dict with provider settings
+    """
+    config_file = workspace / "emergence.json"
+    
+    if not config_file.exists():
+        # Default to Ollama if no config
+        return {
+            "provider": "ollama",
+            "ollama": {
+                "base_url": "http://localhost:11434/v1",
+                "model": "nomic-embed-text"
+            }
+        }
+    
+    try:
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+            return config.get("embeddings", {
+                "provider": "ollama",
+                "ollama": {
+                    "base_url": "http://localhost:11434/v1",
+                    "model": "nomic-embed-text"
+                }
+            })
+    except (json.JSONDecodeError, IOError):
+        # Fall back to default on error
+        return {
+            "provider": "ollama",
+            "ollama": {
+                "base_url": "http://localhost:11434/v1",
+                "model": "nomic-embed-text"
+            }
+        }
+
+
+def get_embedding(text: str, workspace: Optional[Path] = None) -> Optional[list[float]]:
+    """Get embedding vector for text using configured provider.
+    
+    Supports:
+    - Ollama (local, free) - Uses Ollama /api/embeddings endpoint
+    - OpenAI-compatible APIs (OpenRouter, etc.) - Uses /v1/embeddings endpoint
+    
+    Args:
+        text: Text to embed (will be truncated to 2000 chars)
+        workspace: Path to workspace root (for config loading)
         
     Returns:
         Embedding vector as list of floats, or None if failed
     """
+    # Load config
+    config = load_embeddings_config(workspace or Path.cwd())
+    provider = config.get("provider", "ollama")
+    
+    text = text[:2000]  # Truncate very long text
+    
+    if provider == "ollama":
+        return _get_ollama_embedding(text, config.get("ollama", {}))
+    elif provider == "openai":
+        return _get_openai_embedding(text, config.get("openai", {}))
+    else:
+        # Unknown provider, return None (will trigger fallback)
+        return None
+
+
+def _get_ollama_embedding(text: str, config: dict) -> Optional[list[float]]:
+    """Get embedding from Ollama API.
+    
+    Args:
+        text: Text to embed
+        config: Ollama config dict (base_url, model)
+        
+    Returns:
+        Embedding vector or None if failed
+    """
+    base_url = config.get("base_url", "http://localhost:11434/v1")
+    model = config.get("model", "nomic-embed-text")
+    
+    # Ollama uses /api/embeddings (not /v1/embeddings)
+    url = base_url.replace("/v1", "") + "/api/embeddings"
+    
     req_data = json.dumps({
         "model": model,
-        "prompt": text[:2000]  # Truncate very long text
+        "prompt": text
     }).encode("utf-8")
     
     try:
         req = urllib.request.Request(
-            ollama_url,
+            url,
             data=req_data,
             headers={"Content-Type": "application/json"},
             method="POST"
@@ -51,6 +123,53 @@ def get_embedding(text: str, model: str = DEFAULT_EMBED_MODEL,
         with urllib.request.urlopen(req, timeout=30) as response:
             result = json.loads(response.read().decode("utf-8"))
             return result.get("embedding")
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+        return None
+
+
+def _get_openai_embedding(text: str, config: dict) -> Optional[list[float]]:
+    """Get embedding from OpenAI-compatible API (OpenRouter, OpenAI, etc.).
+    
+    Args:
+        text: Text to embed
+        config: OpenAI config dict (base_url, model, api_key_env)
+        
+    Returns:
+        Embedding vector or None if failed
+    """
+    base_url = config.get("base_url", "https://openrouter.ai/api/v1")
+    model = config.get("model", "text-embedding-3-small")
+    api_key_env = config.get("api_key_env", "OPENROUTER_API_KEY")
+    
+    # Get API key from environment
+    api_key = os.environ.get(api_key_env)
+    if not api_key:
+        return None
+    
+    url = f"{base_url}/embeddings"
+    
+    req_data = json.dumps({
+        "model": model,
+        "input": text
+    }).encode("utf-8")
+    
+    try:
+        req = urllib.request.Request(
+            url,
+            data=req_data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            method="POST"
+        )
+        
+        with urllib.request.urlopen(req, timeout=30) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            # OpenAI format: {"data": [{"embedding": [...]}]}
+            if "data" in result and len(result["data"]) > 0:
+                return result["data"][0].get("embedding")
+            return None
     except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
         return None
 
@@ -81,7 +200,10 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
 def find_similar_drives(new_drive_name: str, new_drive_desc: str, 
                         existing_drives: dict, workspace: Path,
                         threshold: float = SIMILARITY_THRESHOLD) -> list[tuple[str, float, dict]]:
-    """Find existing drives similar to a new drive via Ollama embeddings.
+    """Find existing drives similar to a new drive via embeddings.
+    
+    Uses configured embeddings provider (Ollama, OpenAI-compatible, etc.).
+    Falls back to simple text matching if embeddings unavailable.
     
     Args:
         new_drive_name: Name of the new drive
@@ -96,10 +218,10 @@ def find_similar_drives(new_drive_name: str, new_drive_desc: str,
     """
     # Combine name and description for embedding
     new_text = f"{new_drive_name}: {new_drive_desc}"
-    new_embedding = get_embedding(new_text)
+    new_embedding = get_embedding(new_text, workspace)
     
     if new_embedding is None:
-        # Fall back to simple text matching if Ollama unavailable
+        # Fall back to simple text matching if embeddings unavailable
         return _fallback_similarity(new_drive_name, new_drive_desc, 
                                     existing_drives, threshold)
     
@@ -113,7 +235,7 @@ def find_similar_drives(new_drive_name: str, new_drive_desc: str,
         # Get embedding for existing drive
         drive_desc = drive_data.get("description", "")
         existing_text = f"{drive_name}: {drive_desc}"
-        existing_embedding = get_embedding(existing_text)
+        existing_embedding = get_embedding(existing_text, workspace)
         
         if existing_embedding is None:
             continue
