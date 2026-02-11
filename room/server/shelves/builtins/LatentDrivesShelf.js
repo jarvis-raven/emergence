@@ -5,6 +5,8 @@
  * Budget-aware activation
  */
 
+import { readFileSync, existsSync } from 'fs';
+
 const manifest = {
   id: 'latent-drives',
   name: 'Latent Drives',
@@ -25,19 +27,20 @@ const manifest = {
  */
 async function resolveData(config) {
   try {
-    // Import dependencies
-    const { loadConfig, getStatePath } = await import('../utils/configLoader.js');
-    const { readJsonFile } = await import('../utils/fileReader.js');
+    const stateDir = config?.paths?.state || `${process.env.HOME}/.openclaw/state`;
+    const drivesPath = `${stateDir}/drives.json`;
     
-    const appConfig = loadConfig();
-    const drivesPath = getStatePath(appConfig, 'drives.json');
+    if (!existsSync(drivesPath)) {
+      return null;
+    }
     
-    const data = readJsonFile(drivesPath);
+    const content = readFileSync(drivesPath, 'utf-8');
+    const data = JSON.parse(content);
     const drives = data?.drives || {};
     
     // Get budget settings
-    const dailyLimit = appConfig.budget?.daily_limit || 50.00;
-    const costPerTrigger = appConfig.budget?.cost_per_trigger || 2.50;
+    const dailyLimit = config?.budget?.daily_limit || 50.00;
+    const costPerTrigger = config?.budget?.cost_per_trigger || 2.50;
     
     // Calculate today's spend
     const today = new Date().toISOString().split('T')[0];

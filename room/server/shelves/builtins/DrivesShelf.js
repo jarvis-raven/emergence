@@ -5,6 +5,8 @@
  * Enhanced for v2 consolidation plan
  */
 
+import { readFileSync, existsSync } from 'fs';
+
 const manifest = {
   id: 'drives',
   name: 'Drives',
@@ -43,14 +45,15 @@ function formatElapsed(lastTriggered) {
  */
 async function resolveData(config) {
   try {
-    // Import dependencies
-    const { loadConfig, getStatePath } = await import('../utils/configLoader.js');
-    const { readJsonFile } = await import('../utils/fileReader.js');
+    const stateDir = config?.paths?.state || `${process.env.HOME}/.openclaw/state`;
+    const drivesPath = `${stateDir}/drives.json`;
     
-    const appConfig = loadConfig();
-    const drivesPath = getStatePath(appConfig, 'drives.json');
+    if (!existsSync(drivesPath)) {
+      return null;
+    }
     
-    const data = readJsonFile(drivesPath);
+    const content = readFileSync(drivesPath, 'utf-8');
+    const data = JSON.parse(content);
     const drives = data?.drives || {};
     
     // Get triggered drives
@@ -64,7 +67,7 @@ async function resolveData(config) {
       post_emergence: [],
     };
     
-    for (const [name, drive] of Object.values(drives).entries()) {
+    for (const [name, drive] of Object.entries(drives)) {
       const category = drive.category || 'discovered';
       const aspects = drive.aspects || [];
       const aspectCount = aspects.length;

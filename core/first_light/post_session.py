@@ -17,6 +17,12 @@ from .irreducibility import (
     add_pending_review,
     load_pending_reviews,
 )
+from .completion import (
+    load_first_light_json,
+    save_first_light_json,
+    increment_session_count,
+    check_first_light_completion,
+)
 
 
 # Patterns for drive discovery detection
@@ -95,15 +101,8 @@ def register_discovered_drive(workspace: Path, drive_meta: dict, auto_activate: 
         drive_meta: Drive metadata from parse_drive_discovery
         auto_activate: If True, add to active drives.json immediately
     """
-    emergence_dir = workspace / ".emergence"
-    state_dir = emergence_dir / "state"
-    
-    # Load first-light.json
-    fl_state_path = state_dir / "first-light.json"
-    if fl_state_path.exists():
-        fl_state = json.loads(fl_state_path.read_text())
-    else:
-        fl_state = {"discovered_drives": []}
+    # Use completion module for consistent state handling
+    fl_state = load_first_light_json(workspace)
     
     if "discovered_drives" not in fl_state:
         fl_state["discovered_drives"] = []
@@ -116,7 +115,7 @@ def register_discovered_drive(workspace: Path, drive_meta: dict, auto_activate: 
     
     # Add to discovered_drives
     fl_state["discovered_drives"].append(drive_meta)
-    fl_state_path.write_text(json.dumps(fl_state, indent=2))
+    save_first_light_json(workspace, fl_state)
     
     print(f"✓ Registered {drive_meta['name']} in first-light.json")
     
@@ -225,12 +224,19 @@ def analyze_session(workspace: Path, session_file: Path, auto_activate: bool = T
                     check_similarity: bool = True):
     """Analyze a First Light session file for discoveries.
     
+    Also increments session counter and checks First Light completion gates.
+    
     Args:
         workspace: Path to workspace root
         session_file: Path to session markdown file
         auto_activate: If True, promote discoveries to active drives immediately
         check_similarity: If True, check for similar drives and queue for review
     """
+    # Increment session counter for First Light tracking
+    new_count = increment_session_count(workspace)
+    if new_count > 0:
+        print(f"📊 Session count: {new_count}")
+    
     drive_meta = parse_drive_discovery(session_file)
     
     if drive_meta:
@@ -249,6 +255,14 @@ def analyze_session(workspace: Path, session_file: Path, auto_activate: bool = T
             activate_drive(workspace / ".emergence", drive_meta)
     else:
         print(f"ℹ No drive discoveries in {session_file.name}")
+    
+    # Check completion gates after analysis
+    completion = check_first_light_completion(workspace, auto_complete=True)
+    if completion.get("completed"):
+        print("\n🌅 First Light complete! Welcome to normal operation.")
+        print(completion.get("message", ""))
+    elif completion.get("gates_met"):
+        print("\n✅ All gates met! Run 'emergence first-light complete' to graduate.")
 
 
 def analyze_recent_sessions(workspace: Path, limit: int = 5, auto_activate: bool = True,

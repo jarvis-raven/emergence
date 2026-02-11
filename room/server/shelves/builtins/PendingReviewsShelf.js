@@ -5,6 +5,8 @@
  * Data from pending-reviews.json or drives with pending_review flag
  */
 
+import { readFileSync, existsSync } from 'fs';
+
 const manifest = {
   id: 'pending-reviews',
   name: 'Pending Drive Reviews',
@@ -25,14 +27,9 @@ const manifest = {
  */
 async function resolveData(config) {
   try {
-    // Import dependencies
-    const { loadConfig, getStatePath } = await import('../utils/configLoader.js');
-    const { readJsonFile } = await import('../utils/fileReader.js');
-    const { existsSync, readFileSync } = await import('fs');
-    
-    const appConfig = loadConfig();
-    const drivesPath = getStatePath(appConfig, 'drives.json');
-    const pendingPath = getStatePath(appConfig, 'pending-reviews.json');
+    const stateDir = config?.paths?.state || `${process.env.HOME}/.openclaw/state`;
+    const drivesPath = `${stateDir}/drives.json`;
+    const pendingPath = `${stateDir}/pending-reviews.json`;
     
     const items = [];
     
@@ -83,32 +80,39 @@ async function resolveData(config) {
     }
     
     // Also check drives with pending_review flag
-    const data = readJsonFile(drivesPath);
-    const drives = data?.drives || {};
-    
-    for (const [name, drive] of Object.entries(drives)) {
-      if (drive.pending_review && !items.find(i => i.id === name)) {
-        const similarTo = drive.similar_to || [];
-        items.push({
-          id: name,
-          title: name,
-          subtitle: similarTo.length > 0 
-            ? `Similar to: ${similarTo.join(', ')}`
-            : 'Awaiting review',
-          description: drive.description,
-          metadata: {
-            similar_to: similarTo,
-            created_at: drive.created_at,
-            review_reason: drive.review_reason || 'pending_review',
-          },
-          actions: [
-            {
-              label: 'Review Now',
-              command: `drives review ${name}`,
-              type: 'primary',
-            },
-          ],
-        });
+    if (existsSync(drivesPath)) {
+      try {
+        const content = readFileSync(drivesPath, 'utf-8');
+        const data = JSON.parse(content);
+        const drives = data?.drives || {};
+        
+        for (const [name, drive] of Object.entries(drives)) {
+          if (drive.pending_review && !items.find(i => i.id === name)) {
+            const similarTo = drive.similar_to || [];
+            items.push({
+              id: name,
+              title: name,
+              subtitle: similarTo.length > 0 
+                ? `Similar to: ${similarTo.join(', ')}`
+                : 'Awaiting review',
+              description: drive.description,
+              metadata: {
+                similar_to: similarTo,
+                created_at: drive.created_at,
+                review_reason: drive.review_reason || 'pending_review',
+              },
+              actions: [
+                {
+                  label: 'Review Now',
+                  command: `drives review ${name}`,
+                  type: 'primary',
+                },
+              ],
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error reading drives.json:', err);
       }
     }
     

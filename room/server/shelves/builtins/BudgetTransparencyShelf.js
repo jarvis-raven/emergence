@@ -2,8 +2,10 @@
  * BudgetTransparencyShelf — Built-in shelf for budget transparency
  * 
  * Shows daily spend vs limit with color warnings (75% yellow, 90% red)
- * Data from /api/budget/status
+ * Data from drives.json
  */
+
+import { readFileSync, existsSync } from 'fs';
 
 const manifest = {
   id: 'budget-transparency',
@@ -25,19 +27,22 @@ const manifest = {
  */
 async function resolveData(config) {
   try {
-    // Import dependencies
-    const { loadConfig, getStatePath } = await import('../utils/configLoader.js');
-    const { readJsonFile } = await import('../utils/fileReader.js');
+    // Get state path from config
+    const workspace = config?.paths?.workspace || process.cwd();
+    const stateDir = config?.paths?.state || `${process.env.HOME}/.openclaw/state`;
+    const drivesPath = `${stateDir}/drives.json`;
     
-    const appConfig = loadConfig();
-    const drivesPath = getStatePath(appConfig, 'drives.json');
+    if (!existsSync(drivesPath)) {
+      return null;
+    }
     
-    const data = readJsonFile(drivesPath);
+    const content = readFileSync(drivesPath, 'utf-8');
+    const data = JSON.parse(content);
     const drives = data?.drives || {};
     
     // Get budget from config
-    const dailyLimit = appConfig.budget?.daily_limit || 50.00;
-    const costPerTrigger = appConfig.budget?.cost_per_trigger || 2.50;
+    const dailyLimit = config?.budget?.daily_limit || 50.00;
+    const costPerTrigger = config?.budget?.cost_per_trigger || 2.50;
     
     // Calculate daily spend
     const today = new Date().toISOString().split('T')[0];
