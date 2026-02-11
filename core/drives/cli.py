@@ -15,6 +15,7 @@ from typing import Optional
 # Import from the drive engine modules
 from .config import load_config, get_state_path, find_config, ensure_config_example
 from .state import load_state, save_state, StateLock, get_hours_since_tick
+from .runtime_state import load_runtime_state, save_runtime_state, extract_runtime_state
 from .engine import (
     tick_all_drives,
     check_thresholds,
@@ -87,6 +88,32 @@ def get_state_and_config(args) -> tuple:
     ensure_core_drives(state)
     
     return state, config, state_path
+
+
+def get_runtime_state_and_config(args) -> tuple:
+    """Load lightweight runtime state and config.
+    
+    This loads only drives-state.json (pressure, threshold, status)
+    without the full descriptions, prompts, and history from drives.json.
+    Use this for regular status checks to prevent context bloat.
+    
+    Returns:
+        Tuple of (runtime_state, config, runtime_state_path)
+    """
+    config_path = getattr(args, 'config', None)
+    config = load_config(Path(config_path) if config_path else None)
+    
+    # Get runtime state path (drives-state.json, not drives.json)
+    state_dir = Path(get_state_path(config)).parent
+    runtime_state_path = state_dir / "drives-state.json"
+    
+    # Ensure state directory exists
+    runtime_state_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Load lightweight runtime state
+    runtime_state = load_runtime_state(runtime_state_path)
+    
+    return runtime_state, config, runtime_state_path
 
 
 def save_with_lock(state_path: Path, state: dict) -> bool:
@@ -336,10 +363,26 @@ def get_elapsed_since_last_satisfaction(drive: dict) -> Optional[float]:
 
 def cmd_status(args) -> int:
     """Show drive status with pressure bars."""
-    state, config, state_path = get_state_and_config(args)
+    # Use lightweight runtime state for status display (prevents context bloat)
+    # This loads drives-state.json (pressure/threshold only) not drives.json (full config)
+    runtime_state, config, runtime_state_path = get_runtime_state_and_config(args)
     
-    drives = state.get("drives", {})
-    triggered = set(state.get("triggered_drives", []))
+    drives = runtime_state.get("drives", {})
+    
+    # Get triggered drives from full state (needed for status display)
+    # This is a quick load just for triggered status
+    try:
+        full_state_path = runtime_state_path.parent / "drives.json"
+        if full_state_path.exists():
+            with open(full_state_path, 'r') as f:
+                full_state = json.load(f)
+            triggered = set(full_state.get("triggered_drives", []))
+        else:
+            triggered = set()
+    except (IOError, json.JSONDecodeError):
+        triggered = set()
+    
+    show_latent = getattr(args, 'show_latent', False)
     show_latent = getattr(args, 'show_latent', False)
     
     # Get last tick info
@@ -374,30 +417,46 @@ def cmd_status(args) -> int:
             else:
                 status = "normal"
             
+            # Runtime state only has pressure, threshold, status
+            # Category/aspects come from full drives.json (not loaded for context bloat prevention)
             output["drives"].append({
                 "name": name,
                 "pressure": round(pressure, 2),
                 "threshold": threshold,
                 "ratio": round(ratio, 2),
                 "status": status,
-                "category": drive.get("category", "unknown"),
-                "aspects": drive.get("aspects", []),
-                "status_field": drive.get("status"),
+                "category": "unknown",  # Not available in runtime state
+                "aspects": [],  # Not available in runtime state
+                "status_field": None,  # Not available in runtime state
             })
         
-        # Add budget and reviews info
-        budget = get_budget_info(config, state)
+        # Add budget and reviews info (use full_state for budget info)
+        try:
+            budget = get_budget_info(config, full_state)
+        except:
+            budget = {"daily_spend": 0.0, "daily_limit": 50.0, "percent_used": 0.0}
         output["budget"] = budget
         output["pending_reviews"] = len(load_pending_reviews(config))
         
         print(json.dumps(output, indent=2))
         return EXIT_SUCCESS
     
-    # Get additional info for display
-    budget_info = get_budget_info(config, state)
-    cooldown_info = get_cooldown_status(state, config)
+    # Load full state only for budget/cooldown info (not for basic drive display)
+    # This prevents loading full drive config (descriptions, prompts, history) into context
+    try:
+        full_state_path = runtime_state_path.parent / "drives.json"
+        if full_state_path.exists():
+            full_state = load_state(full_state_path)
+        else:
+            full_state = runtime_state  # Fallback to runtime state
+    except:
+        full_state = runtime_state
+    
+    # Get additional info for display (these need full state)
+    budget_info = get_budget_info(config, full_state)
+    cooldown_info = get_cooldown_status(full_state, config)
     pending_reviews = load_pending_reviews(config)
-    graduation_candidates = find_graduation_candidates(state)
+    graduation_candidates = find_graduation_candidates(full_state)
     
     # Header
     print(f"🧠 Drive Status (updated {updated_text})")
@@ -431,32 +490,23 @@ def cmd_status(args) -> int:
     
     print("─" * 52)
     
-    # Separate drives by category and status
-    core_drives = []
-    discovered_drives = []
+    # Separate drives by status (runtime state only has pressure/threshold/status)
+    # Core vs discovered distinction requires full drives.json (not loaded to prevent bloat)
+    active_drives = []
     latent_drives = []
     
     for name, drive in drives.items():
         drive_status = drive.get("status")
-        category = drive.get("category", "unknown")
         
         if drive_status == "latent":
             latent_drives.append((name, drive))
-        elif category == "core":
-            core_drives.append((name, drive))
         else:
-            discovered_drives.append((name, drive))
+            active_drives.append((name, drive))
     
-    # Core Drives section
-    if core_drives:
-        print(f"\n{COLOR_CORE}Core Drives:{COLOR_RESET}")
-        for name, drive in sorted(core_drives, key=lambda x: x[0]):
-            _print_drive_line(name, drive, triggered, cooldown_info)
-    
-    # Discovered Drives section
-    if discovered_drives:
-        print(f"\n{COLOR_DISCOVERED}Discovered Drives:{COLOR_RESET}")
-        for name, drive in sorted(discovered_drives, key=lambda x: x[0]):
+    # Active Drives section (core vs discovered not distinguishable in runtime state)
+    if active_drives:
+        print(f"\n{COLOR_CORE}Active Drives:{COLOR_RESET}")
+        for name, drive in sorted(active_drives, key=lambda x: x[0]):
             _print_drive_line(name, drive, triggered, cooldown_info)
     
     # Pending Reviews section
