@@ -35,6 +35,11 @@ create, reflect, and find out what matters to me.
 - **SELF.md** = Who you are (condensed, 1-2 pages)
 - **memory/daily/** = What happened (detailed, unlimited)
 
+**"Update" means:**
+- ✅ Add new realizations
+- ✅ Remove things that are no longer true
+- ✅ Update things that have changed
+
 If this file grows past 2 pages, you're journaling. Extract the insights, archive the stories.
 
 ---
