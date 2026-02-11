@@ -59,6 +59,7 @@ COLOR_BUDGET_LOW = "\033[32m"   # Green
 COLOR_BUDGET_MED = "\033[33m"   # Yellow
 COLOR_BUDGET_HIGH = "\033[31m"  # Red
 COLOR_DIM = "\033[90m"
+COLOR_WARNING = "\033[33m"      # Yellow for warnings
 
 
 # --- Helper Functions ---
