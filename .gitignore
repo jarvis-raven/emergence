@@ -12,6 +12,22 @@ emergence.yaml
 .DS_Store
 emergence.json
 
+# Agent identity files (generated from templates during init)
+# These should NEVER be committed to the repo
+SOUL.md
+AGENTS.md
+SELF.md
+USER.md
+IDENTITY.md
+INTERESTS.md
+LETTER.md
+THREAD.md
+MEMORY.md
+BOOTSTRAP.md
+TOOLS.md
+ASPIRATIONS.md
+SECURITY.md
+
 # Internal docs and working files (local only)
 docs/internal/
 docs/development-plan/
