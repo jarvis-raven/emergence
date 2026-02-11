@@ -424,7 +424,12 @@ def get_first_light_status(workspace: Path) -> dict:
             }
         },
         "gate_status": gate_status,
-        "can_complete": all(gate_status.values()) if fl_data["status"] == "active" else False,
+        "can_complete": (
+            fl_data["status"] == "active" and
+            gate_status["sessions_met"] and
+            gate_status["days_met"] and
+            gate_status["drives_met"]
+        ),
         "can_complete_manual": fl_data["status"] == "active",
         "discovered_drives": discovered_count,
         "locked_drives": fl_data.get("completion_transition", {}).get("locked_drives", []),
