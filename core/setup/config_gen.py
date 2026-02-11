@@ -1129,7 +1129,7 @@ def interactive_config_wizard(
         "Daily budget limit (USD)",
         "50"
     ))
-    config["drives"]["budget"]["daily_limit_usd"] = max(10, daily_limit)
+    config["drives"]["budget"]["daily_limit_usd"] = max(1, daily_limit)  # Allow as low as $1/day
     
     # Core drive interval
     core_hours = float(_prompt_with_default(
