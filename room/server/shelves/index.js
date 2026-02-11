@@ -5,10 +5,10 @@
 import { ShelfRegistry } from './ShelfRegistry.js';
 import { MemoryShelf } from './builtins/MemoryShelf.js';
 import AspirationsShelf from './builtins/AspirationsShelf.js';
-import BudgetTransparencyShelf from './builtins/BudgetTransparencyShelf.js';
-import PendingReviewsShelf from './builtins/PendingReviewsShelf.js';
-import LatentDrivesShelf from './builtins/LatentDrivesShelf.js';
-import DrivesShelf from './builtins/DrivesShelf.js';
+import { BudgetTransparencyShelf } from './builtins/BudgetTransparencyShelf.js';
+import { PendingReviewsShelf } from './builtins/PendingReviewsShelf.js';
+import { LatentDrivesShelf } from './builtins/LatentDrivesShelf.js';
+import { DrivesShelf } from './builtins/DrivesShelf.js';
 import { getStatePath } from '../utils/configLoader.js';
 
 /**
