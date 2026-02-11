@@ -3,5 +3,5 @@
 Core package containing drives, memory, dream engine, and identity systems.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.2.1"
 __author__ = "Jarvis Raven & Dan Aghili"

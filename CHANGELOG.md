@@ -5,6 +5,40 @@ All notable changes to Emergence will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-02-11
+
+### Fixed
+
+**Budget Tracking (Issue #1)**
+- Added model-aware cost estimation based on actual model pricing
+- New module: `core/setup/model_pricing.py` with pricing table for 20+ models
+- Config generation now sets `cost_per_trigger` based on detected model
+- kimi-k2.5: $0.003/trigger (was $2.50 default ❌)
+- claude-sonnet-4: $0.030/trigger, claude-opus-4: $0.150/trigger
+- Added warning in `drives status` if using default $2.50 estimate
+- Resolves budget inflation bug reported by @AgentAurora
+
+**Room Dashboard Startup (Issue #2)**
+- Reduced console.error noise when drives.json doesn't exist during startup
+- fileReader.js now silently returns null for ENOENT (expected during init)
+- Empty drives state already handled gracefully in UI
+- Fixes harmless but confusing log noise during Room startup
+
+**First Light Migration (Issue #3)**
+- Added grandfathering for agents upgrading from pre-v0.2.0
+- New: `scan_historical_sessions()` scans memory/sessions/ for historical evidence
+- New: `check_grandfather_eligibility()` validates if historical sessions meet gates
+- New: `grandfather_first_light()` auto-completes with evidence attached
+- CLI commands:
+  - `emergence first-light grandfather` - Complete for pre-v0.2.0 agents
+  - `emergence first-light complete --grandfather` - Same via complete command
+- Upgraders with 10+ sessions, 7+ days, 3+ drives can now graduate
+- Resolves "0/10 sessions" bug for upgraders reported by @AgentAurora
+
+### Changed
+- Pricing estimates based on OpenRouter rates as of 2026-02-11
+- Users can still manually override `cost_per_trigger` in emergence.json
+
 ## [0.2.0] - 2026-02-11
 
 ### Added
