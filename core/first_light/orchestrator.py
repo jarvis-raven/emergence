@@ -752,6 +752,10 @@ def main():
     analyze_parser.add_argument("--session", type=Path, help="Specific session file to analyze")
     analyze_parser.add_argument("--limit", type=int, default=5, help="Number of recent sessions to analyze (default: 5)")
     analyze_parser.add_argument("--no-activate", action="store_true", help="Register but don't activate drives")
+
+    # complete command
+    complete_parser = subparsers.add_parser("complete", help="Complete First Light phase (graduation)")
+    complete_parser.add_argument("--force", action="store_true", help="Complete even if gates not met")
     
     args = parser.parse_args()
     
@@ -781,24 +785,12 @@ def main():
         sys.exit(0 if results["failed"] == 0 else 1)
     
     elif args.command == "status":
-        status = get_status(config)
+        from .completion import get_first_light_status, format_status_display
         
-        print("First Light Status")
-        print("=" * 18)
-        print(f"Phase status: {status['status']}")
-        print(f"Sessions scheduled: {status['sessions_scheduled']}")
-        print(f"Sessions completed: {status['sessions_completed']}")
-        if status.get("started_at"):
-            print(f"Started at: {status['started_at']}")
-        if status.get("emerged_at"):
-            print(f"Emerged at: {status['emerged_at']}")
-        if status.get("next_run"):
-            print(f"Next scheduled run: {status['next_run']}")
-        print()
-        print("Configuration:")
-        print(f"  Frequency: {status['config']['frequency_hours']} hours")
-        print(f"  Parallel sessions: {status['config']['size']}")
-        print(f"  Model: {status['config']['model'] or 'default'}")
+        workspace = Path(config.get("workspace", Path.cwd()))
+        status = get_first_light_status(workspace)
+        
+        print(format_status_display(status))
         
         sys.exit(0)
     
@@ -822,6 +814,29 @@ def main():
             analyze_recent_sessions(workspace, limit=args.limit, auto_activate=auto_activate)
         
         sys.exit(0)
+
+    elif args.command == "complete":
+        from .completion import manual_complete_first_light, get_first_light_status, format_status_display
+        
+        workspace = Path(config.get("workspace", Path.cwd()))
+        
+        if args.force:
+            # Show current status first
+            print(format_status_display(get_first_light_status(workspace)))
+            print("⚠️  Force completion requested. This will:")
+            print("   • Lock in your discovered drives")
+            print("   • Enable consolidation review for new discoveries")
+            print("   • Transition to normal operation")
+            print()
+        
+        result = manual_complete_first_light(workspace, force=args.force)
+        
+        if result["success"]:
+            print(result["message"])
+            sys.exit(0)
+        else:
+            print(f"Error: {result['message']}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

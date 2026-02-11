@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "First Light State",
+  "description": "State tracking for the First Light onboarding phase",
+  "type": "object",
+  "required": ["version", "status"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "default": "1.0"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["not_started", "active", "paused", "completed", "graduated"],
+      "description": "Current phase status",
+      "default": "not_started"
+    },
+    "session_count": {
+      "type": "integer",
+      "description": "Number of First Light sessions completed",
+      "minimum": 0,
+      "default": 0
+    },
+    "sessions_completed": {
+      "type": "integer",
+      "description": "Legacy field - sessions that finished (may differ from session_count)",
+      "minimum": 0,
+      "default": 0
+    },
+    "sessions_scheduled": {
+      "type": "integer",
+      "description": "Number of sessions scheduled",
+      "minimum": 0,
+      "default": 0
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO timestamp when First Light started"
+    },
+    "completed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO timestamp when First Light completed"
+    },
+    "emerged_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO timestamp when agent emerged (legacy)"
+    },
+    "next_run_time": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Next scheduled session time"
+    },
+    "prompt_rotation": {
+      "type": "array",
+      "description": "Indices of prompts already used",
+      "items": {
+        "type": "integer"
+      },
+      "default": []
+    },
+    "patterns_detected": {
+      "type": "object",
+      "description": "Patterns detected during sessions",
+      "default": {}
+    },
+    "drives_suggested": {
+      "type": "array",
+      "description": "Drives suggested by pattern analysis",
+      "items": {
+        "type": "object"
+      },
+      "default": []
+    },
+    "discovered_drives": {
+      "type": "array",
+      "description": "Drives discovered by the agent",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Drive name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Drive description"
+          },
+          "discovered_in": {
+            "type": "string",
+            "description": "Session file where discovered"
+          },
+          "session_number": {
+            "type": "string",
+            "description": "Session number"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Discovery timestamp"
+          }
+        },
+        "required": ["name"]
+      },
+      "default": []
+    },
+    "sessions": {
+      "type": "array",
+      "description": "List of session records",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_number": {
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["scheduled", "running", "completed", "failed"]
+          }
+        }
+      },
+      "default": []
+    },
+    "gates": {
+      "type": "object",
+      "description": "Completion gate thresholds",
+      "properties": {
+        "min_sessions": {
+          "type": "integer",
+          "description": "Minimum sessions required",
+          "default": 10
+        },
+        "min_days_elapsed": {
+          "type": "integer",
+          "description": "Minimum days since start",
+          "default": 7
+        },
+        "min_discovered_drives": {
+          "type": "integer",
+          "description": "Minimum drives to discover",
+          "default": 3
+        },
+        "max_drives_soft_limit": {
+          "type": "integer",
+          "description": "Soft limit for drive count warning",
+          "default": 8
+        }
+      },
+      "default": {
+        "min_sessions": 10,
+        "min_days_elapsed": 7,
+        "min_discovered_drives": 3,
+        "max_drives_soft_limit": 8
+      }
+    },
+    "gate_status": {
+      "type": "object",
+      "description": "Current status of completion gates",
+      "properties": {
+        "sessions_met": {
+          "type": "boolean",
+          "default": false
+        },
+        "days_met": {
+          "type": "boolean",
+          "default": false
+        },
+        "drives_met": {
+          "type": "boolean",
+          "default": false
+        },
+        "over_soft_limit": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "default": {
+        "sessions_met": false,
+        "days_met": false,
+        "drives_met": false,
+        "over_soft_limit": false
+      }
+    },
+    "completion_transition": {
+      "type": "object",
+      "description": "State tracking for graduation ceremony",
+      "properties": {
+        "notified": {
+          "type": "boolean",
+          "description": "Whether agent has been notified of completion",
+          "default": false
+        },
+        "locked_drives": {
+          "type": "array",
+          "description": "Drives locked in at completion",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "transition_message": {
+          "type": ["string", "null"],
+          "description": "Graduation message to display",
+          "default": null
+        }
+      },
+      "default": {
+        "notified": false,
+        "locked_drives": [],
+        "transition_message": null
+      }
+    }
+  }
+}

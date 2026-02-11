@@ -129,7 +129,7 @@ CORE_DRIVES: dict[str, dict] = {
         "rate_per_hour": 1.5,
         "max_rate": 3.0,
         "description": "System health and upkeep. The self-preservation drive.",
-        "prompt": "Your MAINTENANCE drive triggered. Check system health, review logs, update documentation, or fix something that's been broken.",
+        "prompt": "Your MAINTENANCE drive triggered. Check system health, review logs, check for pending drive reviews, update documentation, or fix something that's been broken.",
         "category": "core",
         "created_by": "system",
         "satisfaction_events": [],

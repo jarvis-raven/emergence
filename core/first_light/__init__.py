@@ -48,6 +48,21 @@ from .status import (
     format_status_json,
 )
 
+from .completion import (
+    load_first_light_json,
+    save_first_light_json,
+    check_first_light_completion,
+    complete_first_light,
+    notify_first_light_completion,
+    increment_session_count,
+    get_first_light_status as get_completion_status,
+    format_status_display as format_completion_status,
+    manual_complete_first_light,
+    check_and_notify_startup,
+    calculate_gate_status,
+    DEFAULT_GATES,
+)
+
 __all__ = [
     # Orchestrator
     "get_exploration_prompts",
@@ -86,4 +101,15 @@ __all__ = [
     # Status
     "format_status_display",
     "format_status_json",
+    # Completion
+    "load_first_light_json",
+    "save_first_light_json",
+    "check_first_light_completion",
+    "complete_first_light",
+    "notify_first_light_completion",
+    "increment_session_count",
+    "manual_complete_first_light",
+    "check_and_notify_startup",
+    "calculate_gate_status",
+    "DEFAULT_GATES",
 ]

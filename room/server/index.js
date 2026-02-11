@@ -29,6 +29,7 @@ import identityRoutes from './routes/identity.js';
 import memoryRoutes from './routes/memory.js';
 import dreamsRoutes from './routes/dreams.js';
 import firstLightRoutes from './routes/first-light.js';
+import budgetRoutes from './routes/budget.js';
 import createShelvesRouter from './routes/shelves.js';
 
 // Import utils
@@ -101,6 +102,7 @@ app.use('/api/identity', identityRoutes);
 app.use('/api/memory', memoryRoutes);
 app.use('/api/dreams', dreamsRoutes);
 app.use('/api/first-light', firstLightRoutes);
+app.use('/api/budget', budgetRoutes);
 
 // Shelves (convention-based discovery) — initialized async before server start
 // Placeholder mounted synchronously, replaced in startServer()

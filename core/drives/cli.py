@@ -8,7 +8,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -48,6 +48,16 @@ INDICATOR_NORMAL = "▫"      # <75%
 INDICATOR_ELEVATED = "⚡"    # 75-99%
 INDICATOR_OVER = "🔥"       # >=100%
 INDICATOR_TRIGGERED = "⏸"   # Triggered, awaiting satisfaction
+
+# --- Colors for terminal output ---
+COLOR_RESET = "\033[0m"
+COLOR_CORE = "\033[36m"      # Cyan for core drives
+COLOR_DISCOVERED = "\033[33m"  # Yellow for discovered drives
+COLOR_LATENT = "\033[90m"    # Gray for latent drives
+COLOR_BUDGET_LOW = "\033[32m"   # Green
+COLOR_BUDGET_MED = "\033[33m"   # Yellow
+COLOR_BUDGET_HIGH = "\033[31m"  # Red
+COLOR_DIM = "\033[90m"
 
 
 # --- Helper Functions ---
@@ -122,6 +132,206 @@ def fuzzy_find_drive(drive_name: str, state: dict) -> Optional[str]:
     return None
 
 
+def get_pending_reviews_path(config: dict) -> Path:
+    """Get path to pending reviews file."""
+    state_dir = config.get("paths", {}).get("state", ".emergence/state")
+    workspace = config.get("paths", {}).get("workspace", ".")
+    return Path(workspace) / state_dir / "pending-reviews.json"
+
+
+def load_pending_reviews(config: dict) -> list:
+    """Load pending drive consolidation reviews."""
+    reviews_path = get_pending_reviews_path(config)
+    if not reviews_path.exists():
+        return []
+    try:
+        with open(reviews_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return []
+
+
+def get_budget_info(config: dict, state: dict) -> dict:
+    """Calculate budget information for display."""
+    drives_config = config.get("drives", {})
+    budget_config = drives_config.get("budget", {})
+    
+    daily_limit = budget_config.get("daily_limit", 50.0)
+    cost_per_trigger = budget_config.get("cost_per_trigger", 2.50)
+    
+    # Calculate daily spend from trigger log
+    trigger_log = state.get("trigger_log", [])
+    today = datetime.now(timezone.utc).date()
+    
+    daily_spend = 0.0
+    for entry in trigger_log:
+        ts_str = entry.get("timestamp", "")
+        try:
+            ts = datetime.fromisoformat(ts_str)
+            if ts.date() == today and entry.get("session_spawned"):
+                daily_spend += cost_per_trigger
+        except (ValueError, TypeError):
+            continue
+    
+    # Calculate projected costs
+    drives = state.get("drives", {})
+    active_drives = {k: v for k, v in drives.items() if v.get("status") != "latent"}
+    
+    # Estimate triggers per day based on drive rates and thresholds
+    total_triggers_per_day = 0.0
+    for name, drive in active_drives.items():
+        rate = drive.get("rate_per_hour", 0.0)
+        threshold = drive.get("threshold", 20.0)
+        if rate > 0 and threshold > 0:
+            # Time to trigger = threshold / rate hours
+            # Triggers per day = 24 / time_to_trigger
+            time_to_trigger = threshold / rate
+            triggers_per_day = 24.0 / time_to_trigger if time_to_trigger > 0 else 0
+            total_triggers_per_day += triggers_per_day
+    
+    projected_daily_cost = total_triggers_per_day * cost_per_trigger
+    projected_monthly_cost = projected_daily_cost * 30
+    
+    return {
+        "daily_limit": daily_limit,
+        "daily_spend": daily_spend,
+        "percent_used": (daily_spend / daily_limit * 100) if daily_limit > 0 else 0,
+        "projected_triggers_per_day": total_triggers_per_day,
+        "projected_daily_cost": projected_daily_cost,
+        "projected_monthly_cost": projected_monthly_cost,
+        "cost_per_trigger": cost_per_trigger,
+    }
+
+
+def get_cooldown_status(state: dict, config: dict) -> dict:
+    """Get cooldown status for display."""
+    cooldown_minutes = config.get("drives", {}).get("cooldown_minutes", 30)
+    trigger_log = state.get("trigger_log", [])
+    
+    if not trigger_log:
+        return {"ready": True, "last_trigger_ago": None, "ready_in_minutes": 0}
+    
+    # Find last triggered session
+    last_trigger = None
+    for entry in reversed(trigger_log):
+        if entry.get("session_spawned"):
+            last_trigger = entry
+            break
+    
+    if not last_trigger:
+        return {"ready": True, "last_trigger_ago": None, "ready_in_minutes": 0}
+    
+    ts_str = last_trigger.get("timestamp", "")
+    try:
+        last_ts = datetime.fromisoformat(ts_str)
+        now = datetime.now(timezone.utc)
+        minutes_ago = int((now - last_ts).total_seconds() / 60)
+        
+        ready_in = max(0, cooldown_minutes - minutes_ago)
+        
+        return {
+            "ready": ready_in <= 0,
+            "last_trigger_ago": minutes_ago,
+            "ready_in_minutes": ready_in,
+            "cooldown_minutes": cooldown_minutes,
+        }
+    except (ValueError, TypeError):
+        return {"ready": True, "last_trigger_ago": None, "ready_in_minutes": 0}
+
+
+def find_graduation_candidates(state: dict) -> list:
+    """Find aspects that have >50% pressure dominance and could graduate."""
+    candidates = []
+    drives = state.get("drives", {})
+    
+    for name, drive in drives.items():
+        aspects = drive.get("aspects", [])
+        if not aspects:
+            continue
+        
+        # Check satisfaction history for aspect dominance
+        # This is a simplified check - in production would analyze breakdown
+        # For now, check if drive has many satisfactions suggesting rich activity
+        satisfaction_events = drive.get("satisfaction_events", [])
+        if len(satisfaction_events) >= 10:
+            # Check if the drive has been around for 14+ days
+            created_at = drive.get("created_at", "")
+            if created_at:
+                try:
+                    created = datetime.fromisoformat(created_at)
+                    now = datetime.now(timezone.utc)
+                    days_old = (now - created).days
+                    if days_old >= 14:
+                        for aspect in aspects:
+                            candidates.append({
+                                "aspect": aspect,
+                                "parent_drive": name,
+                                "satisfactions": len(satisfaction_events),
+                                "days_old": days_old,
+                            })
+                except (ValueError, TypeError):
+                    continue
+    
+    return candidates
+
+
+def format_time_ago(minutes: int) -> str:
+    """Format minutes ago into human readable string."""
+    if minutes < 1:
+        return "just now"
+    elif minutes == 1:
+        return "1m ago"
+    elif minutes < 60:
+        return f"{minutes}m ago"
+    elif minutes < 120:
+        return "1h ago"
+    else:
+        hours = minutes // 60
+        return f"{hours}h ago"
+
+
+def format_time_remaining(minutes: int) -> str:
+    """Format remaining minutes into human readable string."""
+    if minutes <= 0:
+        return "Ready"
+    elif minutes < 60:
+        return f"Ready in {minutes}m"
+    else:
+        hours = minutes // 60
+        mins = minutes % 60
+        if mins == 0:
+            return f"Ready in {hours}h"
+        return f"Ready in {hours}h {mins}m"
+
+
+def format_elapsed_time(hours: float) -> str:
+    """Format elapsed hours into human readable string."""
+    if hours < 1:
+        minutes = int(hours * 60)
+        return f"{minutes}m elapsed"
+    elif hours < 24:
+        return f"{hours:.1f}h elapsed"
+    else:
+        days = hours / 24
+        return f"{days:.1f}d elapsed"
+
+
+def get_elapsed_since_last_satisfaction(drive: dict) -> Optional[float]:
+    """Get hours elapsed since last satisfaction event."""
+    events = drive.get("satisfaction_events", [])
+    if not events:
+        return None
+    
+    last = events[-1]
+    try:
+        ts = datetime.fromisoformat(last)
+        now = datetime.now(timezone.utc)
+        hours = (now - ts).total_seconds() / 3600
+        return hours
+    except (ValueError, TypeError):
+        return None
+
+
 # --- Command Implementations ---
 
 def cmd_status(args) -> int:
@@ -130,6 +340,7 @@ def cmd_status(args) -> int:
     
     drives = state.get("drives", {})
     triggered = set(state.get("triggered_drives", []))
+    show_latent = getattr(args, 'show_latent', False)
     
     # Get last tick info
     last_tick_str = state.get("last_tick", "")
@@ -137,15 +348,7 @@ def cmd_status(args) -> int:
         last_tick = datetime.fromisoformat(last_tick_str)
         now = datetime.now(timezone.utc)
         mins_ago = int((now - last_tick).total_seconds() / 60)
-        if mins_ago < 1:
-            updated_text = "just now"
-        elif mins_ago == 1:
-            updated_text = "1m ago"
-        elif mins_ago < 60:
-            updated_text = f"{mins_ago}m ago"
-        else:
-            hours_ago = mins_ago // 60
-            updated_text = f"{hours_ago}h ago"
+        updated_text = format_time_ago(mins_ago)
     except (ValueError, TypeError):
         updated_text = "unknown"
     
@@ -178,57 +381,307 @@ def cmd_status(args) -> int:
                 "ratio": round(ratio, 2),
                 "status": status,
                 "category": drive.get("category", "unknown"),
+                "aspects": drive.get("aspects", []),
+                "status_field": drive.get("status"),
             })
+        
+        # Add budget and reviews info
+        budget = get_budget_info(config, state)
+        output["budget"] = budget
+        output["pending_reviews"] = len(load_pending_reviews(config))
+        
         print(json.dumps(output, indent=2))
         return EXIT_SUCCESS
     
-    # Normal text output
-    print(f"🧠 Drive Status  (updated {updated_text})")
-    print("─" * 52)
+    # Get additional info for display
+    budget_info = get_budget_info(config, state)
+    cooldown_info = get_cooldown_status(state, config)
+    pending_reviews = load_pending_reviews(config)
+    graduation_candidates = find_graduation_candidates(state)
     
-    # Sort by category then name
-    sorted_drives = sorted(drives.items(), key=lambda x: (x[1].get("category", ""), x[0]))
+    # Header
+    print(f"🧠 Drive Status (updated {updated_text})")
     
-    for name, drive in sorted_drives:
-        pressure = drive.get("pressure", 0.0)
-        threshold = drive.get("threshold", 1.0)
-        ratio = pressure / threshold if threshold > 0 else 0.0
-        
-        # Determine status
-        if name in triggered:
-            status = "triggered"
-        elif ratio >= 1.0:
-            status = "over_threshold"
-        elif ratio >= 0.75:
-            status = "elevated"
+    # Budget line with color
+    percent = budget_info["percent_used"]
+    if percent >= 90:
+        budget_color = COLOR_BUDGET_HIGH
+    elif percent >= 75:
+        budget_color = COLOR_BUDGET_MED
+    else:
+        budget_color = COLOR_BUDGET_LOW
+    
+    print(f"Budget: {budget_color}${budget_info['daily_spend']:.2f} / ${budget_info['daily_limit']:.2f} daily ({percent:.0f}%){COLOR_RESET}")
+    
+    # Cooldown line
+    if cooldown_info["last_trigger_ago"] is not None:
+        last_trigger_text = format_time_ago(cooldown_info["last_trigger_ago"])
+        if cooldown_info["ready"]:
+            print(f"Cooldown: {COLOR_BUDGET_LOW}Ready{COLOR_RESET} (last trigger {last_trigger_text})")
         else:
-            status = "normal"
-        
-        indicator = get_indicator(status)
-        bar = format_pressure_bar(pressure, threshold, width=20)
-        pct = int(ratio * 100)
-        
-        # Pad name to 14 chars
-        name_padded = name.ljust(14)
-        
-        needs_attention = " NEEDS ATTENTION" if status in ("over_threshold", "triggered") else ""
-        
-        print(f"  {indicator} {name_padded} {bar}  {pressure:.1f}/{threshold:.0f} ({pct}%){needs_attention}")
+            ready_text = format_time_remaining(cooldown_info["ready_in_minutes"])
+            print(f"Cooldown: {COLOR_BUDGET_MED}{ready_text}{COLOR_RESET} (last trigger {last_trigger_text})")
+    else:
+        print(f"Cooldown: {COLOR_BUDGET_LOW}Ready{COLOR_RESET}")
     
     print("─" * 52)
     
-    # Show triggered drives
+    # Separate drives by category and status
+    core_drives = []
+    discovered_drives = []
+    latent_drives = []
+    
+    for name, drive in drives.items():
+        drive_status = drive.get("status")
+        category = drive.get("category", "unknown")
+        
+        if drive_status == "latent":
+            latent_drives.append((name, drive))
+        elif category == "core":
+            core_drives.append((name, drive))
+        else:
+            discovered_drives.append((name, drive))
+    
+    # Core Drives section
+    if core_drives:
+        print(f"\n{COLOR_CORE}Core Drives:{COLOR_RESET}")
+        for name, drive in sorted(core_drives, key=lambda x: x[0]):
+            _print_drive_line(name, drive, triggered, cooldown_info)
+    
+    # Discovered Drives section
+    if discovered_drives:
+        print(f"\n{COLOR_DISCOVERED}Discovered Drives:{COLOR_RESET}")
+        for name, drive in sorted(discovered_drives, key=lambda x: x[0]):
+            _print_drive_line(name, drive, triggered, cooldown_info)
+    
+    # Pending Reviews section
+    if pending_reviews:
+        print(f"\n{COLOR_BUDGET_MED}Pending Reviews:{COLOR_RESET} {len(pending_reviews)}")
+        for review in pending_reviews[:3]:  # Show up to 3
+            new_drive = review.get("new_drive", "Unknown")
+            similar = review.get("similar_drives", [])
+            similar_names = [s.get("name", "?") for s in similar[:2]]
+            print(f"  → {new_drive} - Similar to {', '.join(similar_names)}")
+        if len(pending_reviews) > 3:
+            print(f"  ... and {len(pending_reviews) - 3} more")
+        print(f"    {COLOR_DIM}Run: drives review{COLOR_RESET}")
+    
+    # Latent Drives section (if --show-latent)
+    if show_latent and latent_drives:
+        print(f"\n{COLOR_LATENT}Latent Drives:{COLOR_RESET}")
+        for name, drive in sorted(latent_drives, key=lambda x: x[0]):
+            reason = drive.get("latent_reason", "Consolidated as aspect")
+            print(f"  ○ {name} - {reason}")
+            parent = drive.get("aspect_of")
+            if parent:
+                print(f"    {COLOR_DIM}Part of: {parent}{COLOR_RESET}")
+    
+    # Graduation Candidates section
+    if graduation_candidates:
+        print(f"\n{COLOR_BUDGET_MED}Graduation Candidates:{COLOR_RESET}")
+        for candidate in graduation_candidates[:3]:
+            aspect = candidate["aspect"]
+            parent = candidate["parent_drive"]
+            sats = candidate["satisfactions"]
+            days = candidate["days_old"]
+            print(f"  ↑ {aspect} ({parent}) - {sats} satisfactions, {days} days")
+        if len(graduation_candidates) > 3:
+            print(f"  ... and {len(graduation_candidates) - 3} more")
+    
+    # Footer separator and projection
+    print("─" * 52)
+    
+    triggers = budget_info["projected_triggers_per_day"]
+    daily_cost = budget_info["projected_daily_cost"]
+    monthly_cost = budget_info["projected_monthly_cost"]
+    
+    print(f"Projected: ~{triggers:.0f} triggers/day (~${daily_cost:.0f}/day, ${monthly_cost:.0f}/month)")
+    
+    # Show triggered drives alert
     if triggered:
+        print()
         triggered_list = ", ".join(sorted(triggered))
-        print(f"  ⏸ Triggered & waiting: {triggered_list}")
-        print(f"  Use 'emergence drives satisfy <name>' to reset after addressing.")
+        print(f"{COLOR_BUDGET_HIGH}⏸ Triggered & waiting: {triggered_list}{COLOR_RESET}")
+        print(f"   Use 'emergence drives satisfy <name>' to reset after addressing.")
     
     # Show quiet hours
     if is_quiet_hours(config):
         quiet_start, quiet_end = config.get("drives", {}).get("quiet_hours", [23, 7])
-        print(f"  ℹ Quiet hours active ({quiet_start:02d}:00-{quiet_end:02d}:00) — triggers queued")
+        print(f"\n{COLOR_DIM}ℹ Quiet hours active ({quiet_start:02d}:00-{quiet_end:02d}:00) — triggers queued{COLOR_RESET}")
     
     return EXIT_SUCCESS
+
+
+def _print_drive_line(name: str, drive: dict, triggered: set, cooldown_info: dict) -> None:
+    """Print a single drive line with status indicator and pressure bar."""
+    pressure = drive.get("pressure", 0.0)
+    threshold = drive.get("threshold", 1.0)
+    ratio = pressure / threshold if threshold > 0 else 0.0
+    
+    # Determine status
+    if name in triggered:
+        status = "triggered"
+    elif ratio >= 1.0:
+        status = "over_threshold"
+    elif ratio >= 0.75:
+        status = "elevated"
+    else:
+        status = "normal"
+    
+    indicator = get_indicator(status)
+    pct = int(ratio * 100)
+    
+    # Pad name to 14 chars
+    name_padded = name.ljust(14)
+    
+    # Build pressure bar (20 chars wide)
+    width = 20
+    display_ratio = min(ratio, 1.5)
+    filled = int(display_ratio * width)
+    empty = width - filled
+    bar = "█" * filled + "░" * empty
+    
+    # Status text
+    if status == "triggered":
+        status_text = f"{COLOR_BUDGET_HIGH}Triggered{COLOR_RESET}"
+    elif status == "over_threshold":
+        remaining = cooldown_info.get("ready_in_minutes", 0)
+        if remaining > 0:
+            status_text = format_time_remaining(remaining)
+        else:
+            status_text = f"{COLOR_BUDGET_HIGH}Over threshold{COLOR_RESET}"
+    elif status == "elevated":
+        elapsed = get_elapsed_since_last_satisfaction(drive)
+        if elapsed is not None:
+            status_text = format_elapsed_time(elapsed)
+        else:
+            status_text = format_time_remaining(int((1.0 - ratio) * threshold / drive.get("rate_per_hour", 1.0) * 60))
+    else:
+        if drive.get("activity_driven"):
+            status_text = "Activity-driven"
+        else:
+            elapsed = get_elapsed_since_last_satisfaction(drive)
+            if elapsed is not None:
+                status_text = format_elapsed_time(elapsed)
+            else:
+                status_text = ""
+    
+    print(f"  {indicator} {name_padded} [{bar}] {pct}%  {status_text}")
+    
+    # Show aspects if present
+    aspects = drive.get("aspects", [])
+    if aspects:
+        aspects_str = ", ".join(aspects)
+        print(f"     {COLOR_DIM}({len(aspects)} aspect{'s' if len(aspects) > 1 else ''}: {aspects_str}){COLOR_RESET}")
+
+
+def cmd_review(args) -> int:
+    """Review pending drive consolidation decisions."""
+    state, config, state_path = get_state_and_config(args)
+    
+    pending_reviews = load_pending_reviews(config)
+    
+    if not pending_reviews:
+        print("✓ No pending reviews — all caught up!")
+        return EXIT_SUCCESS
+    
+    # If specific drive specified, show just that one
+    drive_name = getattr(args, 'drive', None)
+    if drive_name:
+        review = None
+        for r in pending_reviews:
+            if r.get("new_drive", "").upper() == drive_name.upper():
+                review = r
+                break
+        
+        if not review:
+            print(f"✗ No pending review found for: {drive_name}")
+            print(f"   Pending reviews: {', '.join(r.get('new_drive', '?') for r in pending_reviews)}")
+            return EXIT_ERROR
+        
+        # Show single review with irreducibility test
+        _show_irreducibility_test(review)
+        return EXIT_SUCCESS
+    
+    # Show all pending reviews
+    print(f"⚖️  Pending Drive Reviews ({len(pending_reviews)})")
+    print("=" * 52)
+    
+    for i, review in enumerate(pending_reviews, 1):
+        new_drive = review.get("new_drive", "Unknown")
+        similar = review.get("similar_drives", [])
+        discovered_at = review.get("discovered_at", "unknown")
+        
+        print(f"\n{i}. {new_drive}")
+        print(f"   Discovered: {discovered_at[:10] if discovered_at != 'unknown' else 'unknown'}")
+        print(f"   Similar to:")
+        for s in similar:
+            sim_name = s.get("name", "?")
+            sim_score = s.get("similarity", 0)
+            print(f"      • {sim_name} (similarity: {sim_score:.2f})")
+        
+        print(f"\n   Actions:")
+        print(f"      drives review {new_drive.lower()}  # View irreducibility test")
+        print(f"      drives merge {new_drive.lower()} --into DRIVE  # Merge as aspect")
+        print(f"      drives keep {new_drive.lower()}  # Keep as distinct drive")
+    
+    print("\n" + "=" * 52)
+    print(f"Run 'drives review <name>' to see the irreducibility test for a specific drive")
+    
+    return EXIT_SUCCESS
+
+
+def _show_irreducibility_test(review: dict) -> None:
+    """Display the irreducibility test prompt for a review."""
+    new_drive = review.get("new_drive", "Unknown")
+    new_desc = review.get("description", "No description")
+    similar = review.get("similar_drives", [])
+    
+    print(f"\n🧠 Irreducibility Test: {new_drive}")
+    print("=" * 60)
+    print(f"\nNew drive discovered: {new_drive}")
+    print(f"Description: {new_desc}")
+    
+    if similar:
+        print(f"\nThis seems related to existing drive(s):")
+        for s in similar[:3]:
+            sim_name = s.get("name", "?")
+            sim_desc = s.get("description", "No description")
+            sim_score = s.get("similarity", 0)
+            print(f"\n  • {sim_name} (similarity: {sim_score:.2f})")
+            print(f"    Description: {sim_desc}")
+    
+    print("\n" + "-" * 60)
+    print("\nIRREDUCIBILITY TEST:")
+    print()
+    
+    if similar:
+        primary = similar[0].get("name", "existing drive")
+        print(f"Ask yourself: 'Can I fully satisfy {new_drive} by satisfying {primary}?'")
+        print()
+        print("Test both directions:")
+        print(f"  1. Does satisfying {primary} always satisfy {new_drive}?")
+        print(f"  2. Does satisfying {new_drive} always satisfy {primary}?")
+        print()
+        print("If YES to either → ASPECT (merge into existing drive)")
+        print("If NO to both → DISTINCT (keep as separate drive)")
+        print()
+        print("What makes this drive irreducible (if it is)?")
+        print("What unique satisfaction does it provide?")
+    
+    print("\n" + "-" * 60)
+    print("\nDECISION:")
+    print()
+    print(f"  [ ] DISTINCT - Keep {new_drive} as a separate drive")
+    if similar:
+        primary = similar[0].get("name", "existing drive")
+        print(f"  [ ] ASPECT - Merge {new_drive} into {primary}")
+    print()
+    print("Commands:")
+    print(f"  drives keep {new_drive.lower()}     # Mark as distinct")
+    if similar:
+        primary = similar[0].get("name", "existing drive")
+        print(f"  drives merge {new_drive.lower()} --into {primary}  # Merge as aspect")
 
 
 def cmd_satisfy(args) -> int:
@@ -989,6 +1442,206 @@ def cmd_daemon(args) -> int:
         return EXIT_USAGE
 
 
+def cmd_review(args) -> int:
+    """Review pending drive consolidation decisions."""
+    from ..first_light.irreducibility import (
+        review_pending_drives,
+        apply_irreducibility_decision,
+        remove_pending_review,
+    )
+    
+    workspace = Path.cwd()
+    
+    drive_name = getattr(args, 'name', None)
+    decision = getattr(args, 'decision', None)
+    parent = getattr(args, 'parent', None)
+    
+    # Show review for specific drive or list all pending
+    output = review_pending_drives(workspace, specific_drive=drive_name)
+    print(output)
+    
+    # If decision provided, apply it
+    if decision and drive_name:
+        print(f"\nApplying decision: {decision}")
+        
+        # Load pending review to get description
+        from ..first_light.irreducibility import load_pending_reviews
+        reviews = load_pending_reviews(workspace)
+        review = None
+        for r in reviews:
+            if r.get("new_drive") == drive_name.upper():
+                review = r
+                break
+        
+        if not review:
+            print(f"✗ No pending review found for: {drive_name}")
+            return EXIT_ERROR
+        
+        # Determine parent drive if ASPECT decision
+        parent_drive = None
+        if decision.upper().startswith("ASPECT"):
+            if parent:
+                parent_drive = parent.upper()
+            else:
+                # Use first similar drive as default
+                similar = review.get("similar_drives", [])
+                if similar:
+                    parent_drive = similar[0]["name"]
+        
+        # Apply the decision
+        result = apply_irreducibility_decision(
+            decision,
+            review["new_drive"],
+            review["new_drive_description"],
+            parent_drive,
+            workspace
+        )
+        
+        if result["success"]:
+            print(f"✓ {result['message']}")
+            remove_pending_review(workspace, drive_name.upper())
+            return EXIT_SUCCESS
+        else:
+            print(f"✗ {result['error']}")
+            return EXIT_ERROR
+    
+    return EXIT_SUCCESS
+
+
+def cmd_activate(args) -> int:
+    """Activate a latent (consolidated) drive."""
+    state, config, state_path = get_state_and_config(args)
+    
+    if not args.name:
+        print("✗ Usage: drives activate <drive_name>", file=sys.stderr)
+        return EXIT_USAGE
+    
+    drive_name = args.name.upper()
+    
+    # Check if drive exists as latent
+    if drive_name not in state["drives"]:
+        print(f"✗ Drive not found: {drive_name}", file=sys.stderr)
+        return EXIT_ERROR
+    
+    drive = state["drives"][drive_name]
+    
+    # Check if already active
+    if drive.get("base_drive", True) and not drive.get("status") == "latent":
+        print(f"ℹ {drive_name} is already active")
+        return EXIT_SUCCESS
+    
+    # Activate the drive
+    drive["base_drive"] = True
+    drive["status"] = "active"
+    drive["rate_per_hour"] = drive.get("rate_per_hour", 1.5)
+    if drive["rate_per_hour"] < 1.0:
+        drive["rate_per_hour"] = 1.5  # Set minimum rate
+    
+    # Save state
+    if not save_with_lock(state_path, state):
+        return EXIT_ERROR
+    
+    print(f"✓ Activated {drive_name}")
+    print(f"  Rate: {drive['rate_per_hour']}/hr")
+    print(f"  Budget impact: +~$2.50/day projected")
+    
+    return EXIT_SUCCESS
+
+
+def cmd_aspects(args) -> int:
+    """Manage aspects for a drive."""
+    state, config, state_path = get_state_and_config(args)
+    
+    if not args.name:
+        print("✗ Usage: drives aspects <drive_name> [--list|--add|--remove]", file=sys.stderr)
+        return EXIT_USAGE
+    
+    drive_name = fuzzy_find_drive(args.name, state)
+    if not drive_name:
+        return EXIT_ERROR
+    
+    drive = state["drives"][drive_name]
+    aspects = drive.get("aspects", [])
+    
+    # List aspects (default)
+    if not args.action or args.action == "list":
+        print(f"🧩 Aspects for {drive_name}")
+        print("━" * 52)
+        
+        if aspects:
+            for i, aspect in enumerate(aspects, 1):
+                print(f"  {i}. {aspect}")
+        else:
+            print("  No aspects defined")
+        
+        current_rate = drive.get("rate_per_hour", 1.5)
+        print(f"\nCurrent rate: {current_rate}/hr")
+        print(f"Aspects: {len(aspects)}/5")
+        
+        if len(aspects) >= 5:
+            print("\n⚠ At maximum aspects. Consider reviewing drive scope.")
+        
+        return EXIT_SUCCESS
+    
+    # Add aspect
+    if args.action == "add":
+        if not args.aspect_name:
+            print("✗ Usage: drives aspects <drive> add <aspect_name>", file=sys.stderr)
+            return EXIT_USAGE
+        
+        if len(aspects) >= 5:
+            print(f"✗ {drive_name} already has 5 aspects (maximum)", file=sys.stderr)
+            return EXIT_ERROR
+        
+        aspect_name = args.aspect_name.lower()
+        if aspect_name in aspects:
+            print(f"ℹ Aspect '{aspect_name}' already exists")
+            return EXIT_SUCCESS
+        
+        aspects.append(aspect_name)
+        drive["aspects"] = aspects
+        
+        # Increase rate
+        old_rate = drive.get("rate_per_hour", 1.5)
+        new_rate = min(old_rate + 0.2, 2.5)
+        drive["rate_per_hour"] = new_rate
+        
+        if not save_with_lock(state_path, state):
+            return EXIT_ERROR
+        
+        print(f"✓ Added aspect: {aspect_name}")
+        print(f"  Rate: {old_rate:.1f}/hr → {new_rate:.1f}/hr")
+        return EXIT_SUCCESS
+    
+    # Remove aspect
+    if args.action == "remove":
+        if not args.aspect_name:
+            print("✗ Usage: drives aspects <drive> remove <aspect_name>", file=sys.stderr)
+            return EXIT_USAGE
+        
+        aspect_name = args.aspect_name.lower()
+        if aspect_name not in aspects:
+            print(f"✗ Aspect '{aspect_name}' not found", file=sys.stderr)
+            return EXIT_ERROR
+        
+        aspects.remove(aspect_name)
+        drive["aspects"] = aspects
+        
+        # Decrease rate
+        old_rate = drive.get("rate_per_hour", 1.5)
+        new_rate = max(old_rate - 0.2, 0.5)
+        drive["rate_per_hour"] = new_rate
+        
+        if not save_with_lock(state_path, state):
+            return EXIT_ERROR
+        
+        print(f"✓ Removed aspect: {aspect_name}")
+        print(f"  Rate: {old_rate:.1f}/hr → {new_rate:.1f}/hr")
+        return EXIT_SUCCESS
+    
+    return EXIT_SUCCESS
+
+
 def cmd_help(args) -> int:
     """Show detailed help for topics."""
     topic = getattr(args, 'topic', None)
@@ -1154,9 +1807,82 @@ OUTPUT:
   ↓ = pressure reduced (satisfaction)
   ↑ = pressure increased (stimulation)
 """)
+    elif topic == 'review':
+        print("""
+🧠 drives review — Review pending drive consolidation
+
+During First Light and beyond, new drive discoveries are checked against
+existing drives for similarity. When similar drives are found, they're
+queued for irreducibility review.
+
+USAGE:
+  emergence drives review              # List all pending reviews
+  emergence drives review <name>       # Show irreducibility test for drive
+  emergence drives review <name> --decide=DISTINCT
+                                       # Mark as distinct drive
+  emergence drives review <name> --decide=ASPECT [--parent=DRIVE]
+                                       # Consolidate as aspect
+
+IRREDUCIBILITY TEST:
+  The test asks: "Can I fully satisfy this drive by satisfying another?"
+  
+  If YES → It's an ASPECT (enriches existing drive)
+  If NO  → It's DISTINCT (new independent drive)
+
+  Your felt experience determines the outcome, not similarity scores.
+
+EXAMPLES:
+  drives review                        # Show pending list
+  drives review SONIC                  # Show test for SONIC drive
+  drives review SONIC --decide=DISTINCT
+                                       # Create as distinct drive
+  drives review SONIC --decide=ASPECT --parent=CREATION
+                                       # Make aspect of CREATION
+""")
+    elif topic == 'activate':
+        print("""
+🧠 drives activate — Activate a latent/consolidated drive
+
+Drives that were consolidated as aspects can be activated as independent
+drives if their pressure dominates or budget allows.
+
+USAGE:
+  emergence drives activate <drive_name>
+
+EXAMPLES:
+  drives activate SONIC_EXPLORATION    # Activate as independent drive
+
+NOTES:
+  • Activation increases budget impact (~$2.50/day projected)
+  • Only latent drives can be activated
+  • Active drives build pressure independently
+""")
+    elif topic == 'aspects':
+        print("""
+🧠 drives aspects — Manage drive aspects
+
+Aspects enrich a drive's prompt and slightly increase its rate.
+A drive can have up to 5 aspects (6th triggers review).
+
+USAGE:
+  emergence drives aspects <drive_name>              # List aspects
+  emergence drives aspects <drive_name> add <name>   # Add aspect
+  emergence drives aspects <drive_name> remove <name> # Remove aspect
+
+EXAMPLES:
+  drives aspects CREATION              # Show CREATION's aspects
+  drives aspects CREATION add sonic    # Add "sonic" aspect
+  drives aspects CREATION remove sonic # Remove "sonic" aspect
+
+EFFECTS:
+  • Adding aspect: +0.2/hr rate (capped at 2.5/hr)
+  • Removing aspect: -0.2/hr rate
+  • Aspects enrich the drive's prompt
+  • Max 5 aspects per drive
+""")
     else:
         print(f"ℹ No detailed help available for '{topic}'")
-        print("  Available topics: satisfy, tick, bump, ingest, daemon")
+        print("  Available topics: satisfy, tick, bump, ingest, daemon, review, activate, aspects")
     
     return EXIT_SUCCESS
 
@@ -1208,6 +1934,11 @@ Exit codes:
     status_parser.add_argument(
         "--category",
         help="Filter by category"
+    )
+    status_parser.add_argument(
+        "--show-latent",
+        action="store_true",
+        help="Show latent/consolidated drives"
     )
     
     # satisfy command
@@ -1381,6 +2112,59 @@ Exit codes:
         help="Number of log lines to show (default: 50)"
     )
 
+    # review command
+    review_parser = subparsers.add_parser(
+        "review",
+        help="Review pending drive consolidation decisions"
+    )
+    review_parser.add_argument(
+        "name",
+        nargs="?",
+        help="Drive name to review (optional, lists all if omitted)"
+    )
+    review_parser.add_argument(
+        "--decide",
+        choices=["DISTINCT", "ASPECT"],
+        help="Apply irreducibility decision"
+    )
+    review_parser.add_argument(
+        "--parent",
+        help="Parent drive name (if ASPECT decision)"
+    )
+    
+    # activate command
+    activate_parser = subparsers.add_parser(
+        "activate",
+        help="Activate a latent/consolidated drive"
+    )
+    activate_parser.add_argument(
+        "name",
+        nargs="?",
+        help="Name of latent drive to activate"
+    )
+    
+    # aspects command
+    aspects_parser = subparsers.add_parser(
+        "aspects",
+        help="Manage drive aspects"
+    )
+    aspects_parser.add_argument(
+        "name",
+        nargs="?",
+        help="Drive name to manage aspects for"
+    )
+    aspects_parser.add_argument(
+        "action",
+        nargs="?",
+        choices=["list", "add", "remove"],
+        help="Aspect management action"
+    )
+    aspects_parser.add_argument(
+        "aspect_name",
+        nargs="?",
+        help="Name of aspect to add/remove"
+    )
+
     # help command
     help_parser = subparsers.add_parser(
         "help",
@@ -1389,7 +2173,7 @@ Exit codes:
     help_parser.add_argument(
         "topic",
         nargs="?",
-        help="Help topic (satisfy, tick, bump, daemon, etc.)"
+        help="Help topic (satisfy, tick, bump, daemon, review, etc.)"
     )
 
     return parser
@@ -1417,6 +2201,9 @@ def main(args: Optional[list[str]] = None) -> int:
         "info": cmd_show,
         "ingest": cmd_ingest,
         "daemon": cmd_daemon,
+        "review": cmd_review,
+        "activate": cmd_activate,
+        "aspects": cmd_aspects,
         "help": cmd_help,
     }
     
