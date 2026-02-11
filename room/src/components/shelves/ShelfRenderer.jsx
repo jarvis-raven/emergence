@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import MemoryShelfView from './MemoryShelfView';
+import { LibraryShelfView } from './LibraryShelfView';
 import GenericShelfView from './GenericShelfView';
 
 const RENDERER_MAP = {
   memory: MemoryShelfView,
+  library: LibraryShelfView,
 };
 
 function ErrorFallback({ error }) {

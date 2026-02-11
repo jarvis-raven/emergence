@@ -55,6 +55,7 @@ core/setup/config_gen.py
 core/setup/detection.py
 core/setup/init_wizard.py
 core/setup/kickoff.py
+core/setup/model_pricing.py
 core/setup/prereq.py
 emergence_ai.egg-info/PKG-INFO
 emergence_ai.egg-info/SOURCES.txt
