@@ -23,10 +23,13 @@ const BUILTIN_PANELS = {
  * 'shelf:xxx' tabs load dynamically from the shelf registry.
  * Others use BUILTIN_PANELS.
  */
+/**
+ * Core tabs in display order.
+ * Custom shelves (e.g. library) are discovered and appended after these.
+ */
 const DEFAULT_TABS = [
   { id: 'mirror',        icon: '🪞', label: 'Mirror' },
   { id: 'shelf:memory',  icon: '🧠', label: 'Memory' },
-  { id: 'shelf:library', icon: '📚', label: 'Library' },
   { id: 'journal',       icon: '📓', label: 'Journal' },
   { id: 'aspirations',   icon: '✨', label: 'Aspirations' },
   { id: 'projects',      icon: '🚀', label: 'Projects' },
@@ -121,10 +124,8 @@ export default function ShelfPanel({ agentName, forceTab }) {
         label: s.name || s.id,
       }));
 
-      // Insert custom tabs before 'journal'
-      const journalIdx = DEFAULT_TABS.findIndex(t => t.id === 'journal');
-      const merged = [...DEFAULT_TABS];
-      merged.splice(journalIdx, 0, ...customTabs);
+      // Append custom tabs after core panels
+      const merged = [...DEFAULT_TABS, ...customTabs];
       setTabs(merged);
     }
   }, [allShelves.length]);

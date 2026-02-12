@@ -14,11 +14,13 @@ import ProjectsPanel from './components/ProjectsPanel.jsx';
 /**
  * Navigation items for the menu
  */
+/**
+ * Core nav items. Custom shelves (library etc.) append dynamically.
+ */
 const NAV_ITEMS = [
   { id: 'home',        icon: '🏠', label: 'Home' },
   { id: 'mirror',      icon: '🪞', label: 'Mirror' },
   { id: 'memory',      icon: '🧠', label: 'Memory' },
-  { id: 'library',     icon: '📚', label: 'Library' },
   { id: 'journal',     icon: '📓', label: 'Journal' },
   { id: 'aspirations', icon: '✨', label: 'Aspirations' },
   { id: 'projects',    icon: '🚀', label: 'Projects' },
