@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * DaemonHealthDrawer — Shows drives daemon health status
@@ -19,12 +19,31 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
   const [restarting, setRestarting] = useState(false);
   const [liveCountdown, setLiveCountdown] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
+  
+  // Track abort controller to cancel pending requests
+  const abortControllerRef = useRef(null);
 
-  const fetchDaemonState = async () => {
+  const fetchDaemonState = useCallback(async () => {
+    // Cancel any previous pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // Set up 10-second timeout
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 10000);
+
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/drives/state');
+      const response = await fetch('/api/drives/state', {
+        signal: controller.signal
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch daemon state (${response.status})`);
@@ -33,12 +52,17 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
       const data = await response.json();
       setDaemonState(data);
     } catch (err) {
+      // Handle AbortError gracefully (don't show as error state)
+      if (err.name === 'AbortError') {
+        return;
+      }
       console.error('Daemon state fetch error:', err);
       setError(err.message);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
-  };
+  }, []);
 
   const forceRefresh = async () => {
     setRestarting(true);
@@ -111,6 +135,27 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen || !daemonState?.last_tick) return;
 
+    // Validate tick_interval_seconds
+    const tickInterval = daemonState.tick_interval_seconds || 300;
+    if (tickInterval <= 0) {
+      setLiveCountdown(null);
+      return;
+    }
+
+    // Validate last_tick date
+    const lastUpdate = new Date(daemonState.last_tick);
+    if (isNaN(lastUpdate.getTime())) {
+      setLiveCountdown(null);
+      return;
+    }
+
+    // Handle edge case: last_tick in the future (clock skew)
+    const now = new Date();
+    if (lastUpdate > now) {
+      setLiveCountdown(null);
+      return;
+    }
+
     const interval = setInterval(() => {
       const lastUpdate = new Date(daemonState.last_tick);
       const tickInterval = daemonState.tick_interval_seconds || 300;
@@ -119,7 +164,8 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
       const remaining = Math.max(0, nextTick - now);
       const remainingSeconds = Math.floor(remaining / 1000);
 
-      setLiveCountdown(remainingSeconds);
+      // Guard against negative countdown values
+      setLiveCountdown(Math.max(0, remainingSeconds));
     }, 1000);
 
     return () => clearInterval(interval);
@@ -132,7 +178,16 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
       const interval = setInterval(fetchDaemonState, 10000);
       return () => clearInterval(interval);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchDaemonState]);
+
+  // Cleanup: abort any pending fetch on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -142,10 +197,26 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
       return { status: 'offline', label: 'Offline', color: 'text-red-400' };
     }
 
-    const lastUpdate = new Date(daemonState.last_tick);
-    const now = new Date();
-    const ageMs = now - lastUpdate;
+    // Validate tick_interval_seconds (prevent division by zero)
     const tickInterval = daemonState.tick_interval_seconds || 300; // default 5 min
+    if (tickInterval <= 0) {
+      return { status: 'offline', label: 'Offline', color: 'text-red-400' };
+    }
+
+    // Validate last_tick date
+    const lastUpdate = new Date(daemonState.last_tick);
+    if (isNaN(lastUpdate.getTime())) {
+      return { status: 'offline', label: 'Offline', color: 'text-red-400' };
+    }
+
+    const now = new Date();
+    
+    // Handle edge case: last_tick in the future (clock skew)
+    if (lastUpdate > now) {
+      return { status: 'offline', label: 'Offline', color: 'text-red-400' };
+    }
+
+    const ageMs = now - lastUpdate;
     const staleThreshold = tickInterval * 3 * 1000; // 3x tick interval
 
     if (ageMs > staleThreshold) {
