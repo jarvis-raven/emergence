@@ -198,6 +198,12 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
     )
     
     parser.add_argument(
+        "--warm-start",
+        action="store_true",
+        help="Initialize drives at 35% pressure (triggers in ~4-5 hours instead of 8+)"
+    )
+    
+    parser.add_argument(
         "--model",
         type=str,
         default=None,
@@ -238,6 +244,7 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
         "auto_fix": parsed.auto_fix,
         "agent_mode": agent_mode,
         "no_room": parsed.no_room,
+        "warm_start": parsed.warm_start,
         "model": parsed.model
     }
 
@@ -1426,11 +1433,12 @@ This is not your first conversation — you have context.
             from .kickoff import initialize_drives_state, initialize_first_light_state
             state_dir = workspace / ".emergence" / "state"
             
-            drives_ok = initialize_drives_state(state_dir)
+            drives_ok = initialize_drives_state(state_dir, warm_start=parsed_args["warm_start"])
             fl_ok = initialize_first_light_state(state_dir)
             
             if drives_ok and fl_ok:
-                print_success("Core drives initialized (CARE, MAINTENANCE, REST)")
+                warm_msg = " (warm start: 35%)" if parsed_args["warm_start"] else ""
+                print_success(f"Core drives initialized (CARE, MAINTENANCE, REST){warm_msg}")
                 print_success("First Light state: imminent")
                 if HAS_RICH:
                     console.print("  [soft_violet]ℹ[/] [dim_gray]Run 'emergence first-light run' to start exploration sessions[/]")
