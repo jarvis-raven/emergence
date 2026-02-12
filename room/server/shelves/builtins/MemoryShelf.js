@@ -34,7 +34,21 @@ function getEmbeddingStats() {
       { timeout: 3000, encoding: 'utf-8' }
     ).trim();
     const [chunks, files] = result.split('|').map(Number);
-    return { chunks, files };
+
+    // Breakdown by category
+    const breakdown = [];
+    try {
+      const rows = execSync(
+        `sqlite3 "${dbPath}" "SELECT CASE WHEN path LIKE 'memory/daily/%' THEN 'daily' WHEN path LIKE 'memory/sessions/%' THEN 'sessions' WHEN path LIKE 'memory/changelog/%' THEN 'changelog' WHEN path LIKE 'memory/correspondence/%' THEN 'correspondence' WHEN path LIKE 'memory/creative/%' THEN 'creative' WHEN path LIKE 'memory/dreams/%' THEN 'dreams' WHEN path LIKE 'memory/archive/%' THEN 'archive' ELSE 'other' END as cat, COUNT(DISTINCT path) as files, COUNT(*) as chunks FROM chunks GROUP BY cat ORDER BY chunks DESC;"`,
+        { timeout: 3000, encoding: 'utf-8' }
+      ).trim();
+      for (const row of rows.split('\n').filter(Boolean)) {
+        const [category, fileCount, chunkCount] = row.split('|');
+        breakdown.push({ category, files: parseInt(fileCount), chunks: parseInt(chunkCount) });
+      }
+    } catch {}
+
+    return { chunks, files, breakdown };
   } catch {
     return null;
   }

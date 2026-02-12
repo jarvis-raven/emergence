@@ -108,6 +108,23 @@ export default function MemoryShelfView({ data }) {
         {daysSinceFirst > 0 && <span>{daysSinceFirst} days of memory</span>}
       </div>
 
+      {/* Embedding breakdown */}
+      {data?.embeddings?.breakdown?.length > 0 && (
+        <div className="bg-background/40 rounded-lg p-3">
+          <div className="text-xs text-textMuted mb-2 font-medium">Memory Index</div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+            {data.embeddings.breakdown.map((b) => (
+              <div key={b.category} className="flex items-center justify-between text-xs">
+                <span className="text-textMuted capitalize">{b.category}</span>
+                <span className="text-textMuted/60 font-mono">
+                  {b.files}f / {b.chunks}c
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Daily files list */}
       {hasDaily ? (
         <div className="space-y-1.5">
