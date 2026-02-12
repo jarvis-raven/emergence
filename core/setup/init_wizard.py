@@ -1450,6 +1450,42 @@ This is not your first conversation — you have context.
                 print("    Run 'emergence first-light start' manually")
         print()
         
+        # Daemon lifecycle management (Issue #18)
+        if parsed_args["interactive"]:
+            print_subheader("Autonomous Drive Cycles")
+            print("To enable autonomous drive pressure accumulation and session spawning,")
+            print("the drives daemon needs to run in the background.")
+            print()
+            print("  Start daemon:    emergence drives daemon start")
+            print("  Check status:    emergence drives daemon status")
+            print("  View logs:       cat .emergence/logs/daemon.log")
+            print()
+            
+            if ask_confirm("Start drives daemon now?", default=True):
+                try:
+                    from pathlib import Path
+                    import subprocess
+                    result = subprocess.run(
+                        ["emergence", "drives", "daemon", "start"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                        cwd=str(workspace)
+                    )
+                    if result.returncode == 0:
+                        print_success("✓ Drives daemon started")
+                        print("  Pressure will accumulate in the background")
+                    else:
+                        print_warning(f"Failed to start daemon: {result.stderr}")
+                        print("  Run manually: emergence drives daemon start")
+                except Exception as e:
+                    print_warning(f"Failed to start daemon: {e}")
+                    print("  Run manually: emergence drives daemon start")
+            else:
+                print("  Skipped daemon start")
+                print("  To start later: emergence drives daemon start")
+            print()
+        
         # Completion message
         print_finalization()
         print(f"Workspace: {workspace.absolute()}")
