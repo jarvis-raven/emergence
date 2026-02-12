@@ -46,19 +46,65 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
     setRestarting(false);
   };
 
-  // WebSocket connection monitoring
+  // WebSocket connection monitoring with reconnection and heartbeat
   useEffect(() => {
     if (!isOpen) return;
 
-    // Use wss:// for HTTPS pages, ws:// for HTTP
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}`);
-    
-    ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => setWsConnected(false);
-    ws.onerror = () => setWsConnected(false);
+    const wsRef = { current: null };
+    const reconnectTimerRef = { current: null };
+    const heartbeatTimerRef = { current: null };
 
-    return () => ws.close();
+    const connect = () => {
+      // Use wss:// for HTTPS pages, ws:// for HTTP
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${protocol}//${window.location.host}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setWsConnected(true);
+        
+        // Start heartbeat - send ping every 30 seconds
+        heartbeatTimerRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000);
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        
+        // Clear heartbeat timer
+        if (heartbeatTimerRef.current) {
+          clearInterval(heartbeatTimerRef.current);
+          heartbeatTimerRef.current = null;
+        }
+        
+        // Attempt reconnection after 5 seconds
+        reconnectTimerRef.current = setTimeout(() => {
+          connect();
+        }, 5000);
+      };
+
+      ws.onerror = () => {
+        setWsConnected(false);
+      };
+    };
+
+    connect();
+
+    return () => {
+      // Cleanup: close WebSocket and clear all timers
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+      if (heartbeatTimerRef.current) {
+        clearInterval(heartbeatTimerRef.current);
+      }
+    };
   }, [isOpen]);
 
   // Live countdown timer (updates every second)
