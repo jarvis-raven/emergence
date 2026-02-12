@@ -180,9 +180,16 @@ def load_pending_reviews(config: dict) -> list:
 
 
 def get_budget_info(config: dict, state: dict) -> dict:
-    """Calculate budget information for display."""
+    """Calculate budget information for display.
+    
+    If budget is disabled (drives.budget.enabled = false), returns
+    a minimal dict with enabled=False for callers to skip display.
+    """
     drives_config = config.get("drives", {})
     budget_config = drives_config.get("budget", {})
+    
+    if not budget_config.get("enabled", True):
+        return {"enabled": False, "daily_spend": 0.0, "daily_limit": 0.0, "percent_used": 0.0}
     
     daily_limit = budget_config.get("daily_limit", 50.0)
     cost_per_trigger = budget_config.get("cost_per_trigger", 2.50)
@@ -462,21 +469,24 @@ def cmd_status(args) -> int:
     # Header
     print(f"🧠 Drive Status (updated {updated_text})")
     
-    # Budget line with color
-    percent = budget_info["percent_used"]
-    if percent >= 90:
-        budget_color = COLOR_BUDGET_HIGH
-    elif percent >= 75:
-        budget_color = COLOR_BUDGET_MED
+    # Budget line with color (skip if disabled)
+    if budget_info.get("enabled", True) is not False:
+        percent = budget_info["percent_used"]
+        if percent >= 90:
+            budget_color = COLOR_BUDGET_HIGH
+        elif percent >= 75:
+            budget_color = COLOR_BUDGET_MED
+        else:
+            budget_color = COLOR_BUDGET_LOW
+        
+        print(f"Budget: {budget_color}${budget_info['daily_spend']:.2f} / ${budget_info['daily_limit']:.2f} daily ({percent:.0f}%){COLOR_RESET}")
+        
+        # Warn if using default cost estimate
+        if budget_info.get("cost_per_trigger") == 2.50:
+            print(f"{COLOR_WARNING}  ⚠️  Using default cost estimate ($2.50/trigger). For accurate tracking,")
+            print(f"     set 'cost_per_trigger' in emergence.json drives.budget config.{COLOR_RESET}")
     else:
-        budget_color = COLOR_BUDGET_LOW
-    
-    print(f"Budget: {budget_color}${budget_info['daily_spend']:.2f} / ${budget_info['daily_limit']:.2f} daily ({percent:.0f}%){COLOR_RESET}")
-    
-    # Warn if using default cost estimate
-    if budget_info.get("cost_per_trigger") == 2.50:
-        print(f"{COLOR_WARNING}  ⚠️  Using default cost estimate ($2.50/trigger). For accurate tracking,")
-        print(f"     set 'cost_per_trigger' in emergence.json drives.budget config.{COLOR_RESET}")
+        print(f"Budget: {COLOR_BUDGET_LOW}unlimited (subscription){COLOR_RESET}")
     
     # Cooldown line
     if cooldown_info["last_trigger_ago"] is not None:
