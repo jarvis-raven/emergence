@@ -112,6 +112,18 @@ def build_session_prompt(
     session_dir = config.get("memory", {}).get("session_dir", "memory/sessions")
     session_file = f"{session_dir}/{file_date}-{file_time}-{drive_name}.md"
     
+    # Get workspace path dynamically
+    # If config has _config_dir (from load_config), use it to resolve relative paths
+    config_dir = Path(config.get("_config_dir", "."))
+    workspace_rel = Path(config.get("paths", {}).get("workspace", "."))
+    if not workspace_rel.is_absolute():
+        workspace = (config_dir / workspace_rel).resolve()
+    else:
+        workspace = workspace_rel.resolve()
+    
+    # Use the same python that's running this code (handles venv correctly)
+    python_path = sys.executable
+    
     return f"""AUTONOMOUS SESSION (triggered by {drive_name} drive)
 Pressure: {pressure:.1f}/{threshold}
 Timestamp: {now.isoformat()}
@@ -141,7 +153,7 @@ Full content of your session...
 
 IMPORTANT: When your session is complete, signal completion by running:
 ```
-cd ~/.openclaw/workspace/projects/emergence && python3 -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}', 'agent:main:cron:drive-{drive_name.lower()}')"
+cd {workspace} && {python_path} -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}', 'agent:main:cron:drive-{drive_name.lower()}')"
 ```
 This triggers instant satisfaction of your drive. Without it, satisfaction is delayed.
 """
