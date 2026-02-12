@@ -120,4 +120,39 @@ router.get('/stats', (req, res) => {
   }
 });
 
+/**
+ * GET /api/memory/daily/:date
+ * Returns the full markdown content of a daily memory file
+ * :date format: YYYY-MM-DD
+ */
+router.get('/daily/:date', (req, res) => {
+  try {
+    const { date } = req.params;
+    // Validate date format to prevent path traversal
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+
+    const config = loadConfig();
+    const memoryDir = getMemoryPath(config);
+    const dailyDir = getMemoryPath(config, 'daily');
+    const filename = `${date}.md`;
+
+    // Check daily/ subdirectory first, then memory root
+    let content = readTextFile(join(dailyDir, filename));
+    if (!content) {
+      content = readTextFile(join(memoryDir, filename));
+    }
+
+    if (!content) {
+      return res.status(404).json({ error: 'Daily file not found' });
+    }
+
+    res.json({ date, body: content });
+  } catch (err) {
+    console.error('Memory daily route error:', err);
+    res.status(500).json({ error: 'Failed to load daily file' });
+  }
+});
+
 export default router;

@@ -5,6 +5,7 @@
  */
 
 import { join } from 'path';
+import { readFileSync } from 'fs';
 import { getMemoryPath, getWorkspacePath } from '../../utils/configLoader.js';
 import { listFiles, getFileStats } from '../../utils/fileReader.js';
 
@@ -35,14 +36,20 @@ export const MemoryShelf = {
 
   async resolveData(config) {
     const memoryDir = getMemoryPath(config);
+    const dailyDir = getMemoryPath(config, 'daily');
     const sessionsDir = getMemoryPath(config, 'sessions');
     const dreamsDir = getMemoryPath(config, 'dreams');
     const selfHistoryDir = getMemoryPath(config, 'self-history');
     
-    // Daily memory files (YYYY-MM-DD.md)
-    const dailyFiles = listFiles(memoryDir, /^\d{4}-\d{2}-\d{2}\.md$/);
+    // Daily memory files — check both memory/ and memory/daily/
+    let dailyFiles = listFiles(dailyDir, /^\d{4}-\d{2}-\d{2}\.md$/);
+    let dailyBasePath = dailyDir;
+    if (dailyFiles.length === 0) {
+      dailyFiles = listFiles(memoryDir, /^\d{4}-\d{2}-\d{2}\.md$/);
+      dailyBasePath = memoryDir;
+    }
     const dailySize = dailyFiles.reduce((sum, f) => {
-      const stats = getFileStats(join(memoryDir, f));
+      const stats = getFileStats(join(dailyBasePath, f));
       return sum + (stats?.size || 0);
     }, 0);
     
@@ -75,11 +82,38 @@ export const MemoryShelf = {
       daysActive = Math.floor((now - first) / (1000 * 60 * 60 * 24)) + 1;
     }
     
-    // Recent files (last 7 days)
+    // Recent files (last 7 days) for activity chart
     const recentFiles = sortedDaily.slice(-7).map(f => ({
       date: f.replace('.md', ''),
-      size: formatBytes(getFileStats(join(memoryDir, f))?.size || 0),
+      size: formatBytes(getFileStats(join(dailyBasePath, f))?.size || 0),
     }));
+    
+    // Full daily list (newest first) with preview
+    const dailyList = [...sortedDaily].reverse().map(f => {
+      const filePath = join(dailyBasePath, f);
+      const stats = getFileStats(filePath);
+      let preview = '';
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        // Get first non-heading, non-empty line as preview
+        const lines = content.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('---')) {
+            preview = trimmed.slice(0, 120);
+            break;
+          }
+        }
+      } catch {}
+      return {
+        date: f.replace('.md', ''),
+        filename: f,
+        size: formatBytes(stats?.size || 0),
+        sizeBytes: stats?.size || 0,
+        modified: stats?.mtime?.toISOString() || null,
+        preview,
+      };
+    });
     
     const totalSize = dailySize + sessionSize + dreamSize;
     
@@ -107,6 +141,8 @@ export const MemoryShelf = {
         size: formatBytes(totalSize),
       },
       recent: recentFiles,
+      dailyList,
+      _dailyBasePath: dailyBasePath,
     };
   },
 };
