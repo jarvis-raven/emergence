@@ -143,7 +143,7 @@ export const MemoryShelf = {
     const allFiles = [];
     const CATEGORY_MAP = {
       daily: { icon: '📅', label: 'daily' },
-      sessions: { icon: '🧪', label: 'session' },
+      // sessions excluded — shown in Journal panel
       changelog: { icon: '📋', label: 'changelog' },
       correspondence: { icon: '✉️', label: 'correspondence' },
       creative: { icon: '🎨', label: 'creative' },
