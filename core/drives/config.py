@@ -172,6 +172,9 @@ def load_config(path: Optional[Path] = None) -> dict:
         else:
             merged[key] = value
     
+    # Store config file location for path resolution
+    merged["_config_dir"] = str(path.resolve().parent)
+    
     return merged
 
 
@@ -226,6 +229,22 @@ def validate_config(config: dict) -> list[str]:
     return errors
 
 
+def resolve_workspace(config: dict) -> Path:
+    """Resolve the workspace path from config, relative to config file location.
+    
+    Args:
+        config: Configuration dictionary (with optional _config_dir from load_config)
+        
+    Returns:
+        Absolute workspace path
+    """
+    config_dir = Path(config.get("_config_dir", "."))
+    workspace = Path(config.get("paths", {}).get("workspace", "."))
+    if not workspace.is_absolute():
+        workspace = config_dir / workspace
+    return workspace.resolve()
+
+
 def get_state_path(config: dict, filename: str = "drives.json") -> Path:
     """Resolve state file path from configuration.
     
@@ -242,9 +261,9 @@ def get_state_path(config: dict, filename: str = "drives.json") -> Path:
         PosixPath('.emergence/state/drives.json')
     """
     state_dir = config.get("paths", {}).get("state", ".emergence/state")
-    workspace = config.get("paths", {}).get("workspace", ".")
+    workspace_path = resolve_workspace(config)
     
-    state_path = Path(workspace) / state_dir / filename
+    state_path = workspace_path / state_dir / filename
     return state_path.resolve()
 
 
