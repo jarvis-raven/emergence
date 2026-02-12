@@ -6,6 +6,7 @@ spawning isolated sessions when drive pressures exceed thresholds.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -15,6 +16,48 @@ from pathlib import Path
 from typing import Optional
 
 from .models import DriveState
+
+
+def detect_openclaw_path() -> Optional[str]:
+    """Detect the full path to the openclaw binary.
+    
+    Search order:
+    1. Config-specified path (drives.openclaw_path)
+    2. shutil.which('openclaw') - searches PATH
+    3. Common npm global bin directories
+    
+    Returns:
+        Full path to openclaw binary, or None if not found
+        
+    Examples:
+        >>> path = detect_openclaw_path()
+        >>> path is not None or "openclaw not installed"
+        True
+    """
+    # Try shutil.which first (searches PATH)
+    openclaw_bin = shutil.which("openclaw")
+    if openclaw_bin:
+        return openclaw_bin
+    
+    # Fallback: check common npm global bin locations
+    common_paths = [
+        Path.home() / ".npm-global" / "bin" / "openclaw",
+        Path.home() / ".nvm" / "versions" / "node" / "*" / "bin" / "openclaw",
+        Path("/usr/local/bin/openclaw"),
+        Path.home() / ".local" / "bin" / "openclaw",
+    ]
+    
+    for path in common_paths:
+        # Handle glob patterns for nvm
+        if "*" in str(path):
+            from glob import glob
+            matches = glob(str(path))
+            if matches:
+                return matches[0]  # Use first match
+        elif path.exists() and os.access(path, os.X_OK):
+            return str(path)
+    
+    return None
 
 
 def is_quiet_hours(config: dict) -> bool:
@@ -255,9 +298,17 @@ def spawn_via_cli(
     model = config.get("drives", {}).get("session_model")
     announce = config.get("drives", {}).get("announce_session", False)
     
+    # Get openclaw binary path
+    # Priority: config-specified > auto-detected > fallback to "openclaw"
+    openclaw_path = config.get("drives", {}).get("openclaw_path")
+    if not openclaw_path:
+        openclaw_path = config.get("_openclaw_path")  # Auto-detected at daemon startup
+    if not openclaw_path:
+        openclaw_path = "openclaw"  # Fallback (will fail if not in PATH)
+    
     # Build the cron command
     cmd = [
-        "openclaw", "cron", "add",
+        openclaw_path, "cron", "add",
         "--name", f"drive-{drive_name.lower()}",
         "--at", "10s",
         "--session", "isolated",
