@@ -68,9 +68,11 @@ def find_config(start_path: Optional[Path] = None) -> Optional[Path]:
     """Find emergence.json config file searching upward from start path.
     
     Search order:
+    0. EMERGENCE_CONFIG environment variable (if set)
     1. Start path (or current directory)
     2. Parent directories up to root
-    3. ~/.emergence/ directory
+    3. ~/.openclaw/workspace/ directory
+    4. ~/.emergence/ directory
     
     Args:
         start_path: Where to start searching (default: current directory)
@@ -78,6 +80,13 @@ def find_config(start_path: Optional[Path] = None) -> Optional[Path]:
     Returns:
         Path to config file, or None if not found
     """
+    # Check EMERGENCE_CONFIG env var first
+    env_config = os.environ.get("EMERGENCE_CONFIG")
+    if env_config:
+        env_path = Path(env_config)
+        if env_path.exists():
+            return env_path
+    
     if start_path is None:
         start_path = Path.cwd()
     
@@ -163,6 +172,9 @@ def load_config(path: Optional[Path] = None) -> dict:
         else:
             merged[key] = value
     
+    # Store config file location for path resolution
+    merged["_config_dir"] = str(path.resolve().parent)
+    
     return merged
 
 
@@ -217,6 +229,22 @@ def validate_config(config: dict) -> list[str]:
     return errors
 
 
+def resolve_workspace(config: dict) -> Path:
+    """Resolve the workspace path from config, relative to config file location.
+    
+    Args:
+        config: Configuration dictionary (with optional _config_dir from load_config)
+        
+    Returns:
+        Absolute workspace path
+    """
+    config_dir = Path(config.get("_config_dir", "."))
+    workspace = Path(config.get("paths", {}).get("workspace", "."))
+    if not workspace.is_absolute():
+        workspace = config_dir / workspace
+    return workspace.resolve()
+
+
 def get_state_path(config: dict, filename: str = "drives.json") -> Path:
     """Resolve state file path from configuration.
     
@@ -233,9 +261,9 @@ def get_state_path(config: dict, filename: str = "drives.json") -> Path:
         PosixPath('.emergence/state/drives.json')
     """
     state_dir = config.get("paths", {}).get("state", ".emergence/state")
-    workspace = config.get("paths", {}).get("workspace", ".")
+    workspace_path = resolve_workspace(config)
     
-    state_path = Path(workspace) / state_dir / filename
+    state_path = workspace_path / state_dir / filename
     return state_path.resolve()
 
 

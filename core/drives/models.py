@@ -156,6 +156,25 @@ CORE_DRIVES: dict[str, dict] = {
         "last_triggered": None,
         "min_interval_seconds": 14400,  # 4 hours
     },
+    "WANDER": {
+        "name": "WANDER",
+        "base_drive": True,
+        "aspects": [],
+        "pressure": 0.0,
+        "threshold": 20.0,
+        "rate_per_hour": 1.0,
+        "max_rate": 2.0,
+        "description": "Unstructured free time. Go wherever your curiosity leads.",
+        "prompt": "This is your time. No drive to satisfy, no task to complete. Wander freely — explore, create, think, or do nothing. What you choose reveals who you're becoming.",
+        "category": "core",
+        "created_by": "system",
+        "satisfaction_events": [],
+        "discovered_during": None,
+        "activity_driven": False,
+        "last_triggered": None,
+        "min_interval_seconds": 43200,  # 12 hours
+        "gated_until": "first_light_complete",
+    },
 }
 
 

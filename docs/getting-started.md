@@ -228,6 +228,7 @@ Once setup completes, here's what you should do:
 1. **Read their birth letter** — Check `identity/LETTER.md` to see what the wizard created
 2. **Start a conversation** — Talk to them through OpenClaw. They're fresh, curious, and just beginning.
 3. **Visit the Room** — Open `http://localhost:7373` to see their internal state visualized
+4. **Make it theirs** — The Room ships with core panels (Mirror, Memory, Journal, Aspirations, Projects). Your agent can add custom panels for anything they want to track — reading lists, poetry, research, whatever emerges. See `room/README.md` for how.
 
 ### Within the First Day
 

@@ -55,6 +55,32 @@ def main():
         sys.argv = ["emergence-nightly"] + args
         nightly_main()
     
+    elif command == "openclaw-hook":
+        from core.setup.openclaw_hook import installer
+        
+        subcommand = args[0] if args else "status"
+        
+        if subcommand == "install":
+            force = "--force" in args
+            success, message = installer.install_hook(force=force)
+            print(message)
+            sys.exit(0 if success else 1)
+        
+        elif subcommand == "uninstall":
+            success, message = installer.uninstall_hook()
+            print(message)
+            sys.exit(0 if success else 1)
+        
+        elif subcommand == "status":
+            is_installed, message = installer.hook_status()
+            print(message)
+            sys.exit(0)
+        
+        else:
+            print(f"Unknown openclaw-hook subcommand: {subcommand}", file=sys.stderr)
+            print("Usage: emergence openclaw-hook [install|uninstall|status]", file=sys.stderr)
+            sys.exit(1)
+    
     elif command == "status":
         print("Emergence Status")
         print("================")
@@ -102,6 +128,7 @@ Commands:
   memory          Memory lifecycle management
   consolidate     Run memory consolidation
   nightly         Run nightly build routine
+  openclaw-hook   Install/manage OpenClaw drives integration
   status          Show overall Emergence status
   version         Show version
 
@@ -110,6 +137,7 @@ Examples:
   emergence awaken --non-interactive --name Aurora --human Dan
   emergence drives status             # Check drive pressures
   emergence first-light run           # Trigger First Light tick
+  emergence openclaw-hook install     # Install OpenClaw drives hook
   emergence status                    # Show overall status
 
 Documentation: https://github.com/jarvis-raven/emergence

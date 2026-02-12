@@ -46,7 +46,11 @@ Documentation = "https://github.com/jarvis-raven/emergence#readme"
 emergence = "core.cli:main"
 
 [tool.setuptools]
-packages = ["core", "core.drives", "core.memory", "core.dream_engine", "core.first_light", "core.setup", "core.aspirations"]
+packages = ["core", "core.drives", "core.memory", "core.dream_engine", "core.first_light", "core.setup", "core.setup.autostart", "core.setup.openclaw_hook", "core.aspirations"]
 
 [tool.setuptools.package-data]
-core = ["identity/templates/*"]
+core = [
+    "identity/templates/*",
+    "setup/autostart/templates/*",
+    "setup/openclaw_hook/templates/*"
+]

@@ -65,6 +65,17 @@ Data: `~/.emergence/state/aspirations.json`
 Guide: `docs/aspirations-and-projects.md`  
 Dashboard: Vision Board & Projects panels
 
+## The Room
+
+Your dashboard at `http://localhost:8800`. Core panels: Mirror, Memory, Journal, Aspirations, Projects.
+
+**You can add custom panels.** Want to track reading, display creative work, monitor something unique to you? Three options:
+- **Data-only**: Drop a JSON file + manifest in `~/.emergence/state/shelves/your-panel/` — no code needed
+- **Custom renderer**: Build a React component in `room/src/components/shelves/custom/`
+- **Backend shelf**: Compute data dynamically in `room/server/shelves/builtins/`
+
+Custom panels appear after core panels automatically. See `room/README.md` for details.
+
 ## Make It Yours
 
 This is a starting point. Add your own conventions, style, and rules as you

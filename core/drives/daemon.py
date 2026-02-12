@@ -18,6 +18,7 @@ from .engine import tick_all_drives, check_thresholds
 from .pidfile import acquire_pidfile, remove_pid, read_pid, is_running
 from .defaults import ensure_core_drives
 from .satisfaction import check_completed_sessions
+from .runtime_state import extract_runtime_state, save_runtime_state
 
 
 # Global flag for shutdown signal handling
@@ -177,6 +178,14 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
         except Exception as e:
             result["errors"].append(f"Failed to save state: {e}")
             write_log(log_path, f"State save error: {e}", "ERROR")
+        
+        # Write lightweight runtime state (drives-state.json)
+        try:
+            runtime_state = extract_runtime_state(state)
+            runtime_path = state_path.parent / "drives-state.json"
+            save_runtime_state(runtime_path, runtime_state)
+        except Exception as e:
+            write_log(log_path, f"Runtime state write error: {e}", "WARN")
     
     return result
 
