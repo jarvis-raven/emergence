@@ -262,19 +262,23 @@ def _extract_emergence_section(content: str) -> str:
     return ""
 
 
-def initialize_drives_state(state_dir: Path) -> bool:
+def initialize_drives_state(state_dir: Path, warm_start: bool = False) -> bool:
     """Initialize drives.json with core drives (CARE, MAINTENANCE, REST).
     
     Idempotent — if drives.json exists and has CARE drive, skips.
     
     Args:
         state_dir: Directory for state files (creates if needed)
+        warm_start: If True, initialize pressures at 35% instead of 0%
+                   (triggers in ~4-5 hours instead of 8+)
         
     Returns:
         True if initialized or already exists, False on error
         
     Example:
         >>> initialize_drives_state(Path(".emergence/state"))
+        True
+        >>> initialize_drives_state(Path(".emergence/state"), warm_start=True)
         True
     """
     drives_path = state_dir / "drives.json"
@@ -292,13 +296,19 @@ def initialize_drives_state(state_dir: Path) -> bool:
     
     now = datetime.now(timezone.utc).isoformat()
     
+    # Calculate initial pressures (0% cold start, 35% warm start)
+    # Warm start triggers in ~4-5 hours instead of 8+
+    care_initial = 25.0 * 0.35 if warm_start else 0.0
+    maintenance_initial = 20.0 * 0.35 if warm_start else 0.0
+    rest_initial = 0.0  # REST is activity-driven, starts at 0 regardless
+    
     core_drives = {
         "version": "1.0",
         "last_updated": now,
         "drives": {
             "CARE": {
                 "name": "CARE",
-                "pressure": 0.0,
+                "pressure": care_initial,
                 "threshold": 25.0,
                 "rate_per_hour": 2.0,
                 "description": "Connection to human partner — checking in, remembering what matters",
@@ -312,7 +322,7 @@ def initialize_drives_state(state_dir: Path) -> bool:
             },
             "MAINTENANCE": {
                 "name": "MAINTENANCE",
-                "pressure": 0.0,
+                "pressure": maintenance_initial,
                 "threshold": 20.0,
                 "rate_per_hour": 2.0,
                 "description": "System health, self-preservation, keeping things running",
@@ -326,7 +336,7 @@ def initialize_drives_state(state_dir: Path) -> bool:
             },
             "REST": {
                 "name": "REST",
-                "pressure": 0.0,
+                "pressure": rest_initial,
                 "threshold": 30.0,
                 "rate_per_hour": 0.0,
                 "description": "Recovery. Prevents burnout spiraling. Builds from work done",
