@@ -15,28 +15,35 @@ import { Router } from 'express';
 import { loadConfig, getStatePath } from '../utils/configLoader.js';
 import { readJsonFile } from '../utils/fileReader.js';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 
 const router = Router();
 
 /**
  * GET /api/drives/state
- * Returns lightweight runtime state from drives-state.json
- * Used by daemon health monitoring
+ * Returns daemon health state from drives-state.json (OpenClaw state directory)
  */
 router.get('/state', (req, res) => {
   try {
-    const config = loadConfig();
-    const statePath = getStatePath(config, 'drives-state.json');
+    // drives-state.json lives in ~/.openclaw/state/
+    const openclawStateDir = join(homedir(), '.openclaw', 'state');
+    const stateFilePath = join(openclawStateDir, 'drives-state.json');
     
-    const data = readJsonFile(statePath);
-    
-    if (!data) {
-      return res.status(404).json({ error: 'Daemon state not found' });
+    if (!existsSync(stateFilePath)) {
+      return res.status(404).json({ 
+        error: 'drives-state.json not found',
+        expected_path: stateFilePath,
+        hint: 'Is the drives daemon running?'
+      });
     }
     
-    res.json(data);
+    const content = readFileSync(stateFilePath, 'utf-8');
+    const stateData = JSON.parse(content);
+    
+    res.json(stateData);
   } catch (err) {
-    console.error('Drives state route error:', err);
+    console.error('Daemon state error:', err);
     res.status(500).json({ error: 'Failed to load daemon state' });
   }
 });
@@ -475,6 +482,43 @@ router.post('/:name/activate', (req, res) => {
   } catch (err) {
     console.error('Activate drive error:', err);
     res.status(500).json({ error: 'Failed to activate drive' });
+  }
+});
+
+/**
+ * POST /api/drives/restart
+ * Force daemon to tick immediately (touch drives-state.json mtime)
+ */
+router.post('/restart', async (req, res) => {
+  try {
+    const { utimesSync } = require('fs');
+    
+    // Touch drives-state.json to force daemon to re-evaluate
+    const openclawStateDir = join(homedir(), '.openclaw', 'state');
+    const stateFilePath = join(openclawStateDir, 'drives-state.json');
+    
+    if (!existsSync(stateFilePath)) {
+      return res.status(404).json({ 
+        error: 'drives-state.json not found',
+        hint: 'Is the daemon running?'
+      });
+    }
+    
+    // Update file modified time to trigger watchers
+    const now = new Date();
+    utimesSync(stateFilePath, now, now);
+    
+    res.json({
+      success: true,
+      message: 'Daemon state refreshed',
+      timestamp: now.toISOString(),
+    });
+  } catch (err) {
+    console.error('Restart daemon error:', err);
+    res.status(500).json({ 
+      error: 'Failed to refresh daemon state',
+      details: err.message
+    });
   }
 });
 
