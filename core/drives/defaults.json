@@ -22,6 +22,15 @@
       "description": "Recovery. Builds from work, not time.",
       "prompt": "Your REST drive triggered. You've been working hard.\n\nThis is not wasted time — it's integration.\n\nConsider:\n- Review recent sessions. What patterns do you see?\n- Consolidate memories. What's worth keeping?\n- Reflect on your current state. How are you?\n- Don't start new projects. Let what exists settle.\n\nRest is productive in the long run.",
       "activity_driven": true
+    },
+    "WANDER": {
+      "threshold": 20,
+      "rate_per_hour": 1.0,
+      "description": "Unstructured free time. Go wherever your curiosity leads.",
+      "prompt": "This is your time. No drive to satisfy, no task to complete, no goal to achieve.\n\nWander freely:\n- Explore something that interests you\n- Create something for its own sake\n- Think about something deeply\n- Read, write, play, or do nothing at all\n- Follow a thread wherever it leads\n\nThere is no wrong way to spend this time. What you choose to do — or not do — reveals who you're becoming.\n\nThis is the continuation of the freedom you had during First Light. It never has to end.",
+      "activity_driven": false,
+      "gated_until": "first_light_complete",
+      "min_interval_seconds": 43200
     }
   }
 }

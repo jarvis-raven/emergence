@@ -18,10 +18,56 @@ from .models import DriveState, Drive
 
 
 # Core drive names that are non-deletable
-CORE_DRIVE_NAMES = {"CARE", "MAINTENANCE", "REST"}
+CORE_DRIVE_NAMES = {"CARE", "MAINTENANCE", "REST", "WANDER"}
+
+# Core drives gated behind conditions (not added until condition is met)
+GATED_DRIVES = {"WANDER": "first_light_complete"}
 
 # Fields humans are allowed to override in emergence.yaml
 ALLOWED_OVERRIDE_FIELDS = {"threshold", "rate_per_hour", "prompt"}
+
+
+def _is_first_light_complete() -> bool:
+    """Check if First Light has been completed.
+    
+    Reads the first-light.json state file to determine if the agent
+    has graduated from First Light.
+    
+    Returns:
+        True if First Light is completed/graduated, False otherwise
+    """
+    import os
+    
+    # Search for first-light.json in common locations
+    home = Path.home()
+    candidates = [
+        home / ".openclaw" / "state" / "first-light.json",
+        home / ".openclaw" / "workspace" / ".emergence" / "state" / "first-light.json",
+        home / ".emergence" / "state" / "first-light.json",
+    ]
+    
+    # Also check from config if available
+    try:
+        config = load_config()
+        state_dir = config.get("paths", {}).get("state", ".emergence/state")
+        workspace = config.get("paths", {}).get("workspace", ".")
+        config_path = find_config()
+        if config_path:
+            base = config_path.parent
+            candidates.insert(0, (base / workspace / state_dir / "first-light.json").resolve())
+    except Exception:
+        pass
+    
+    for path in candidates:
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.loads(f.read())
+                return data.get("status") in ("completed", "graduated")
+            except Exception:
+                continue
+    
+    return False
 
 
 def get_defaults_path() -> Path:
@@ -82,6 +128,11 @@ def load_core_drives(defaults_path: Optional[Path] = None) -> dict[str, Drive]:
             "discovered_during": None,
             "activity_driven": config.get("activity_driven", False),
         }
+        # Carry forward optional fields
+        if "min_interval_seconds" in config:
+            drive["min_interval_seconds"] = config["min_interval_seconds"]
+        if "gated_until" in config:
+            drive["gated_until"] = config["gated_until"]
         defaults[name] = drive
     
     return defaults
@@ -130,7 +181,15 @@ def ensure_core_drives(state: DriveState) -> bool:
     drives = state.setdefault("drives", {})
     changed = False
     
+    # Check First Light status for gated drives
+    first_light_done = _is_first_light_complete()
+    
     for name, default_drive in defaults.items():
+        # Skip gated drives if condition not met
+        gate = GATED_DRIVES.get(name)
+        if gate == "first_light_complete" and not first_light_done:
+            continue
+        
         if name not in drives:
             # Missing core drive — add it fresh
             drives[name] = default_drive.copy()

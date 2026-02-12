@@ -12,7 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 const DRIVE_EMOJI = {
   CARE: '💚', CURIOSITY: '🔍', CREATIVE: '🎨', SOCIAL: '💬',
   MAINTENANCE: '🔧', REST: '😴', LEARNING: '📚', PLAY: '🎮',
-  EMBODIMENT: '👁️', READING: '📖', ANXIETY: '😰',
+  EMBODIMENT: '👁️', READING: '📖', ANXIETY: '😰', WANDER: '🌿',
 };
 
 const DRIVE_COLORS = {
@@ -27,6 +27,7 @@ const DRIVE_COLORS = {
   EMBODIMENT: 'bg-amber-500/20 text-amber-400',
   READING: 'bg-cyan-500/20 text-cyan-400',
   ANXIETY: 'bg-red-500/20 text-red-400',
+  WANDER: 'bg-emerald-500/20 text-emerald-400',
 };
 
 function getDriveEmoji(drive) {
