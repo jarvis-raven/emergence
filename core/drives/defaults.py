@@ -37,6 +37,7 @@ def _is_first_light_complete() -> bool:
         True if First Light is completed/graduated, False otherwise
     """
     import os
+    from .config import load_config, find_config
     
     # Search for first-light.json in common locations
     home = Path.home()
