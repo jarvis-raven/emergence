@@ -60,6 +60,15 @@ core/setup/init_wizard.py
 core/setup/kickoff.py
 core/setup/model_pricing.py
 core/setup/prereq.py
+core/setup/autostart/__init__.py
+core/setup/autostart/installer.py
+core/setup/autostart/templates/__init__.py
+core/setup/autostart/templates/launchd.plist
+core/setup/autostart/templates/systemd.service
+core/setup/openclaw_hook/__init__.py
+core/setup/openclaw_hook/installer.py
+core/setup/openclaw_hook/templates/HOOK.md
+core/setup/openclaw_hook/templates/handler.ts
 emergence_ai.egg-info/PKG-INFO
 emergence_ai.egg-info/SOURCES.txt
 emergence_ai.egg-info/dependency_links.txt
