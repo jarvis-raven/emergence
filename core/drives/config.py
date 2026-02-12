@@ -68,9 +68,11 @@ def find_config(start_path: Optional[Path] = None) -> Optional[Path]:
     """Find emergence.json config file searching upward from start path.
     
     Search order:
+    0. EMERGENCE_CONFIG environment variable (if set)
     1. Start path (or current directory)
     2. Parent directories up to root
-    3. ~/.emergence/ directory
+    3. ~/.openclaw/workspace/ directory
+    4. ~/.emergence/ directory
     
     Args:
         start_path: Where to start searching (default: current directory)
@@ -78,6 +80,13 @@ def find_config(start_path: Optional[Path] = None) -> Optional[Path]:
     Returns:
         Path to config file, or None if not found
     """
+    # Check EMERGENCE_CONFIG env var first
+    env_config = os.environ.get("EMERGENCE_CONFIG")
+    if env_config:
+        env_path = Path(env_config)
+        if env_path.exists():
+            return env_path
+    
     if start_path is None:
         start_path = Path.cwd()
     
