@@ -20,7 +20,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: './index.html',
-        libraryShelfView: './src/components/shelves/LibraryShelfView.jsx',
+        libraryShelfView: './src/components/shelves/custom/LibraryShelfView.jsx',
       },
     },
   },

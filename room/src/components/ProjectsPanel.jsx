@@ -168,27 +168,12 @@ export default function ProjectsPanel() {
 
   return (
     <div className="bg-surface rounded-xl p-4 h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🚀</span>
-          <span className="text-sm font-medium text-textMuted uppercase tracking-wider">Projects</span>
+      {/* Subheader */}
+      {!loading && !error && (
+        <div className="flex items-center justify-end mb-3">
+          <span className="text-xs text-textMuted/60">{projects.length} total</span>
         </div>
-        <div className="flex items-center gap-2">
-          {!loading && !error && (
-            <span className="text-xs text-textMuted/60">{projects.length} total</span>
-          )}
-          <button
-            onClick={fetchData}
-            className="p-2 text-textMuted hover:text-text transition-colors rounded-lg hover:bg-background/50"
-            title="Refresh"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto pr-1 min-h-0 space-y-4">
