@@ -246,6 +246,17 @@ def run_daemon(
     # Setup signal handlers
     setup_signals()
     
+    # Detect openclaw binary path (needed for spawning sessions via CLI)
+    from .spawn import detect_openclaw_path
+    if not config.get("drives", {}).get("openclaw_path"):
+        openclaw_path = detect_openclaw_path()
+        if openclaw_path:
+            config["_openclaw_path"] = openclaw_path  # Store in-memory for this session
+            write_log(log_path, f"Detected openclaw: {openclaw_path}", "INFO")
+        else:
+            write_log(log_path, "Warning: openclaw binary not found in PATH", "WARN")
+            write_log(log_path, "Session spawning via CLI may fail. Set drives.openclaw_path in config.", "WARN")
+    
     # Log startup
     tick_interval = config.get("drives", {}).get("tick_interval", 1)
     write_log(log_path, f"Daemon started (tick interval: {tick_interval}s)", "INFO")

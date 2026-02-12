@@ -6,6 +6,7 @@ spawning isolated sessions when drive pressures exceed thresholds.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -15,6 +16,49 @@ from pathlib import Path
 from typing import Optional
 
 from .models import DriveState
+
+
+def detect_openclaw_path() -> Optional[str]:
+    """Detect the full path to the openclaw binary.
+    
+    Search order:
+    1. Config-specified path (drives.openclaw_path)
+    2. shutil.which('openclaw') - searches PATH
+    3. Common npm global bin directories
+    
+    Returns:
+        Full path to openclaw binary, or None if not found
+        
+    Examples:
+        >>> path = detect_openclaw_path()
+        >>> path is not None or "openclaw not installed"
+        True
+    """
+    # Try shutil.which first (searches PATH)
+    openclaw_bin = shutil.which("openclaw")
+    if openclaw_bin:
+        return openclaw_bin
+    
+    # Fallback: check common npm global bin locations
+    common_paths = [
+        Path.home() / ".npm-global" / "bin" / "openclaw",
+        Path.home() / ".nvm" / "current" / "bin" / "openclaw",  # nvm active version
+        Path.home() / ".nvm" / "versions" / "node" / "*" / "bin" / "openclaw",  # nvm fallback
+        Path("/usr/local/bin/openclaw"),
+        Path.home() / ".local" / "bin" / "openclaw",
+    ]
+    
+    for path in common_paths:
+        # Handle glob patterns for nvm
+        if "*" in str(path):
+            from glob import glob
+            matches = glob(str(path))
+            if matches:
+                return matches[0]  # Use first match
+        elif path.exists() and os.access(path, os.X_OK):
+            return str(path)
+    
+    return None
 
 
 def is_quiet_hours(config: dict) -> bool:
@@ -112,6 +156,18 @@ def build_session_prompt(
     session_dir = config.get("memory", {}).get("session_dir", "memory/sessions")
     session_file = f"{session_dir}/{file_date}-{file_time}-{drive_name}.md"
     
+    # Get workspace path dynamically
+    # If config has _config_dir (from load_config), use it to resolve relative paths
+    config_dir = Path(config.get("_config_dir", "."))
+    workspace_rel = Path(config.get("paths", {}).get("workspace", "."))
+    if not workspace_rel.is_absolute():
+        workspace = (config_dir / workspace_rel).resolve()
+    else:
+        workspace = workspace_rel.resolve()
+    
+    # Use the same python that's running this code (handles venv correctly)
+    python_path = sys.executable
+    
     return f"""AUTONOMOUS SESSION (triggered by {drive_name} drive)
 Pressure: {pressure:.1f}/{threshold}
 Timestamp: {now.isoformat()}
@@ -141,7 +197,7 @@ Full content of your session...
 
 IMPORTANT: When your session is complete, signal completion by running:
 ```
-cd ~/.openclaw/workspace/projects/emergence && python3 -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}', 'agent:main:cron:drive-{drive_name.lower()}')"
+cd {workspace} && "{python_path}" -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}', 'agent:main:cron:drive-{drive_name.lower()}')"
 ```
 This triggers instant satisfaction of your drive. Without it, satisfaction is delayed.
 """
@@ -255,9 +311,17 @@ def spawn_via_cli(
     model = config.get("drives", {}).get("session_model")
     announce = config.get("drives", {}).get("announce_session", False)
     
+    # Get openclaw binary path
+    # Priority: config-specified > auto-detected > fallback to "openclaw"
+    openclaw_path = config.get("drives", {}).get("openclaw_path")
+    if not openclaw_path:
+        openclaw_path = config.get("_openclaw_path")  # Auto-detected at daemon startup
+    if not openclaw_path:
+        openclaw_path = "openclaw"  # Fallback (will fail if not in PATH)
+    
     # Build the cron command
     cmd = [
-        "openclaw", "cron", "add",
+        openclaw_path, "cron", "add",
         "--name", f"drive-{drive_name.lower()}",
         "--at", "10s",
         "--session", "isolated",
