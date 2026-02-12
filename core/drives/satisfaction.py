@@ -167,6 +167,9 @@ def assess_depth(breadcrumb: dict) -> str:
 def _check_file_writes(since_epoch: int) -> bool:
     """Check if any memory/identity files were modified since the given time.
     
+    Recursively checks subdirectories of memory/ to catch session logs,
+    daily notes, and other files in nested directories.
+    
     Args:
         since_epoch: Unix timestamp to check modifications after
         
@@ -188,6 +191,24 @@ def _check_file_writes(since_epoch: int) -> bool:
         workspace / "SELF.md",
     ]
     
+    def _check_recursive(path: Path) -> bool:
+        """Recursively check a directory tree for modified files."""
+        try:
+            for item in path.iterdir():
+                if item.is_file():
+                    try:
+                        if item.stat().st_mtime > since_epoch:
+                            return True
+                    except OSError:
+                        continue
+                elif item.is_dir():
+                    # Recurse into subdirectories
+                    if _check_recursive(item):
+                        return True
+        except OSError:
+            return False
+        return False
+    
     for check_path in check_paths:
         if check_path.is_file():
             try:
@@ -196,12 +217,8 @@ def _check_file_writes(since_epoch: int) -> bool:
             except OSError:
                 continue
         elif check_path.is_dir():
-            try:
-                for f in check_path.iterdir():
-                    if f.is_file() and f.stat().st_mtime > since_epoch:
-                        return True
-            except OSError:
-                continue
+            if _check_recursive(check_path):
+                return True
     
     return False
 
