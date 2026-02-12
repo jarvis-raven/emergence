@@ -30,7 +30,7 @@ const NAV_ITEMS = [
 /**
  * Header component with agent name and hamburger menu
  */
-function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange, showMenu = true, onHealthClick }) {
+function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange, onHealthClick, showMenu = true }) {
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -83,17 +83,6 @@ function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange
             </button>
           )}
 
-          {/* Daemon Health */}
-          <button
-            onClick={onHealthClick}
-            className="p-2 text-textMuted hover:text-text transition-colors rounded-lg hover:bg-surface/50"
-            title="Daemon Health"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-
           {/* Refresh */}
           <button
             onClick={() => window.location.reload()}
@@ -102,6 +91,17 @@ function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+
+          {/* Daemon Health — Desktop only */}
+          <button
+            onClick={onHealthClick}
+            className="hidden lg:flex p-2 text-textMuted hover:text-text transition-colors rounded-lg hover:bg-surface/50"
+            title="Daemon Health"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </button>
 
@@ -141,12 +141,13 @@ function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange
                   </button>
                 ))}
                 
-                {/* Daemon Health (mobile menu) */}
+                {/* Daemon Health (mobile only) */}
+                <div className="border-t border-surface/50 my-1 lg:hidden" />
                 <button
                   onClick={() => { onHealthClick(); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-textMuted hover:text-text hover:bg-background/50 transition-colors border-t border-surface/50"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-textMuted hover:text-text hover:bg-background/50 transition-colors lg:hidden"
                 >
-                  <span>💚</span>
+                  <span>🏥</span>
                   <span>Daemon Health</span>
                 </button>
               </div>
@@ -254,8 +255,8 @@ function App() {
           onRetry={refetchConfig}
           activePanel={activePanel}
           onPanelChange={setActivePanel}
-          showMenu={false}
           onHealthClick={() => setHealthDrawerOpen(true)}
+          showMenu={false}
         />
 
         <main className="flex-1 flex gap-4 p-4 min-h-0 max-w-[1600px] mx-auto w-full">
@@ -279,8 +280,8 @@ function App() {
           onRetry={refetchConfig}
           activePanel={activePanel}
           onPanelChange={setActivePanel}
-          showMenu={true}
           onHealthClick={() => setHealthDrawerOpen(true)}
+          showMenu={true}
         />
 
         <main className="flex-1 overflow-y-auto p-2">
