@@ -5,6 +5,52 @@ All notable changes to Emergence will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-02-12
+
+### Added
+
+**Lightweight Runtime State (Drive Context Bloat Fix)**
+- Split drives.json into two files to prevent context bloat:
+  - `drives.json` - Full config (descriptions, prompts, history)
+  - `drives-state.json` - Minimal runtime (pressure, threshold, status, short description)
+- Reduces context size from ~15KB to ~500-1000 bytes for agents with many drives
+- New module: `core/drives/runtime_state.py`
+- Status command loads lightweight state first for faster response
+- Backwards compatible with existing installations
+
+**Drive Status Tool & Automatic Polling**
+- New `check_drive_status()` tool for agent self-introspection
+- Agents can answer "how are you doing?" with real drive data
+- Natural language formatting: "My CARE drive is at 88% (22/25)"
+- Automatic polling every 5 minutes or 10 turns during long sessions
+- Change detection for significant pressure changes (>2.0)
+- Threshold crossing alerts (🔥 when drive triggers)
+- New module: `core/drives/status_tool.py`
+
+**Custom Shelves with Gitignore Protection**
+- Separated built-in shelves (committed) from custom shelves (gitignored)
+- Built-in: Memory, Drives, Aspirations, etc.
+- Custom: Library, personal projects (in `room/src/components/shelves/custom/`)
+- Prevents repo updates from overwriting agent custom shelves
+- Example template provided for creating custom shelves
+
+**Room State Path Resolution Fix**
+- Room server now uses config-resolved path for drives.json
+- Supports workspace-based installations (not just ~/.openclaw/state/)
+- Fixes missing drives issue for agents with custom paths
+
+### Fixed
+
+**CLI Variable Name Bugs**
+- Fixed `NameError: name 'state' is not defined` in `cmd_status()` (PR #11)
+- Fixed `NameError: name 'COLOR_WARNING' is not defined` (PR #12)
+- Both bugs introduced in PR #9 refactoring, now resolved
+
+### Changed
+- `drives status` command loads ~500-1000 bytes instead of ~15KB
+- Faster response times for agents with many discovered drives
+- Better separation between runtime data and configuration
+
 ## [0.2.1] - 2026-02-11
 
 ### Fixed
