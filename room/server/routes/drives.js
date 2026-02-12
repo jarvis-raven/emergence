@@ -19,6 +19,29 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 const router = Router();
 
 /**
+ * GET /api/drives/state
+ * Returns lightweight runtime state from drives-state.json
+ * Used by daemon health monitoring
+ */
+router.get('/state', (req, res) => {
+  try {
+    const config = loadConfig();
+    const statePath = getStatePath(config, 'drives-state.json');
+    
+    const data = readJsonFile(statePath);
+    
+    if (!data) {
+      return res.status(404).json({ error: 'Daemon state not found' });
+    }
+    
+    res.json(data);
+  } catch (err) {
+    console.error('Drives state route error:', err);
+    res.status(500).json({ error: 'Failed to load daemon state' });
+  }
+});
+
+/**
  * GET /api/drives
  * Returns all drives with pressure, threshold, rate, triggered list
  */
