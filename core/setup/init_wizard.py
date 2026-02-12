@@ -200,7 +200,7 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
     parser.add_argument(
         "--warm-start",
         action="store_true",
-        help="Initialize drives at 35%% pressure (triggers in ~4-5 hours instead of 8+)"
+        help="Initialize drives at 35% pressure (triggers in ~4-5 hours instead of 8+)"
     )
     
     parser.add_argument(

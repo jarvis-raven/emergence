@@ -20,6 +20,9 @@ VERSION = "1.0.0"
 # Core drive definitions (from gates.py reference)
 CORE_DRIVES = ["CARE", "MAINTENANCE", "REST"]
 
+# Warm start configuration (Issue #22)
+WARM_START_RATIO = 0.35  # Initialize drives at 35% pressure
+
 # Template placeholders
 PLACEHOLDER_AGENT_NAME = "{{AGENT_NAME}}"
 PLACEHOLDER_HUMAN_NAME = "{{HUMAN_NAME}}"
@@ -265,7 +268,8 @@ def _extract_emergence_section(content: str) -> str:
 def initialize_drives_state(state_dir: Path, warm_start: bool = False) -> bool:
     """Initialize drives.json with core drives (CARE, MAINTENANCE, REST).
     
-    Idempotent — if drives.json exists and has CARE drive, skips.
+    Idempotent — if drives.json exists and has CARE drive, skips unless
+    warm_start is explicitly requested.
     
     Args:
         state_dir: Directory for state files (creates if needed)
@@ -284,23 +288,24 @@ def initialize_drives_state(state_dir: Path, warm_start: bool = False) -> bool:
     drives_path = state_dir / "drives.json"
     
     # Idempotent: if exists and has core drives, skip
+    # Note: warm_start only affects new initialization, not existing state
     if drives_path.exists():
         try:
             existing = json.loads(drives_path.read_text(encoding="utf-8"))
             if "drives" in existing and "CARE" in existing["drives"]:
+                # File exists and is valid - idempotent skip
                 return True
         except (json.JSONDecodeError, IOError):
-            pass  # Continue with initialization
+            pass  # Invalid file, continue with initialization
     
     state_dir.mkdir(parents=True, exist_ok=True)
     
     now = datetime.now(timezone.utc).isoformat()
     
-    # Calculate initial pressures (0% cold start, 35% warm start)
-    # Warm start triggers in ~4-5 hours instead of 8+
-    care_initial = 25.0 * 0.35 if warm_start else 0.0
-    maintenance_initial = 20.0 * 0.35 if warm_start else 0.0
-    rest_initial = 0.0  # REST is activity-driven, starts at 0 regardless
+    # Calculate initial pressures using constant ratio
+    # Cold start (0%) or warm start (35% of threshold)
+    care_initial = 25.0 * WARM_START_RATIO if warm_start else 0.0
+    maintenance_initial = 20.0 * WARM_START_RATIO if warm_start else 0.0
     
     core_drives = {
         "version": "1.0",
@@ -336,7 +341,7 @@ def initialize_drives_state(state_dir: Path, warm_start: bool = False) -> bool:
             },
             "REST": {
                 "name": "REST",
-                "pressure": rest_initial,
+                "pressure": 0.0,  # Activity-driven, always starts at 0
                 "threshold": 30.0,
                 "rate_per_hour": 0.0,
                 "description": "Recovery. Prevents burnout spiraling. Builds from work done",
