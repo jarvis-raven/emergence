@@ -121,7 +121,10 @@ export default function MemoryShelfView({ data }) {
                 <span className="text-sm font-medium text-text">
                   {formatDisplayDate(day.date)}
                 </span>
-                <span className="text-xs text-textMuted/60">{day.size}</span>
+                <div className="flex items-center gap-3 text-xs text-textMuted/60">
+                  {day.chunks > 0 && <span title="Embeddings">{day.chunks} chunks</span>}
+                  <span>{day.size}</span>
+                </div>
               </div>
               {day.preview && (
                 <p className="text-xs text-textMuted line-clamp-2">{day.preview}</p>

@@ -108,6 +108,25 @@ export const MemoryShelf = {
       size: formatBytes(getFileStats(join(dailyBasePath, f))?.size || 0),
     }));
     
+    // Per-file embedding chunk counts
+    const chunkCounts = {};
+    const home = process.env.HOME || process.env.USERPROFILE || '.';
+    const dbPath = join(home, '.openclaw', 'memory', 'main.sqlite');
+    if (existsSync(dbPath)) {
+      try {
+        const rows = execSync(
+          `sqlite3 "${dbPath}" "SELECT path, COUNT(*) FROM chunks WHERE path LIKE '%daily%' GROUP BY path;"`,
+          { timeout: 3000, encoding: 'utf-8' }
+        ).trim();
+        for (const row of rows.split('\n').filter(Boolean)) {
+          const [path, count] = row.split('|');
+          // Extract date from path like memory/daily/2026-02-12.md
+          const match = path.match(/(\d{4}-\d{2}-\d{2})\.md$/);
+          if (match) chunkCounts[match[1]] = parseInt(count, 10);
+        }
+      } catch {}
+    }
+
     // Full daily list (newest first) with preview
     const dailyList = [...sortedDaily].reverse().map(f => {
       const filePath = join(dailyBasePath, f);
@@ -125,13 +144,15 @@ export const MemoryShelf = {
           }
         }
       } catch {}
+      const date = f.replace('.md', '');
       return {
-        date: f.replace('.md', ''),
+        date,
         filename: f,
         size: formatBytes(stats?.size || 0),
         sizeBytes: stats?.size || 0,
         modified: stats?.mtime?.toISOString() || null,
         preview,
+        chunks: chunkCounts[date] || 0,
       };
     });
     
