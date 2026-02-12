@@ -122,52 +122,110 @@ export const MemoryShelf = {
       size: formatBytes(getFileStats(join(dailyBasePath, f))?.size || 0),
     }));
     
-    // Per-file embedding chunk counts
-    const chunkCounts = {};
+    // Per-file embedding chunk counts (by full path)
+    const chunkCountsByPath = {};
     const home = process.env.HOME || process.env.USERPROFILE || '.';
     const dbPath = join(home, '.openclaw', 'memory', 'main.sqlite');
     if (existsSync(dbPath)) {
       try {
         const rows = execSync(
-          `sqlite3 "${dbPath}" "SELECT path, COUNT(*) FROM chunks WHERE path LIKE '%daily%' GROUP BY path;"`,
-          { timeout: 3000, encoding: 'utf-8' }
+          `sqlite3 "${dbPath}" "SELECT path, COUNT(*) FROM chunks GROUP BY path;"`,
+          { timeout: 5000, encoding: 'utf-8' }
         ).trim();
         for (const row of rows.split('\n').filter(Boolean)) {
           const [path, count] = row.split('|');
-          // Extract date from path like memory/daily/2026-02-12.md
-          const match = path.match(/(\d{4}-\d{2}-\d{2})\.md$/);
-          if (match) chunkCounts[match[1]] = parseInt(count, 10);
+          chunkCountsByPath[path] = parseInt(count, 10);
         }
       } catch {}
     }
 
-    // Full daily list (newest first) with preview
-    const dailyList = [...sortedDaily].reverse().map(f => {
-      const filePath = join(dailyBasePath, f);
-      const stats = getFileStats(filePath);
-      let preview = '';
+    // Build complete file list from ALL memory subdirectories
+    const allFiles = [];
+    const CATEGORY_MAP = {
+      daily: { icon: '📅', label: 'daily' },
+      sessions: { icon: '🧪', label: 'session' },
+      changelog: { icon: '📋', label: 'changelog' },
+      correspondence: { icon: '✉️', label: 'correspondence' },
+      creative: { icon: '🎨', label: 'creative' },
+      dreams: { icon: '🌙', label: 'dream' },
+      'self-history': { icon: '🪞', label: 'self-history' },
+      'soul-history': { icon: '🪞', label: 'soul-history' },
+      todo: { icon: '✅', label: 'todo' },
+      bugs: { icon: '🐛', label: 'bug' },
+      archive: { icon: '📦', label: 'archive' },
+    };
+
+    // Helper to extract date from filename or mtime
+    function extractDate(filename, mtime) {
+      const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) return dateMatch[1];
+      if (mtime) return new Date(mtime).toISOString().slice(0, 10);
+      return null;
+    }
+
+    // Helper to get preview line
+    function getPreview(filePath) {
       try {
         const content = readFileSync(filePath, 'utf-8');
-        // Get first non-heading, non-empty line as preview
-        const lines = content.split('\n');
-        for (const line of lines) {
+        for (const line of content.split('\n')) {
           const trimmed = line.trim();
           if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('---')) {
-            preview = trimmed.slice(0, 120);
-            break;
+            return trimmed.slice(0, 120);
           }
         }
       } catch {}
-      const date = f.replace('.md', '');
-      return {
-        date,
+      return '';
+    }
+
+    // Scan each known subdirectory
+    for (const [subdir, meta] of Object.entries(CATEGORY_MAP)) {
+      const dirPath = getMemoryPath(config, subdir);
+      const files = listFiles(dirPath, /\.(md|json)$/);
+      for (const f of files) {
+        const filePath = join(dirPath, f);
+        const stats = getFileStats(filePath);
+        const date = extractDate(f, stats?.mtime);
+        allFiles.push({
+          date,
+          filename: f,
+          path: `memory/${subdir}/${f}`,
+          category: meta.label,
+          icon: meta.icon,
+          size: formatBytes(stats?.size || 0),
+          sizeBytes: stats?.size || 0,
+          modified: stats?.mtime?.toISOString() || null,
+          preview: getPreview(filePath),
+          chunks: chunkCountsByPath[`memory/${subdir}/${f}`] || 0,
+        });
+      }
+    }
+
+    // Also include root-level memory files (MEMORY.md etc.)
+    const rootFiles = listFiles(memoryDir, /\.md$/);
+    for (const f of rootFiles) {
+      if (/^\d{4}-\d{2}-\d{2}\.md$/.test(f)) continue; // Skip if daily pattern in root
+      const filePath = join(memoryDir, f);
+      const stats = getFileStats(filePath);
+      allFiles.push({
+        date: extractDate(f, stats?.mtime),
         filename: f,
+        path: `memory/${f}`,
+        category: 'memory',
+        icon: '🧠',
         size: formatBytes(stats?.size || 0),
         sizeBytes: stats?.size || 0,
         modified: stats?.mtime?.toISOString() || null,
-        preview,
-        chunks: chunkCounts[date] || 0,
-      };
+        preview: getPreview(filePath),
+        chunks: chunkCountsByPath[`memory/${f}`] || 0,
+      });
+    }
+
+    // Sort: newest first by date, then by modified
+    allFiles.sort((a, b) => {
+      if (a.date && b.date) return b.date.localeCompare(a.date);
+      if (a.date) return -1;
+      if (b.date) return 1;
+      return (b.modified || '').localeCompare(a.modified || '');
     });
     
     const totalSize = dailySize + sessionSize + dreamSize;
@@ -196,7 +254,7 @@ export const MemoryShelf = {
         size: formatBytes(totalSize),
       },
       recent: recentFiles,
-      dailyList,
+      allFiles,
       embeddings: await getEmbeddingStats(),
     };
   },

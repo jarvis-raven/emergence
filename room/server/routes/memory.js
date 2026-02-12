@@ -123,12 +123,10 @@ router.get('/stats', (req, res) => {
 /**
  * GET /api/memory/daily/:date
  * Returns the full markdown content of a daily memory file
- * :date format: YYYY-MM-DD
  */
 router.get('/daily/:date', (req, res) => {
   try {
     const { date } = req.params;
-    // Validate date format to prevent path traversal
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'Invalid date format' });
     }
@@ -138,20 +136,45 @@ router.get('/daily/:date', (req, res) => {
     const dailyDir = getMemoryPath(config, 'daily');
     const filename = `${date}.md`;
 
-    // Check daily/ subdirectory first, then memory root
     let content = readTextFile(join(dailyDir, filename));
-    if (!content) {
-      content = readTextFile(join(memoryDir, filename));
-    }
-
-    if (!content) {
-      return res.status(404).json({ error: 'Daily file not found' });
-    }
+    if (!content) content = readTextFile(join(memoryDir, filename));
+    if (!content) return res.status(404).json({ error: 'Daily file not found' });
 
     res.json({ date, body: content });
   } catch (err) {
     console.error('Memory daily route error:', err);
     res.status(500).json({ error: 'Failed to load daily file' });
+  }
+});
+
+/**
+ * GET /api/memory/file?path=memory/sessions/foo.md
+ * Returns the full content of any memory file by relative path
+ */
+router.get('/file', (req, res) => {
+  try {
+    const relPath = req.query.path;
+    // Security: prevent path traversal
+    if (!relPath || relPath.includes('..') || !relPath.match(/^[a-zA-Z0-9_\-\/\.]+$/)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const config = loadConfig();
+    const workspace = getWorkspacePath(config);
+    const fullPath = join(workspace, relPath);
+
+    // Must be within workspace
+    if (!fullPath.startsWith(workspace)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const content = readTextFile(fullPath);
+    if (!content) return res.status(404).json({ error: 'File not found' });
+
+    res.json({ path: relPath, body: content });
+  } catch (err) {
+    console.error('Memory file route error:', err);
+    res.status(500).json({ error: 'Failed to load file' });
   }
 });
 
