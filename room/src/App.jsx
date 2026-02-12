@@ -3,6 +3,7 @@ import { ThemeContext, defaultTheme } from './context/ThemeContext.jsx';
 import useConfig from './hooks/useConfig.js';
 import DriveSidebar from './components/DriveSidebar.jsx';
 import ShelfPanel from './components/ShelfPanel.jsx';
+import DaemonHealthDrawer from './components/DaemonHealthDrawer.jsx';
 
 // Panel imports
 import MirrorPanel from './components/MirrorPanel.jsx';
@@ -29,7 +30,7 @@ const NAV_ITEMS = [
 /**
  * Header component with agent name and hamburger menu
  */
-function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange, showMenu = true }) {
+function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange, showMenu = true, onHealthClick }) {
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -82,6 +83,17 @@ function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange
             </button>
           )}
 
+          {/* Daemon Health */}
+          <button
+            onClick={onHealthClick}
+            className="p-2 text-textMuted hover:text-text transition-colors rounded-lg hover:bg-surface/50"
+            title="Daemon Health"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+
           {/* Refresh */}
           <button
             onClick={() => window.location.reload()}
@@ -128,6 +140,15 @@ function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange
                     <span>{item.label}</span>
                   </button>
                 ))}
+                
+                {/* Daemon Health (mobile menu) */}
+                <button
+                  onClick={() => { onHealthClick(); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-textMuted hover:text-text hover:bg-background/50 transition-colors border-t border-surface/50"
+                >
+                  <span>💚</span>
+                  <span>Daemon Health</span>
+                </button>
               </div>
             )}
           </div>}
@@ -165,6 +186,7 @@ function App() {
   } = useConfig();
 
   const [activePanel, setActivePanel] = useState('home');
+  const [healthDrawerOpen, setHealthDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (agentName) {
@@ -233,6 +255,7 @@ function App() {
           activePanel={activePanel}
           onPanelChange={setActivePanel}
           showMenu={false}
+          onHealthClick={() => setHealthDrawerOpen(true)}
         />
 
         <main className="flex-1 flex gap-4 p-4 min-h-0 max-w-[1600px] mx-auto w-full">
@@ -257,6 +280,7 @@ function App() {
           activePanel={activePanel}
           onPanelChange={setActivePanel}
           showMenu={true}
+          onHealthClick={() => setHealthDrawerOpen(true)}
         />
 
         <main className="flex-1 overflow-y-auto p-2">
@@ -265,6 +289,12 @@ function App() {
           {BuiltinPanel && <BuiltinPanel agentName={agentName} />}
         </main>
       </div>
+
+      {/* Daemon Health Drawer */}
+      <DaemonHealthDrawer 
+        isOpen={healthDrawerOpen}
+        onClose={() => setHealthDrawerOpen(false)}
+      />
     </ThemeContext.Provider>
   );
 }
