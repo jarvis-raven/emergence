@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { renderMarkdown } from '../../utils/markdown';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -57,6 +57,9 @@ export default function MemoryShelfView({ data }) {
   const [modalBody, setModalBody] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef(null);
 
   if (!data) return null;
 
@@ -73,11 +76,30 @@ export default function MemoryShelfView({ data }) {
       .map(([cat, count]) => ({ category: cat, count }));
   }, [allFiles]);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e) => {
+      if (filterRef.current && !filterRef.current.contains(e.target)) setFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [filterOpen]);
+
   // Filtered file list
   const filteredFiles = useMemo(() => {
-    if (!activeFilter) return allFiles;
-    return allFiles.filter(f => f.category === activeFilter);
-  }, [allFiles, activeFilter]);
+    let files = activeFilter ? allFiles.filter(f => f.category === activeFilter) : allFiles;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      files = files.filter(f =>
+        (f.filename || '').toLowerCase().includes(q) ||
+        (f.preview || '').toLowerCase().includes(q) ||
+        (f.date || '').includes(q) ||
+        (f.category || '').toLowerCase().includes(q)
+      );
+    }
+    return files;
+  }, [allFiles, activeFilter, searchQuery]);
 
   const openFile = useCallback(async (file) => {
     setModalFile(file);
@@ -149,31 +171,65 @@ export default function MemoryShelfView({ data }) {
           {daysSinceFirst > 0 && <span>{daysSinceFirst} days of memory</span>}
         </div>
 
-        {/* Category filter tabs */}
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setActiveFilter(null)}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-              activeFilter === null
-                ? 'bg-primary/20 text-primary'
-                : 'bg-background/50 text-textMuted hover:text-text'
-            }`}
-          >
-            All ({allFiles.length})
-          </button>
-          {categories.map(({ category, count }) => (
+        {/* Search + filter row */}
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search memories..."
+              className="w-full bg-background/50 border border-surface rounded-lg px-3 py-1.5 text-sm text-text placeholder:text-textMuted/40 focus:outline-none focus:border-primary/50"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-textMuted hover:text-text text-xs"
+              >✕</button>
+            )}
+          </div>
+
+          {/* Category dropdown */}
+          <div ref={filterRef} className="relative shrink-0">
             <button
-              key={category}
-              onClick={() => setActiveFilter(activeFilter === category ? null : category)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                activeFilter === category
-                  ? 'bg-primary/20 text-primary'
-                  : TAG_COLORS[category] || 'bg-background/50 text-textMuted hover:text-text'
+              onClick={() => setFilterOpen(!filterOpen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                activeFilter
+                  ? 'border-primary/50 bg-primary/10 text-primary'
+                  : 'border-surface bg-background/50 text-textMuted hover:text-text'
               }`}
             >
-              {category} ({count})
+              <span>{activeFilter || 'All'}</span>
+              <span className="text-[10px]">▼</span>
             </button>
-          ))}
+
+            {filterOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-surface rounded-xl shadow-2xl py-1 z-50 max-h-64 overflow-y-auto">
+                <button
+                  onClick={() => { setActiveFilter(null); setFilterOpen(false); }}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
+                    !activeFilter ? 'bg-accent/15 text-accent' : 'text-textMuted hover:text-text hover:bg-background/50'
+                  }`}
+                >
+                  <span>All</span>
+                  <span className="text-textMuted/50">{allFiles.length}</span>
+                </button>
+                {categories.map(({ category, count }) => (
+                  <button
+                    key={category}
+                    onClick={() => { setActiveFilter(category); setFilterOpen(false); }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
+                      activeFilter === category ? 'bg-accent/15 text-accent' : 'text-textMuted hover:text-text hover:bg-background/50'
+                    }`}
+                  >
+                    <span className="capitalize">{category}</span>
+                    <span className="text-textMuted/50">{count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
