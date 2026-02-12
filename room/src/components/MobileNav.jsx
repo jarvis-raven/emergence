@@ -1,22 +1,21 @@
 /**
- * MobileNav — Bottom navigation for mobile devices (F026)
+ * MobileNav — Bottom navigation for mobile devices
  * 
- * Shows on screens < 768px. Five tabs matching The Room's panels.
- * Center tab (Drive) is elevated and highlighted.
+ * Shows on screens < 1024px. Tabs matching Room's panels.
+ * Center tab (Drives) is elevated and highlighted.
  */
 
 const tabs = [
   { id: 'mirror', icon: '🪞', label: 'Mirror' },
-  { id: 'workshop', icon: '🔧', label: 'Workshop' },
+  { id: 'journal', icon: '📓', label: 'Journal' },
   { id: 'drives', icon: '🧠', label: 'Home' },
-  { id: 'bookshelf', icon: '📚', label: 'Bookshelf' },
   { id: 'aspirations', icon: '✨', label: 'Aspirations' },
   { id: 'projects', icon: '🚀', label: 'Projects' },
 ]
 
 export default function MobileNav({ activeTab, onTabChange }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-slate-950 border-t border-slate-800/50">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-slate-950 border-t border-slate-800/50">
       <div
         className="flex justify-around items-end px-2 pt-1"
         style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}

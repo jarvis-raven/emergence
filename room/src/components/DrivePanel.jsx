@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useDrives } from '../hooks/useDrives.js';
 import { useDreams } from '../hooks/useDreams.js';
+import { getDriveColor } from '../context/ThemeContext.jsx';
 import ModeToggle from './ModeToggle.jsx';
-import PressureBar from './PressureBar.jsx';
 import DriveCard from './DriveCard.jsx';
 import DreamView from './DreamView.jsx';
 
@@ -222,46 +222,65 @@ export function DrivePanel({ agentName = 'My Agent' }) {
         {isAwake ? (
           /* Awake Mode: Drive Pressures */
           <div className="space-y-3 lg:space-y-6">
-            {/* All drives - Compact bar view (triggered drives highlighted inline) */}
-            <div className="space-y-3">
-              <h3 className="text-xs uppercase tracking-wider text-textMuted font-semibold">
-                All Drives
-              </h3>
-              
-              {/* Visual bar grid — tap a bar to expand its card */}
-              <div className="flex flex-wrap justify-center items-end gap-2 lg:gap-4 py-2 lg:py-4">
-                {drives.map((drive) => (
-                  <PressureBar
-                    key={drive.name}
-                    drive={drive}
-                    isHighest={drive.name === highestDrive?.name}
-                    onClick={() => setExpandedDrive(
-                      expandedDrive === drive.name ? null : drive.name
-                    )}
-                    showDetails={false}
-                  />
-                ))}
-              </div>
+            {/* All drives - Horizontal bar layout */}
+            <div className="space-y-1">
+              {drives.map((drive) => {
+                const { name, percentage, isTriggered } = drive;
+                const colors = getDriveColor(name);
+                const displayWidth = Math.min(percentage, 100);
+                const isHighest = drive.name === highestDrive?.name;
+                const isExpanded = expandedDrive === drive.name;
+                const statusIcon = isTriggered ? '🔥' : percentage >= 90 ? '⚡' : '';
 
-              {/* Expanded card for tapped drive, or hint */}
-              {expandedDrive ? (
-                <div className="mt-2">
-                  {drives.filter(d => d.name === expandedDrive).map(drive => (
-                    <DriveCard
-                      key={drive.name}
-                      drive={drive}
-                      isHighest={drive.name === highestDrive?.name}
-                      onSatisfy={handleSatisfy}
-                      satisfying={satisfyingDrive === drive.name}
-                      defaultExpanded={true}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-sm text-textMuted/50 py-2 lg:py-4">
-                  Tap a drive to see details
-                </p>
-              )}
+                return (
+                  <div key={name}>
+                    <div
+                      className={`
+                        group cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-200
+                        ${isExpanded
+                          ? 'bg-accent/10 border border-accent/30'
+                          : isTriggered
+                            ? 'bg-warning/10 border border-warning/30'
+                            : 'border border-transparent hover:bg-background/50'
+                        }
+                      `}
+                      onClick={() => setExpandedDrive(isExpanded ? null : name)}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          {statusIcon && <span className="text-[10px]">{statusIcon}</span>}
+                          <span className={`text-[11px] font-medium uppercase tracking-wider ${
+                            isTriggered ? 'text-warning' : isHighest ? 'text-accent' : 'text-textMuted'
+                          }`}>{name}</span>
+                        </div>
+                        <span className={`text-[11px] font-mono font-bold ${
+                          isTriggered ? 'text-warning' : percentage >= 70 ? 'text-text' : 'text-textMuted'
+                        }`}>{percentage}%</span>
+                      </div>
+                      <div className="relative h-2 bg-background/60 rounded-full overflow-hidden">
+                        <div
+                          className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out ${isTriggered ? 'animate-pulse' : ''}`}
+                          style={{
+                            width: `${displayWidth}%`,
+                            background: `linear-gradient(to right, ${colors.from}, ${colors.to})`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-1 mb-2 px-1">
+                        <DriveCard
+                          drive={drive}
+                          isHighest={isHighest}
+                          onSatisfy={handleSatisfy}
+                          satisfying={satisfyingDrive === name}
+                          defaultExpanded={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (

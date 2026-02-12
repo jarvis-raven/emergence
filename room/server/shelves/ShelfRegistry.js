@@ -70,6 +70,12 @@ export class ShelfRegistry {
           continue;
         }
         
+        // Skip custom shelves that duplicate a built-in shelf ID
+        if (this.builtins.has(manifest.id)) {
+          console.log(`Skipping custom shelf '${manifest.id}' — overridden by built-in`);
+          continue;
+        }
+
         this.custom.set(manifest.id, {
           manifest,
           isBuiltin: false,

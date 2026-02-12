@@ -3,6 +3,7 @@ README.md
 pyproject.toml
 core/__init__.py
 core/cli.py
+core/shelves_cli.py
 core/aspirations/__init__.py
 core/aspirations/__main__.py
 core/aspirations/cli.py
@@ -29,9 +30,11 @@ core/drives/ingest.py
 core/drives/models.py
 core/drives/pidfile.py
 core/drives/platform.py
+core/drives/runtime_state.py
 core/drives/satisfaction.py
 core/drives/spawn.py
 core/drives/state.py
+core/drives/status_tool.py
 core/drives/utils.py
 core/first_light/__init__.py
 core/first_light/__main__.py

@@ -47,8 +47,9 @@ export function DriveCard({
   isHighest = false, 
   onSatisfy,
   satisfying = false,
+  defaultExpanded = false,
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [showConfirm, setShowConfirm] = useState(false);
   const [flashSuccess, setFlashSuccess] = useState(false);
 
@@ -85,19 +86,21 @@ export function DriveCard({
         hover:border-primary/30
       `}
     >
-      {/* Collapsed view */}
+      {/* Header row */}
       <div 
-        className="p-4 flex items-center gap-4 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
+        className={`p-4 flex items-center gap-4 ${defaultExpanded ? '' : 'cursor-pointer'}`}
+        onClick={defaultExpanded ? undefined : () => setExpanded(!expanded)}
       >
-        {/* Pressure Bar */}
-        <div className="shrink-0">
-          <PressureBar 
-            drive={drive} 
-            isHighest={isHighest}
-            showDetails={false}
-          />
-        </div>
+        {/* Pressure Bar — only in collapsible mode when collapsed */}
+        {!defaultExpanded && !expanded && (
+          <div className="shrink-0">
+            <PressureBar 
+              drive={drive} 
+              isHighest={isHighest}
+              showDetails={false}
+            />
+          </div>
+        )}
 
         {/* Drive info */}
         <div className="flex-1 min-w-0">
@@ -118,8 +121,8 @@ export function DriveCard({
           )}
         </div>
 
-        {/* Satisfy button (collapsed) */}
-        {!showConfirm && drive.percentage > 0 && (
+        {/* Satisfy button (collapsed only, not in sidebar mode) */}
+        {!defaultExpanded && !expanded && !showConfirm && drive.percentage > 0 && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -140,16 +143,18 @@ export function DriveCard({
           </button>
         )}
 
-        {/* Expand indicator */}
-        <div 
-          className={`
-            text-textMuted transition-transform duration-200
-            ${expanded ? 'rotate-180' : ''}
-          `}
-          aria-hidden="true"
-        >
-          ▼
-        </div>
+        {/* Expand indicator — only in collapsible mode */}
+        {!defaultExpanded && (
+          <div 
+            className={`
+              text-textMuted transition-transform duration-200
+              ${expanded ? 'rotate-180' : ''}
+            `}
+            aria-hidden="true"
+          >
+            ▼
+          </div>
+        )}
       </div>
 
       {/* Confirmation dialog */}
@@ -181,14 +186,6 @@ export function DriveCard({
       {expanded && (
         <div className="px-4 pb-4 border-t border-surface pt-4">
           <div className="space-y-3">
-            {/* Description */}
-            {description && (
-              <div>
-                <h4 className="text-xs uppercase tracking-wider text-textMuted mb-1">Description</h4>
-                <p className="text-sm text-text">{description}</p>
-              </div>
-            )}
-
             {/* Prompt */}
             {prompt && (
               <div>
