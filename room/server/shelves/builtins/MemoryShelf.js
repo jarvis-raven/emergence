@@ -5,7 +5,8 @@
  */
 
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
 import { getMemoryPath, getWorkspacePath } from '../../utils/configLoader.js';
 import { listFiles, getFileStats } from '../../utils/fileReader.js';
 
@@ -18,6 +19,25 @@ function formatBytes(bytes) {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+/**
+ * Query embedding stats from OpenClaw memory sqlite
+ */
+function getEmbeddingStats() {
+  const home = process.env.HOME || process.env.USERPROFILE || '.';
+  const dbPath = join(home, '.openclaw', 'memory', 'main.sqlite');
+  if (!existsSync(dbPath)) return null;
+  try {
+    const result = execSync(
+      `sqlite3 "${dbPath}" "SELECT (SELECT COUNT(*) FROM chunks) as chunks, (SELECT COUNT(*) FROM files) as files;"`,
+      { timeout: 3000, encoding: 'utf-8' }
+    ).trim();
+    const [chunks, files] = result.split('|').map(Number);
+    return { chunks, files };
+  } catch {
+    return null;
+  }
 }
 
 export const MemoryShelf = {
@@ -142,7 +162,7 @@ export const MemoryShelf = {
       },
       recent: recentFiles,
       dailyList,
-      _dailyBasePath: dailyBasePath,
+      embeddings: await getEmbeddingStats(),
     };
   },
 };

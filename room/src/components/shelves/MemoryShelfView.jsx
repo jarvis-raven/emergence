@@ -8,16 +8,22 @@ const API_URL = import.meta.env.VITE_API_URL || '';
  */
 function formatDisplayDate(dateStr) {
   try {
-    const date = new Date(dateStr + 'T12:00:00');
+    // Compare date strings directly to avoid timezone issues
     const now = new Date();
-    const diffDays = Math.floor((now - date) / 86400000);
-    
+    const todayStr = now.toISOString().slice(0, 10);
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
+
+    const date = new Date(dateStr + 'T12:00:00');
     const weekday = date.toLocaleDateString('en-GB', { weekday: 'short' });
     const day = date.getDate();
     const month = date.toLocaleDateString('en-GB', { month: 'short' });
+
+    if (dateStr === todayStr) return `Today — ${weekday} ${day} ${month}`;
+    if (dateStr === yesterdayStr) return `Yesterday — ${weekday} ${day} ${month}`;
     
-    if (diffDays === 0) return `Today — ${weekday} ${day} ${month}`;
-    if (diffDays === 1) return `Yesterday — ${weekday} ${day} ${month}`;
+    const diffDays = Math.round((now - date) / 86400000);
     if (diffDays < 7) return `${weekday} ${day} ${month}`;
     return `${day} ${month} ${date.getFullYear()}`;
   } catch {
@@ -71,7 +77,7 @@ export default function MemoryShelfView({ data }) {
   return (
     <div className="space-y-4">
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         <div className="bg-background/50 rounded-lg p-2 text-center">
           <div className="text-sm font-semibold text-text">{data?.daily?.count || 0}</div>
           <div className="text-[10px] text-textMuted">Days</div>
@@ -88,6 +94,12 @@ export default function MemoryShelfView({ data }) {
           <div className="text-sm font-semibold text-text">{data?.total?.size || '0 B'}</div>
           <div className="text-[10px] text-textMuted">Total</div>
         </div>
+        {data?.embeddings && (
+          <div className="bg-background/50 rounded-lg p-2 text-center">
+            <div className="text-sm font-semibold text-text">{data.embeddings.chunks?.toLocaleString()}</div>
+            <div className="text-[10px] text-textMuted">Embeddings</div>
+          </div>
+        )}
       </div>
 
       {/* Timeline info */}
