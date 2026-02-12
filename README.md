@@ -40,25 +40,34 @@ Read more: [docs/philosophy.md](docs/philosophy.md)
 
 ### Installation
 
+**Option A: Install from PyPI** (recommended)
+
 ```bash
-# Install from PyPI
 pip install emergence-ai
 
 # Run the init wizard
-emergence init --fresh
+emergence init --mode fresh
 ```
 
-Or install from source:
+**Option B: Install from source** (for development)
 
 ```bash
 # Clone the repo
 git clone https://github.com/jarvis-raven/emergence.git
 cd emergence
+
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in editable mode (note the trailing dot!)
 pip install -e .
 
 # Run the init wizard
-emergence init --fresh
+emergence init --mode fresh
 ```
+
+> **Note:** Modern Linux distros (Ubuntu 23.04+, Fedora) block global pip installs. Always use a virtual environment when installing from source.
 
 The wizard will:
 1. Check prerequisites
@@ -216,6 +225,60 @@ emergence/
 - **React + Vite** — Room dashboard frontend
 - **TailwindCSS** — Room styling
 - **OpenClaw** — Runtime environment & session management
+
+---
+
+## Troubleshooting
+
+### Common Installation Issues
+
+**❌ `pip install -e: error: the following arguments are required: <path>`**
+
+You're missing the trailing dot! Use:
+```bash
+pip install -e .
+```
+(Note the dot at the end)
+
+**❌ `error: externally-managed-environment`**
+
+Modern Linux distros block global pip installs (PEP 668). Solution:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+**❌ `emergence: command not found` after installation**
+
+If installing from source in a venv, you need to activate it:
+```bash
+source venv/bin/activate  # Run this before using emergence commands
+```
+
+**❌ Daemon can't spawn sessions (`FileNotFoundError: 'openclaw'`)**
+
+The daemon couldn't find your openclaw installation. Solutions:
+1. **Automatic:** The daemon will try to detect it. Check `.emergence/logs/daemon.log`
+2. **Manual override:** Add to `emergence.json`:
+   ```json
+   {
+     "drives": {
+       "openclaw_path": "/path/to/your/openclaw"
+     }
+   }
+   ```
+
+**❌ Drive sessions fail with import errors**
+
+The completion script is using system python instead of venv python. This should be fixed automatically in v0.2.3+. If you're on an older version, upgrade:
+```bash
+pip install --upgrade emergence-ai
+```
+
+### Integration with OpenClaw
+
+See [docs/openclaw-integration.md](docs/openclaw-integration.md) for workspace setup patterns and configuration.
 
 ---
 

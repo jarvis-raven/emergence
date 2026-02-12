@@ -176,6 +176,22 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
     )
     
     parser.add_argument(
+        "--fresh",
+        action="store_const",
+        const="fresh",
+        dest="mode_flag",
+        help="Shorthand for --mode fresh (new agent setup)"
+    )
+    
+    parser.add_argument(
+        "--existing",
+        action="store_const",
+        const="existing",
+        dest="mode_flag",
+        help="Shorthand for --mode existing (add to OpenClaw workspace)"
+    )
+    
+    parser.add_argument(
         "--no-room",
         action="store_true",
         help="Skip Room dashboard setup"
@@ -210,6 +226,9 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
             parser.print_help(file=sys.stderr)
             sys.exit(EXIT_ERROR)
     
+    # Handle mode flags (--fresh / --existing override --mode)
+    agent_mode = parsed.mode_flag if parsed.mode_flag else parsed.mode
+    
     return {
         "interactive": not parsed.non_interactive,
         "name": parsed.name,
@@ -217,7 +236,7 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
         "why": parsed.why,
         "workspace": parsed.workspace.expanduser().resolve(),
         "auto_fix": parsed.auto_fix,
-        "agent_mode": parsed.mode,
+        "agent_mode": agent_mode,
         "no_room": parsed.no_room,
         "model": parsed.model
     }
