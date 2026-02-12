@@ -197,7 +197,7 @@ Full content of your session...
 
 IMPORTANT: When your session is complete, signal completion by running:
 ```
-cd {workspace} && "{python_path}" -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}', 'agent:main:cron:drive-{drive_name.lower()}')"
+cd {workspace} && "{python_path}" -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}')"
 ```
 This triggers instant satisfaction of your drive. Without it, satisfaction is delayed.
 """
@@ -209,7 +209,7 @@ def spawn_via_api(
     drive_name: str,
     pressure: float,
     threshold: float
-) -> bool:
+) -> Optional[str]:
     """Spawn session via OpenClaw Gateway API.
     
     Args:
@@ -220,7 +220,7 @@ def spawn_via_api(
         threshold: Drive's threshold level
         
     Returns:
-        True if session spawned successfully
+        Session key if spawned successfully, None otherwise
     """
     gateway_url = os.environ.get("OPENCLAW_GATEWAY_URL", "http://localhost:54646")
     gateway_token = os.environ.get("OPENCLAW_GATEWAY_TOKEN")
@@ -234,7 +234,7 @@ def spawn_via_api(
             pass
     
     if not gateway_token:
-        return False
+        return None
     
     # Get timeout from config
     timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
@@ -280,12 +280,16 @@ def spawn_via_api(
         
         with urllib.request.urlopen(req, timeout=30) as response:
             result = json.loads(response.read().decode("utf-8"))
-            return result.get("success", False) or result.get("id") is not None
+            job_id = result.get("id")
+            if job_id:
+                # Return the actual session key that OpenClaw will use
+                return f"agent:main:cron:{job_id}"
+            return None
             
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
-        return False
+        return None
     except Exception:
-        return False
+        return None
 
 
 def spawn_via_cli(
@@ -294,7 +298,7 @@ def spawn_via_cli(
     drive_name: str,
     pressure: float,
     threshold: float
-) -> bool:
+) -> Optional[str]:
     """Fallback: Spawn session via openclaw CLI.
     
     Args:
@@ -305,7 +309,7 @@ def spawn_via_cli(
         threshold: Drive's threshold level
         
     Returns:
-        True if session spawned successfully
+        Session key if spawned successfully, None otherwise
     """
     timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
     model = config.get("drives", {}).get("session_model")
@@ -319,7 +323,7 @@ def spawn_via_cli(
     if not openclaw_path:
         openclaw_path = "openclaw"  # Fallback (will fail if not in PATH)
     
-    # Build the cron command
+    # Build the cron command with --json to get the job ID
     cmd = [
         openclaw_path, "cron", "add",
         "--name", f"drive-{drive_name.lower()}",
@@ -329,6 +333,7 @@ def spawn_via_cli(
         "--timeout-seconds", str(timeout_seconds),
         "--delete-after-run",
         "--no-deliver",
+        "--json",
     ]
     
     if model:
@@ -344,11 +349,22 @@ def spawn_via_cli(
             text=True,
             timeout=60
         )
-        return result.returncode == 0
+        if result.returncode == 0:
+            # Parse JSON output to get job ID
+            try:
+                output = json.loads(result.stdout)
+                job_id = output.get("id")
+                if job_id:
+                    return f"agent:main:cron:{job_id}"
+            except (json.JSONDecodeError, KeyError):
+                # If JSON parsing fails, still return success indication
+                # Use hardcoded key as fallback
+                return f"agent:main:cron:drive-{drive_name.lower()}"
+        return None
     except (subprocess.TimeoutExpired, FileNotFoundError):
-        return False
+        return None
     except Exception:
-        return False
+        return None
 
 
 def spawn_session(
@@ -381,19 +397,21 @@ def spawn_session(
     full_prompt = build_session_prompt(drive_name, prompt, pressure, threshold, config)
     
     # Try CLI first (more reliable — handles its own auth)
-    if spawn_via_cli(full_prompt, config, drive_name, pressure, threshold):
-        _write_spawn_breadcrumb(drive_name, config)
+    session_key = spawn_via_cli(full_prompt, config, drive_name, pressure, threshold)
+    if session_key:
+        _write_spawn_breadcrumb(drive_name, session_key, config)
         return True
     
     # Fallback to API
-    if spawn_via_api(full_prompt, config, drive_name, pressure, threshold):
-        _write_spawn_breadcrumb(drive_name, config)
+    session_key = spawn_via_api(full_prompt, config, drive_name, pressure, threshold)
+    if session_key:
+        _write_spawn_breadcrumb(drive_name, session_key, config)
         return True
     
     return False
 
 
-def _write_spawn_breadcrumb(drive_name: str, config: dict) -> None:
+def _write_spawn_breadcrumb(drive_name: str, session_key: str, config: dict) -> None:
     """Write a breadcrumb file for a successfully spawned drive session.
     
     Called after spawn_session() succeeds. The breadcrumb is picked up
@@ -401,17 +419,21 @@ def _write_spawn_breadcrumb(drive_name: str, config: dict) -> None:
     
     Args:
         drive_name: Name of the drive that was spawned
+        session_key: Actual session key returned by OpenClaw
         config: Configuration dict (for timeout)
     """
     from .satisfaction import write_breadcrumb
+    import sys
     
     timeout = config.get("drives", {}).get("session_timeout", 900)
-    session_key = f"agent:main:cron:drive-{drive_name.lower()}"
     
     try:
-        write_breadcrumb(drive_name, session_key, timeout)
-    except Exception:
-        pass  # Non-fatal — satisfaction will use age-based fallback
+        breadcrumb_path = write_breadcrumb(drive_name, session_key, timeout)
+        print(f"[DEBUG] Wrote breadcrumb: {breadcrumb_path} (key: {session_key})", file=sys.stderr)
+    except Exception as e:
+        print(f"[ERROR] Failed to write breadcrumb for {drive_name}: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
 
 
 def record_trigger(

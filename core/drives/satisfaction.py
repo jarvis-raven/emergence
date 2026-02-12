@@ -87,7 +87,7 @@ def write_breadcrumb(
     return filepath
 
 
-def write_completion(drive_name: str, session_key: str, status: str = "completed") -> Path:
+def write_completion(drive_name: str, session_key: Optional[str] = None, status: str = "completed") -> Path:
     """Write a completion breadcrumb when a drive session finishes.
     
     Called by the session itself (via drive prompt instructions) or by
@@ -95,14 +95,14 @@ def write_completion(drive_name: str, session_key: str, status: str = "completed
     
     Args:
         drive_name: Name of the drive (e.g., "CREATIVE")
-        session_key: OpenClaw session key
+        session_key: OpenClaw session key (optional - matches on drive name if not provided)
         status: Completion status ("completed", "error", "timeout")
         
     Returns:
         Path to the written completion file
         
     Examples:
-        >>> p = write_completion("CREATIVE", "agent:main:cron:abc123")
+        >>> p = write_completion("CREATIVE")
         >>> "COMPLETE" in p.name
         True
     """
@@ -223,7 +223,7 @@ def _check_file_writes(since_epoch: int) -> bool:
     return False
 
 
-def _is_session_complete(session_key: str, timeout_seconds: int, spawn_epoch: int) -> Optional[bool]:
+def _is_session_complete(drive_name: str, session_key: str, timeout_seconds: int, spawn_epoch: int) -> Optional[bool]:
     """Check if a session has completed.
     
     Uses a breadcrumb-first approach:
@@ -231,7 +231,8 @@ def _is_session_complete(session_key: str, timeout_seconds: int, spawn_epoch: in
     2. Fall back to time-based if no completion breadcrumb found (crash/timeout)
     
     Args:
-        session_key: OpenClaw session key
+        drive_name: Name of the drive (used for matching completion breadcrumbs)
+        session_key: OpenClaw session key (optional match)
         timeout_seconds: Configured timeout for the session
         spawn_epoch: When the session was spawned
         
@@ -239,7 +240,7 @@ def _is_session_complete(session_key: str, timeout_seconds: int, spawn_epoch: in
         True if complete, False if still running, None if unknown
         
     Examples:
-        >>> _is_session_complete("key", 300, time.time() - 30)
+        >>> _is_session_complete("CREATIVE", "key", 300, time.time() - 30)
         False
     """
     # Check for completion breadcrumb first (instant satisfaction)
@@ -248,7 +249,10 @@ def _is_session_complete(session_key: str, timeout_seconds: int, spawn_epoch: in
         for f in ingest_dir.glob("COMPLETE-*.json"):
             try:
                 data = json.loads(f.read_text())
-                if data.get("session_key") == session_key:
+                # Match on drive name (primary) or session_key (secondary)
+                if data.get("drive") == drive_name:
+                    return True
+                if session_key and data.get("session_key") == session_key:
                     return True
             except (json.JSONDecodeError, OSError):
                 continue
@@ -319,7 +323,7 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
         spawn_epoch = breadcrumb.get("spawned_epoch", 0)
         
         # Check if session is complete
-        complete = _is_session_complete(session_key, timeout, spawn_epoch)
+        complete = _is_session_complete(drive_name, session_key, timeout, spawn_epoch)
         
         if complete is None:
             continue  # Can't tell yet, try next tick
@@ -354,7 +358,8 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
                 for cf in ingest_dir.glob("COMPLETE-*.json"):
                     try:
                         cdata = json.loads(cf.read_text())
-                        if cdata.get("session_key") == session_key:
+                        # Match on drive name (primary) or session_key (secondary)
+                        if cdata.get("drive") == drive_name or cdata.get("session_key") == session_key:
                             cf.unlink()
                     except (json.JSONDecodeError, OSError):
                         pass
