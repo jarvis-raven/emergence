@@ -17,5 +17,11 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        libraryShelfView: './src/components/shelves/LibraryShelfView.jsx',
+      },
+    },
   },
 });
