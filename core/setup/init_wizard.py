@@ -1461,23 +1461,44 @@ This is not your first conversation — you have context.
             print("  View logs:       cat .emergence/logs/daemon.log")
             print()
             
-            if ask_confirm("Start drives daemon now?", default=True):
+            # Check if daemon is already running
+            from core.drives.pidfile import is_running, read_pid
+            pid_path = workspace / ".emergence" / "drives.pid"
+            
+            if is_running(pid_path):
+                pid = read_pid(pid_path)
+                print_success(f"✓ Drives daemon already running (PID {pid})")
+                print()
+            elif ask_confirm("Start drives daemon now?", default=True):
                 try:
-                    from pathlib import Path
-                    import subprocess
+                    # Use sys.executable to handle venv setups
                     result = subprocess.run(
-                        ["emergence", "drives", "daemon", "start"],
+                        [sys.executable, "-m", "core.drives.daemon", "start"],
                         capture_output=True,
                         text=True,
-                        timeout=10,
-                        cwd=str(workspace)
+                        timeout=30,  # Increased timeout for slower systems
+                        cwd=workspace
                     )
+                    
                     if result.returncode == 0:
-                        print_success("✓ Drives daemon started")
-                        print("  Pressure will accumulate in the background")
+                        # Verify daemon actually started
+                        import time
+                        time.sleep(1)
+                        if is_running(pid_path):
+                            pid = read_pid(pid_path)
+                            print_success(f"✓ Drives daemon started (PID {pid})")
+                            print("  Pressure will accumulate in the background")
+                        else:
+                            print_warning("Daemon process started but PID file not found")
+                            print("  Check logs: cat .emergence/logs/daemon.log")
                     else:
-                        print_warning(f"Failed to start daemon: {result.stderr}")
+                        # Show stderr first, fallback to stdout if empty
+                        error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
+                        print_warning(f"Failed to start daemon: {error_msg}")
                         print("  Run manually: emergence drives daemon start")
+                except subprocess.TimeoutExpired:
+                    print_warning("Daemon start timed out (system may be slow)")
+                    print("  Check status: emergence drives daemon status")
                 except Exception as e:
                     print_warning(f"Failed to start daemon: {e}")
                     print("  Run manually: emergence drives daemon start")
