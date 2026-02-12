@@ -5,7 +5,7 @@
  */
 
 import { join } from 'path';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { execSync } from 'child_process';
 import { getMemoryPath, getWorkspacePath } from '../../utils/configLoader.js';
 import { listFiles, getFileStats } from '../../utils/fileReader.js';
@@ -139,21 +139,37 @@ export const MemoryShelf = {
       } catch {}
     }
 
-    // Build complete file list from ALL memory subdirectories
+    // Build complete file list — auto-discover ALL memory subdirectories
     const allFiles = [];
-    const CATEGORY_MAP = {
-      daily: { icon: '📅', label: 'daily' },
-      // sessions excluded — shown in Journal panel
-      changelog: { icon: '📋', label: 'changelog' },
-      correspondence: { icon: '✉️', label: 'correspondence' },
-      creative: { icon: '🎨', label: 'creative' },
-      dreams: { icon: '🌙', label: 'dream' },
-      'self-history': { icon: '🪞', label: 'self-history' },
-      'soul-history': { icon: '🪞', label: 'soul-history' },
-      todo: { icon: '✅', label: 'todo' },
-      bugs: { icon: '🐛', label: 'bug' },
-      archive: { icon: '📦', label: 'archive' },
+    
+    // Known icon hints (optional cosmetic, falls back to 📄)
+    const ICON_HINTS = {
+      daily: '📅', changelog: '📋', correspondence: '✉️', creative: '🎨',
+      dreams: '🌙', 'self-history': '🪞', 'soul-history': '🪞', todo: '✅',
+      bugs: '🐛', archive: '📦', sessions: '🧪', research: '🔬',
+      projects: '🚀', notes: '📝',
     };
+    
+    // Directories to skip (shown elsewhere or internal)
+    const SKIP_DIRS = new Set(['sessions']); // sessions shown in Journal panel
+    
+    // Auto-discover subdirectories
+    let discoveredDirs = [];
+    try {
+      const entries = readdirSync(memoryDir, { withFileTypes: true });
+      discoveredDirs = entries
+        .filter(e => e.isDirectory() && !e.name.startsWith('.') && !SKIP_DIRS.has(e.name))
+        .map(e => e.name);
+    } catch {}
+    
+    // Build category map from discovered directories
+    const CATEGORY_MAP = {};
+    for (const dir of discoveredDirs) {
+      CATEGORY_MAP[dir] = {
+        icon: ICON_HINTS[dir] || '📄',
+        label: dir,
+      };
+    }
 
     // Helper to extract date from filename or mtime
     function extractDate(filename, mtime) {
