@@ -42,7 +42,8 @@ def detect_openclaw_path() -> Optional[str]:
     # Fallback: check common npm global bin locations
     common_paths = [
         Path.home() / ".npm-global" / "bin" / "openclaw",
-        Path.home() / ".nvm" / "versions" / "node" / "*" / "bin" / "openclaw",
+        Path.home() / ".nvm" / "current" / "bin" / "openclaw",  # nvm active version
+        Path.home() / ".nvm" / "versions" / "node" / "*" / "bin" / "openclaw",  # nvm fallback
         Path("/usr/local/bin/openclaw"),
         Path.home() / ".local" / "bin" / "openclaw",
     ]
@@ -196,7 +197,7 @@ Full content of your session...
 
 IMPORTANT: When your session is complete, signal completion by running:
 ```
-cd {workspace} && {python_path} -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}', 'agent:main:cron:drive-{drive_name.lower()}')"
+cd {workspace} && "{python_path}" -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}', 'agent:main:cron:drive-{drive_name.lower()}')"
 ```
 This triggers instant satisfaction of your drive. Without it, satisfaction is delayed.
 """

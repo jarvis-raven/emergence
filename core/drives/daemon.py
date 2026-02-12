@@ -239,7 +239,7 @@ def run_daemon(
     
     # Detect openclaw binary path (needed for spawning sessions via CLI)
     from .spawn import detect_openclaw_path
-    if "openclaw_path" not in config.get("drives", {}):
+    if not config.get("drives", {}).get("openclaw_path"):
         openclaw_path = detect_openclaw_path()
         if openclaw_path:
             config["_openclaw_path"] = openclaw_path  # Store in-memory for this session
