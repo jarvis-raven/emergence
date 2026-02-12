@@ -233,6 +233,10 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
     if (!daemonState || !daemonState.last_tick || liveCountdown === null) return 0;
 
     const tickInterval = daemonState.tick_interval_seconds || 300;
+    
+    // Validate tick_interval_seconds (prevent division by zero)
+    if (tickInterval <= 0) return 0;
+    
     const elapsed = tickInterval - liveCountdown;
     const progress = (elapsed / tickInterval) * 100;
 
