@@ -33,6 +33,8 @@ class Drive(TypedDict, total=False):
                         rather than elapsed time (e.g., REST)
         last_triggered: ISO 8601 timestamp of last drive spawn
         min_interval_seconds: Minimum seconds between triggers (0 = no limit)
+        valence: Emotional tone - 'appetitive' (approach), 'aversive' (distress), 'neutral' (low pressure)
+        thwarting_count: Number of consecutive triggers without satisfaction (resets on satisfaction)
     """
     name: str
     base_drive: bool
@@ -51,6 +53,8 @@ class Drive(TypedDict, total=False):
     activity_driven: bool
     last_triggered: Optional[str]
     min_interval_seconds: int
+    valence: Literal["appetitive", "aversive", "neutral"]
+    thwarting_count: int
 
 
 class DriveState(TypedDict, total=False):
@@ -258,6 +262,8 @@ def ensure_drive_defaults(drive: dict) -> dict:
         "last_triggered": None,
         "min_interval_seconds": 0,
         "thresholds": None,  # Graduated thresholds (optional)
+        "valence": "appetitive",  # Default valence (positive motivation)
+        "thwarting_count": 0,  # No thwarting yet
     }
     
     for key, default_value in defaults.items():
@@ -350,3 +356,62 @@ def get_threshold_label(pressure: float, thresholds: dict) -> str:
         return "elevated"
     else:
         return "available"
+
+
+def calculate_valence(
+    pressure: float, 
+    threshold: float, 
+    thwarting_count: int = 0,
+    thresholds: Optional[dict[str, float]] = None
+) -> str:
+    """Calculate drive valence based on pressure and thwarting history.
+    
+    Valence represents the emotional tone of a drive:
+    - neutral: pressure < 30% (drive not yet active)
+    - appetitive: 30% <= pressure < 150% AND thwarting_count < 3 (approach motivation)
+    - aversive: pressure >= 150% OR thwarting_count >= 3 (distress/avoidance)
+    
+    Args:
+        pressure: Current drive pressure
+        threshold: Drive threshold value (base threshold for calculation)
+        thwarting_count: Number of consecutive triggers without satisfaction
+        thresholds: Optional graduated thresholds dict
+        
+    Returns:
+        Valence string: 'neutral', 'appetitive', or 'aversive'
+        
+    Examples:
+        >>> calculate_valence(5.0, 20.0, 0)  # 25% pressure
+        'neutral'
+        >>> calculate_valence(10.0, 20.0, 0)  # 50% pressure, no thwarting
+        'appetitive'
+        >>> calculate_valence(10.0, 20.0, 3)  # 50% pressure, thwarted 3 times
+        'aversive'
+        >>> calculate_valence(32.0, 20.0, 0)  # 160% pressure
+        'aversive'
+    """
+    if threshold <= 0:
+        return "neutral"
+    
+    # Get the base threshold if graduated thresholds available
+    if thresholds:
+        # Use 'available' threshold as the 30% marker
+        available_threshold = thresholds.get("available", threshold * 0.3)
+    else:
+        available_threshold = threshold * 0.3
+    
+    # Calculate pressure ratio
+    ratio = pressure / threshold
+    
+    # Neutral: below available threshold (< 30%)
+    if pressure < available_threshold:
+        return "neutral"
+    
+    # Aversive conditions:
+    # - Extreme pressure (>= 150%)
+    # - Repeated thwarting (>= 3 times)
+    if ratio >= 1.5 or thwarting_count >= 3:
+        return "aversive"
+    
+    # Appetitive: normal range (30-150%) with low thwarting
+    return "appetitive"

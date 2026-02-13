@@ -101,6 +101,9 @@ router.get('/', (req, res) => {
         max_aspects_reached: aspectCount >= 5, // v2 plan: max 5 aspects
         graduation_candidates: graduationCandidates,
         has_graduation_candidates: graduationCandidates.length > 0,
+        // Valence and thwarting tracking (issue #40)
+        valence: drive.valence || 'appetitive',
+        thwarting_count: drive.thwarting_count || 0,
       };
     }
     
