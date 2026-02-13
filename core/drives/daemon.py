@@ -127,6 +127,7 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
         
         # Check for triggers and spawn sessions
         triggered = check_thresholds(state, config, respect_quiet_hours=True)
+        manual_mode = config.get("drives", {}).get("manual_mode", False)
         
         for name in triggered:
             drive = state["drives"][name]
@@ -138,6 +139,11 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
                 "pressure": pressure,
                 "threshold": threshold
             })
+            
+            # In manual mode, update pressure but don't spawn
+            if manual_mode:
+                write_log(log_path, f"Drive over threshold (manual_mode): {name} ({pressure:.1f}/{threshold:.1f})", "INFO")
+                continue
             
             # Only spawn if not already triggered (prevents double-spawning on 1s ticks)
             if name not in state.get("triggered_drives", []):

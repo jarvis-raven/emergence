@@ -22,6 +22,7 @@ DEFAULT_CONFIG: dict = {
         "daemon_mode": True,
         "cooldown_minutes": 30,     # Minimum between triggers
         "max_pressure_ratio": 1.5,  # Cap pressure at threshold * 1.5
+        "manual_mode": False,       # If True, disable auto-spawn (v0.3.0+)
     },
     "paths": {
         "workspace": ".",
@@ -285,7 +286,8 @@ def ensure_config_example() -> str:
     "tick_interval": 900,       // 15 minutes in seconds
     "quiet_hours": [23, 7],     // No triggers 11 PM - 7 AM
     "daemon_mode": true,        // Run as persistent process
-    "cooldown_minutes": 30      // Min time between triggers
+    "cooldown_minutes": 30,     // Min time between triggers
+    "manual_mode": false        // If true, never auto-spawn (v0.3.0+)
   },
 
   // Paths (relative to workspace)
