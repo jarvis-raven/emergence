@@ -133,6 +133,15 @@ from .satisfaction import (
     get_ingest_dir,
 )
 
+# Thwarting detection (issue #41)
+from .thwarting import (
+    is_thwarted,
+    get_thwarting_status,
+    get_thwarted_drives,
+    format_thwarting_message,
+    get_thwarting_emoji,
+)
+
 # CLI entry point (for programmatic use)
 from .cli import main as cli_main
 
@@ -207,6 +216,12 @@ __all__ = [
     "check_completed_sessions",
     "assess_depth",
     "get_ingest_dir",
+    # Thwarting
+    "is_thwarted",
+    "get_thwarting_status",
+    "get_thwarted_drives",
+    "format_thwarting_message",
+    "get_thwarting_emoji",
     # CLI
     "cli_main",
 ]

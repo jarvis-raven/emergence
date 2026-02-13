@@ -36,6 +36,13 @@ from .platform import (
     uninstall_platform,
     get_install_status,
 )
+from .thwarting import (
+    is_thwarted,
+    get_thwarting_status,
+    get_thwarted_drives,
+    format_thwarting_message,
+    get_thwarting_emoji,
+)
 
 
 # --- Constants ---
@@ -520,6 +527,19 @@ def cmd_status(args) -> int:
         for name, drive in sorted(active_drives, key=lambda x: x[0]):
             _print_drive_line(name, drive, triggered, cooldown_info)
     
+    # Thwarted Drives section (issue #41)
+    thwarted_drives = get_thwarted_drives(full_state, config)
+    if thwarted_drives:
+        print(f"\n{COLOR_BUDGET_HIGH}⚠️  Thwarted Drives:{COLOR_RESET} {len(thwarted_drives)}")
+        for thw in thwarted_drives[:5]:  # Show up to 5
+            drive_name = thw["name"]
+            msg = format_thwarting_message(drive_name, thw)
+            print(f"  {COLOR_BUDGET_HIGH}⚠{COLOR_RESET} {msg}")
+        if len(thwarted_drives) > 5:
+            print(f"  ... and {len(thwarted_drives) - 5} more")
+        print(f"    {COLOR_DIM}These drives need immediate attention or investigation{COLOR_RESET}")
+        print(f"    {COLOR_DIM}Use 'drives satisfy <name> deep' or 'full' for relief{COLOR_RESET}")
+    
     # Pending Reviews section
     if pending_reviews:
         print(f"\n{COLOR_BUDGET_MED}Pending Reviews:{COLOR_RESET} {len(pending_reviews)}")
@@ -623,20 +643,9 @@ def _print_drive_line(name: str, drive: dict, triggered: set, cooldown_info: dic
     }
     band_color = band_colors.get(band, "")
     
-    # Valence indicator (issue #40)
-    valence = drive.get("valence", "appetitive")
-    thwarting_count = drive.get("thwarting_count", 0)
-    valence_emoji = {
-        "neutral": "○",       # Neutral circle
-        "appetitive": "→",    # Approach/forward arrow
-        "aversive": "⚠",      # Warning/distress
-    }.get(valence, "→")
-    
-    # Add thwarting count if aversive
-    if valence == "aversive" and thwarting_count > 0:
-        valence_indicator = f"{valence_emoji}{thwarting_count}"
-    else:
-        valence_indicator = valence_emoji
+    # Thwarting and valence indicator (issue #41)
+    thwarting_status = get_thwarting_status(drive)
+    valence_indicator = get_thwarting_emoji(thwarting_status)
     
     # Status text with band info
     if status == "triggered":
