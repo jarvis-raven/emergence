@@ -2,6 +2,12 @@ import { useState, useMemo } from 'react';
 import { useDrives } from '../hooks/useDrives.js';
 import { useDreams } from '../hooks/useDreams.js';
 import { getDriveColor } from '../context/ThemeContext.jsx';
+import { 
+  enrichDriveWithThresholds, 
+  groupDrivesByBand, 
+  getBandColors,
+  getBandLabel 
+} from '../utils/thresholds.js';
 import ModeToggle from './ModeToggle.jsx';
 import DriveCard from './DriveCard.jsx';
 import DreamView from './DreamView.jsx';
@@ -123,14 +129,23 @@ export function DrivePanel({ agentName = 'My Agent' }) {
     return drives.length > 0 ? drives[0] : null;
   }, [drives]);
 
-  // Split drives into triggered and non-triggered for display
-  const triggeredDrivesList = useMemo(() => {
-    return drives.filter(d => d.isTriggered);
+  // Group drives by threshold band
+  const drivesByBand = useMemo(() => {
+    return groupDrivesByBand(drives);
   }, [drives]);
-
-  const normalDrives = useMemo(() => {
-    return drives.filter(d => !d.isTriggered);
-  }, [drives]);
+  
+  // Get counts for each band
+  const bandCounts = useMemo(() => ({
+    emergency: drivesByBand.emergency.length,
+    crisis: drivesByBand.crisis.length,
+    triggered: drivesByBand.triggered.length,
+    elevated: drivesByBand.elevated.length,
+    available: drivesByBand.available.length,
+    neutral: drivesByBand.neutral.length,
+  }), [drivesByBand]);
+  
+  // Count urgent drives (triggered or higher)
+  const urgentCount = bandCounts.emergency + bandCounts.crisis + bandCounts.triggered;
 
   // Loading state
   if (drivesLoading && !drives.length) {
@@ -200,7 +215,18 @@ export function DrivePanel({ agentName = 'My Agent' }) {
         </h2>
         <p className="text-xs text-textMuted">
           {isAwake 
-            ? `${triggeredDrives.length > 0 ? `${triggeredDrives.length} triggered • ` : ''}Click to rest` 
+            ? (
+              <>
+                {urgentCount > 0 && (
+                  <span className="text-warning font-medium">
+                    {urgentCount} urgent
+                    {bandCounts.emergency > 0 && ` (${bandCounts.emergency} emergency)`}
+                    {' • '}
+                  </span>
+                )}
+                Click to rest
+              </>
+            )
             : 'Processing memories • Click to wake'
           }
           {lastUpdated && (
@@ -220,68 +246,95 @@ export function DrivePanel({ agentName = 'My Agent' }) {
         `}
       >
         {isAwake ? (
-          /* Awake Mode: Drive Pressures */
-          <div className="space-y-3 lg:space-y-6">
-            {/* All drives - Horizontal bar layout */}
-            <div className="space-y-1">
-              {drives.map((drive) => {
-                const { name, percentage, isTriggered } = drive;
-                const colors = getDriveColor(name);
-                const displayWidth = Math.min(percentage, 100);
-                const isHighest = drive.name === highestDrive?.name;
-                const isExpanded = expandedDrive === drive.name;
-                const statusIcon = isTriggered ? '🔥' : percentage >= 90 ? '⚡' : '';
-
-                return (
-                  <div key={name}>
-                    <div
-                      className={`
-                        group cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-200
-                        ${isExpanded
-                          ? 'bg-accent/10 border border-accent/30'
-                          : isTriggered
-                            ? 'bg-warning/10 border border-warning/30'
-                            : 'border border-transparent hover:bg-background/50'
-                        }
-                      `}
-                      onClick={() => setExpandedDrive(isExpanded ? null : name)}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1.5">
-                          {statusIcon && <span className="text-[10px]">{statusIcon}</span>}
-                          <span className={`text-[11px] font-medium uppercase tracking-wider ${
-                            isTriggered ? 'text-warning' : isHighest ? 'text-accent' : 'text-textMuted'
-                          }`}>{name}</span>
-                        </div>
-                        <span className={`text-[11px] font-mono font-bold ${
-                          isTriggered ? 'text-warning' : percentage >= 70 ? 'text-text' : 'text-textMuted'
-                        }`}>{percentage}%</span>
-                      </div>
-                      <div className="relative h-2 bg-background/60 rounded-full overflow-hidden">
-                        <div
-                          className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out ${isTriggered ? 'animate-pulse' : ''}`}
-                          style={{
-                            width: `${displayWidth}%`,
-                            background: `linear-gradient(to right, ${colors.from}, ${colors.to})`,
-                          }}
-                        />
-                      </div>
+          /* Awake Mode: Drive Pressures - Grouped by Threshold Band */
+          <div className="space-y-4">
+            {/* Render drives grouped by band (emergency → neutral) */}
+            {['emergency', 'crisis', 'triggered', 'elevated', 'available', 'neutral'].map(bandKey => {
+              const bandDrives = drivesByBand[bandKey];
+              if (bandDrives.length === 0) return null;
+              
+              const bandColors = getBandColors(bandKey);
+              const bandLabel = getBandLabel(bandKey);
+              
+              return (
+                <div key={bandKey} className="space-y-1">
+                  {/* Band header - only show for urgent bands or if there are multiple bands */}
+                  {(bandKey === 'emergency' || bandKey === 'crisis' || bandKey === 'triggered' || Object.values(bandCounts).filter(c => c > 0).length > 1) && (
+                    <div className={`text-[10px] uppercase tracking-wider font-semibold ${bandColors.text} px-2 py-1`}>
+                      {bandLabel} ({bandDrives.length})
                     </div>
-                    {isExpanded && (
-                      <div className="mt-1 mb-2 px-1">
-                        <DriveCard
-                          drive={drive}
-                          isHighest={isHighest}
-                          onSatisfy={handleSatisfy}
-                          satisfying={satisfyingDrive === name}
-                          defaultExpanded={true}
-                        />
+                  )}
+                  
+                  {/* Drives in this band */}
+                  {bandDrives.map((enrichedDrive) => {
+                    const { name, percentage, pressure, threshold, band, bandIcon } = enrichedDrive;
+                    const colors = getDriveColor(name);
+                    const displayWidth = Math.min(percentage, 100);
+                    const isHighest = name === highestDrive?.name;
+                    const isExpanded = expandedDrive === name;
+                    const driveBandColors = getBandColors(band);
+
+                    return (
+                      <div key={name}>
+                        <div
+                          className={`
+                            group cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-200
+                            ${isExpanded
+                              ? `${driveBandColors.bg} border ${driveBandColors.border}`
+                              : `border border-transparent hover:${driveBandColors.bg}`
+                            }
+                          `}
+                          onClick={() => setExpandedDrive(isExpanded ? null : name)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5">
+                              {bandIcon && <span className="text-[10px]">{bandIcon}</span>}
+                              <span className={`text-[11px] font-medium uppercase tracking-wider ${
+                                driveBandColors.text
+                              }`}>{name}</span>
+                            </div>
+                            <span className={`text-[11px] font-mono font-bold ${
+                              driveBandColors.text
+                            }`}>{percentage}%</span>
+                          </div>
+                          <div className="relative h-2 bg-background/60 rounded-full overflow-hidden">
+                            {/* Threshold markers on bar */}
+                            <div className="absolute bottom-0 h-full border-l border-dashed border-emerald-500/20" style={{ left: '30%' }} />
+                            <div className="absolute bottom-0 h-full border-l border-dashed border-yellow-500/20" style={{ left: '75%' }} />
+                            
+                            {/* Fill bar */}
+                            <div
+                              className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out ${
+                                (band === 'crisis' || band === 'emergency') ? 'animate-pulse' : ''
+                              }`}
+                              style={{
+                                width: `${displayWidth}%`,
+                                background: `linear-gradient(to right, ${driveBandColors.gradient.from}, ${driveBandColors.gradient.to})`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                        {isExpanded && (
+                          <div className="mt-1 mb-2 px-1">
+                            <DriveCard
+                              drive={{
+                                ...enrichedDrive,
+                                // Keep original drive structure for DriveCard compatibility
+                                isTriggered: band === 'triggered' || band === 'crisis' || band === 'emergency',
+                              }}
+                              isHighest={isHighest}
+                              onSatisfy={handleSatisfy}
+                              satisfying={satisfyingDrive === name}
+                              defaultExpanded={true}
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         ) : (
           /* Asleep Mode: Dreams */

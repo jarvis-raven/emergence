@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { getDriveColor } from '../context/ThemeContext.jsx';
+import { enrichDriveWithThresholds, getBandColors } from '../utils/thresholds.js';
 import PressureBar from './PressureBar.jsx';
 
 /**
@@ -52,6 +53,10 @@ export function DriveCard({
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showConfirm, setShowConfirm] = useState(false);
   const [flashSuccess, setFlashSuccess] = useState(false);
+
+  // Enrich drive with threshold data
+  const enrichedDrive = useMemo(() => enrichDriveWithThresholds(drive), [drive]);
+  const { band, bandLabel, bandIcon, thresholds, bandColors: driveBandColors } = enrichedDrive;
 
   const { name, description, prompt, rate, last_satisfied } = drive;
   const colors = getDriveColor(name);
@@ -186,6 +191,47 @@ export function DriveCard({
       {expanded && (
         <div className="px-4 pb-4 border-t border-surface pt-4">
           <div className="space-y-3">
+            {/* Threshold status badge */}
+            <div className={`
+              inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
+              ${driveBandColors.bg} ${driveBandColors.border} border
+            `}>
+              <span>{bandIcon}</span>
+              <span className={driveBandColors.text}>{bandLabel}</span>
+              <span className="text-textMuted">
+                ({drive.pressure?.toFixed?.(1) || drive.pressure}/{drive.threshold})
+              </span>
+            </div>
+            
+            {/* Threshold bands info */}
+            {thresholds && (
+              <div className="bg-background/50 rounded-lg p-3">
+                <h4 className="text-xs uppercase tracking-wider text-textMuted mb-2">Threshold Bands</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="text-emerald-500">✓</span>
+                    <span className="text-textMuted">Available:</span>
+                    <span className="text-text font-mono">{thresholds.available?.toFixed?.(1)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-yellow-500">⚡</span>
+                    <span className="text-textMuted">Elevated:</span>
+                    <span className="text-text font-mono">{thresholds.elevated?.toFixed?.(1)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-orange-500">🔥</span>
+                    <span className="text-textMuted">Triggered:</span>
+                    <span className="text-text font-mono">{thresholds.triggered?.toFixed?.(1)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-red-500">⚠️</span>
+                    <span className="text-textMuted">Crisis:</span>
+                    <span className="text-text font-mono">{thresholds.crisis?.toFixed?.(1)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Prompt */}
             {prompt && (
               <div>
