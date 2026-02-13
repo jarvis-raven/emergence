@@ -32,6 +32,9 @@ DEFAULT_CONFIG: dict = {
         "cooldown_minutes": 30,     # Minimum between triggers
         "max_pressure_ratio": 1.5,  # Cap pressure at threshold * 1.5
         "manual_mode": False,       # If True, disable auto-spawn (v0.3.0+)
+        "emergency_spawn": True,    # Auto-spawn at 200%+ even in manual mode (safety valve)
+        "emergency_threshold": 2.0, # Pressure ratio that triggers emergency spawn
+        "emergency_cooldown_hours": 6,  # Max 1 emergency spawn per drive per N hours
         "thresholds": DEFAULT_THRESHOLDS.copy(),  # Global threshold ratios
     },
     "paths": {
