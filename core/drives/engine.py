@@ -107,6 +107,7 @@ def tick_all_drives(
     
     Updates pressure for all drives based on time elapsed since last tick.
     Activity-driven drives and already-triggered drives are skipped.
+    Also updates valence based on current pressure and thwarting history.
     
     Args:
         state: Current drive state (modified in place)
@@ -123,9 +124,11 @@ def tick_all_drives(
         True
     """
     from .state import get_hours_since_tick
+    from .models import calculate_valence, get_drive_thresholds
     
     triggered = set(state.get("triggered_drives", []))
     max_ratio = config.get("drives", {}).get("max_pressure_ratio", 1.5)
+    global_thresholds = config.get("drives", {}).get("thresholds")
     
     hours_elapsed = get_hours_since_tick(state)
     
@@ -147,6 +150,19 @@ def tick_all_drives(
         if new_pressure != old_pressure:
             drive["pressure"] = new_pressure
             changes[name] = (old_pressure, new_pressure)
+        
+        # Update valence based on current state
+        threshold = drive.get("threshold", 1.0)
+        thwarting_count = drive.get("thwarting_count", 0)
+        thresholds = get_drive_thresholds(drive, global_thresholds)
+        
+        new_valence = calculate_valence(
+            new_pressure,
+            threshold,
+            thwarting_count,
+            thresholds
+        )
+        drive["valence"] = new_valence
     
     return changes
 
@@ -220,8 +236,8 @@ def satisfy_drive(
     - deep (d): 75% reduction — genuine satisfaction
     - full (f): 100% reduction — complete reset
     
-    Also records the satisfaction event and removes from triggered list
-    if reduction is significant (>= 50%).
+    Also records the satisfaction event, resets thwarting_count,
+    and removes from triggered list if reduction is significant (>= 50%).
     
     Args:
         state: Current drive state (modified in place)
@@ -241,6 +257,8 @@ def satisfy_drive(
         >>> result["new_pressure"]
         10.0
     """
+    from .models import calculate_valence, get_drive_thresholds
+    
     # Find drive using fuzzy matching
     drives = state.get("drives", {})
     normalized_name = fuzzy_match(drive_name, list(drives.keys()))
@@ -258,10 +276,20 @@ def satisfy_drive(
         raise ValueError(f"Invalid depth: {depth}. Valid: {valid}")
     
     old_pressure = drive.get("pressure", 0.0)
+    old_thwarting = drive.get("thwarting_count", 0)
     
     # Calculate new pressure (never below 0)
     new_pressure = max(0.0, old_pressure * (1.0 - reduction))
     drive["pressure"] = new_pressure
+    
+    # Reset thwarting count on satisfaction
+    drive["thwarting_count"] = 0
+    
+    # Update valence after satisfaction
+    threshold = drive.get("threshold", 1.0)
+    thresholds = get_drive_thresholds(drive)
+    new_valence = calculate_valence(new_pressure, threshold, 0, thresholds)
+    drive["valence"] = new_valence
     
     # Record satisfaction event
     if "satisfaction_events" not in drive:
@@ -285,6 +313,72 @@ def satisfy_drive(
         "new_pressure": new_pressure,
         "reduction_ratio": reduction,
         "depth": depth,
+        "thwarting_count_reset": old_thwarting,
+        "new_valence": new_valence,
+    }
+
+
+def mark_drive_triggered(
+    state: DriveState,
+    drive_name: str
+) -> dict:
+    """Mark a drive as triggered, incrementing its thwarting count.
+    
+    Called when a drive triggers but before it's satisfied. This tracks
+    how many times a drive has been triggered without satisfaction,
+    which affects valence calculation.
+    
+    Args:
+        state: Current drive state (modified in place)
+        drive_name: Name of drive that triggered
+        
+    Returns:
+        Result dict with success status and details
+        
+    Raises:
+        ValueError: If drive not found
+        
+    Examples:
+        >>> state = create_default_state()
+        >>> state["drives"]["CARE"]["pressure"] = 25.0
+        >>> result = mark_drive_triggered(state, "CARE")
+        >>> result["new_thwarting_count"]
+        1
+    """
+    from .models import calculate_valence, get_drive_thresholds
+    
+    drives = state.get("drives", {})
+    normalized_name = fuzzy_match(drive_name, list(drives.keys()))
+    
+    if not normalized_name:
+        available = ", ".join(sorted(drives.keys()))
+        raise ValueError(f"Unknown drive: {drive_name}. Available: {available}")
+    
+    drive = drives[normalized_name]
+    
+    # Increment thwarting count
+    old_count = drive.get("thwarting_count", 0)
+    new_count = old_count + 1
+    drive["thwarting_count"] = new_count
+    
+    # Update valence based on new thwarting count
+    pressure = drive.get("pressure", 0.0)
+    threshold = drive.get("threshold", 1.0)
+    thresholds = get_drive_thresholds(drive)
+    new_valence = calculate_valence(pressure, threshold, new_count, thresholds)
+    drive["valence"] = new_valence
+    
+    # Update last_triggered timestamp
+    now = datetime.now(timezone.utc).isoformat()
+    drive["last_triggered"] = now
+    
+    return {
+        "success": True,
+        "drive": normalized_name,
+        "old_thwarting_count": old_count,
+        "new_thwarting_count": new_count,
+        "new_valence": new_valence,
+        "pressure": pressure,
     }
 
 
@@ -315,6 +409,8 @@ def bump_drive(
         >>> result["new_pressure"]
         10.0
     """
+    from .models import calculate_valence, get_drive_thresholds
+    
     drives = state.get("drives", {})
     normalized_name = fuzzy_match(drive_name, list(drives.keys()))
     
@@ -335,12 +431,19 @@ def bump_drive(
     new_pressure = min(old_pressure + amount, threshold * max_ratio)
     drive["pressure"] = new_pressure
     
+    # Update valence after pressure change
+    thwarting_count = drive.get("thwarting_count", 0)
+    thresholds = get_drive_thresholds(drive)
+    new_valence = calculate_valence(new_pressure, threshold, thwarting_count, thresholds)
+    drive["valence"] = new_valence
+    
     return {
         "success": True,
         "drive": normalized_name,
         "old_pressure": old_pressure,
         "new_pressure": new_pressure,
         "amount_added": amount,
+        "new_valence": new_valence,
     }
 
 
@@ -402,6 +505,8 @@ def get_drive_status(state: DriveState, drive_name: str, config: Optional[dict] 
         "activity_driven": drive.get("activity_driven", False),
         "description": drive.get("description", ""),
         "last_satisfied": (drive.get("satisfaction_events", []) or [None])[-1],
+        "valence": drive.get("valence", "appetitive"),
+        "thwarting_count": drive.get("thwarting_count", 0),
     }
 
 

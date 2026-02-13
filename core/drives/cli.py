@@ -623,6 +623,21 @@ def _print_drive_line(name: str, drive: dict, triggered: set, cooldown_info: dic
     }
     band_color = band_colors.get(band, "")
     
+    # Valence indicator (issue #40)
+    valence = drive.get("valence", "appetitive")
+    thwarting_count = drive.get("thwarting_count", 0)
+    valence_emoji = {
+        "neutral": "○",       # Neutral circle
+        "appetitive": "→",    # Approach/forward arrow
+        "aversive": "⚠",      # Warning/distress
+    }.get(valence, "→")
+    
+    # Add thwarting count if aversive
+    if valence == "aversive" and thwarting_count > 0:
+        valence_indicator = f"{valence_emoji}{thwarting_count}"
+    else:
+        valence_indicator = valence_emoji
+    
     # Status text with band info
     if status == "triggered":
         status_text = f"{COLOR_BUDGET_HIGH}Triggered{COLOR_RESET} ({band_color}{band}{COLOR_RESET})"
@@ -648,7 +663,7 @@ def _print_drive_line(name: str, drive: dict, triggered: set, cooldown_info: dic
             else:
                 status_text = f"({band_color}{band}{COLOR_RESET})"
     
-    print(f"  {indicator} {name_padded} [{bar}] {pct}%  {status_text}")
+    print(f"  {indicator} {name_padded} [{bar}] {pct}%  {valence_indicator} {status_text}")
     
     # Show aspects if present
     aspects = drive.get("aspects", [])
