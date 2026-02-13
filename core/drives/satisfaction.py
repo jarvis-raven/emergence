@@ -1,12 +1,15 @@
-"""File-based drive satisfaction checker.
+"""File-based drive satisfaction checker and manual satisfaction utilities.
 
 Replaces the broken cron-API-based _check_completed_sessions().
 Uses breadcrumb files in sessions_ingest/ to track spawned sessions
 and determine when they complete.
 
+Also provides manual satisfaction with auto-scaling based on pressure level.
+
 Architecture:
     spawn_session() writes breadcrumb → sessions_ingest/
     tick scans sessions_ingest/ → checks completion → satisfies drive
+    CLI commands use calculate_satisfaction_depth() for smart manual satisfaction
 """
 
 import json
@@ -14,9 +17,55 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from .models import DriveState
+
+
+def calculate_satisfaction_depth(pressure: float, threshold: float) -> Tuple[str, float]:
+    """Calculate auto-scaled satisfaction depth based on current pressure.
+    
+    Implements pressure-based satisfaction scaling:
+    - 0-30%: 20% reduction (shallow touch)
+    - 30-75%: 35% reduction (moderate engagement)
+    - 75-100%: 50% reduction (significant relief)
+    - 100-150%: 75% reduction (deep satisfaction)
+    - 150%+: 90% reduction (emergency relief)
+    
+    Args:
+        pressure: Current drive pressure
+        threshold: Drive threshold value
+        
+    Returns:
+        Tuple of (depth_name, reduction_ratio)
+        
+    Examples:
+        >>> calculate_satisfaction_depth(5.0, 20.0)  # 25%
+        ('auto-shallow', 0.2)
+        >>> calculate_satisfaction_depth(15.0, 20.0)  # 75%
+        ('auto-moderate', 0.35)
+        >>> calculate_satisfaction_depth(20.0, 20.0)  # 100%
+        ('auto-deep', 0.5)
+        >>> calculate_satisfaction_depth(25.0, 20.0)  # 125%
+        ('auto-deep', 0.75)
+        >>> calculate_satisfaction_depth(32.0, 20.0)  # 160%
+        ('auto-full', 0.9)
+    """
+    if threshold <= 0:
+        return ('auto-moderate', 0.35)  # Fallback for invalid threshold
+    
+    percentage = (pressure / threshold) * 100
+    
+    if percentage < 30:
+        return ('auto-shallow', 0.20)
+    elif percentage < 75:
+        return ('auto-moderate', 0.35)
+    elif percentage <= 100:
+        return ('auto-deep', 0.50)
+    elif percentage < 150:
+        return ('auto-deep', 0.75)
+    else:  # 150%+
+        return ('auto-full', 0.90)
 
 
 def get_ingest_dir() -> Path:

@@ -656,5 +656,187 @@ class TestCLISatisfactionDepths(unittest.TestCase):
         self.assertEqual(result, cli.EXIT_SUCCESS)
 
 
+class TestCLIAutoScaledSatisfaction(unittest.TestCase):
+    """Test auto-scaled satisfaction depth (issue #35)."""
+    
+    @patch('core.drives.cli.load_config')
+    @patch('core.drives.cli.load_state')
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('core.drives.cli.save_runtime_state')
+    @patch('core.drives.cli.save_with_lock')
+    def test_auto_scale_low_pressure(self, mock_save, mock_save_runtime, 
+                                     mock_runtime_config, mock_load_state, mock_load_config):
+        """Low pressure (25%) should auto-scale to 20% reduction."""
+        mock_load_config.return_value = {
+            "agent": {"name": "Test"},
+            "drives": {},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        # 25% pressure (5/20)
+        state = {
+            "version": "1.0",
+            "drives": {
+                "CREATIVE": {
+                    "name": "CREATIVE",
+                    "pressure": 5.0,
+                    "threshold": 20.0,
+                    "satisfaction_events": []
+                }
+            },
+            "triggered_drives": []
+        }
+        mock_load_state.return_value = state
+        mock_save.return_value = True
+        mock_save_runtime.return_value = True
+        mock_runtime_config.return_value = ({"drives": {}, "triggered": []}, {}, Path("."))
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["satisfy", "creative"])  # No depth = auto-scale
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stdout', captured):
+            result = cli.cmd_satisfy(args)
+        
+        output = captured.getvalue()
+        
+        # 20% reduction: 5.0 * (1 - 0.20) = 4.0
+        self.assertIn("5.0 → 4.0", output)
+        self.assertIn("auto-scaled", output.lower())
+        self.assertEqual(result, cli.EXIT_SUCCESS)
+        
+        # Verify state was updated
+        self.assertEqual(state["drives"]["CREATIVE"]["pressure"], 4.0)
+    
+    @patch('core.drives.cli.load_config')
+    @patch('core.drives.cli.load_state')
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('core.drives.cli.save_runtime_state')
+    @patch('core.drives.cli.save_with_lock')
+    def test_auto_scale_high_pressure(self, mock_save, mock_save_runtime,
+                                      mock_runtime_config, mock_load_state, mock_load_config):
+        """High pressure (125%) should auto-scale to 75% reduction."""
+        mock_load_config.return_value = {
+            "agent": {"name": "Test"},
+            "drives": {},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        # 125% pressure (25/20)
+        state = {
+            "version": "1.0",
+            "drives": {
+                "CARE": {
+                    "name": "CARE",
+                    "pressure": 25.0,
+                    "threshold": 20.0,
+                    "satisfaction_events": []
+                }
+            },
+            "triggered_drives": ["CARE"]
+        }
+        mock_load_state.return_value = state
+        mock_save.return_value = True
+        mock_save_runtime.return_value = True
+        mock_runtime_config.return_value = ({"drives": {}, "triggered": []}, {}, Path("."))
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["satisfy", "care"])  # No depth = auto-scale
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stdout', captured):
+            result = cli.cmd_satisfy(args)
+        
+        output = captured.getvalue()
+        
+        # 75% reduction: 25.0 * (1 - 0.75) = 6.25
+        self.assertIn("25.0 → 6.2", output)  # Rounded display
+        self.assertIn("auto-scaled", output.lower())
+        self.assertEqual(result, cli.EXIT_SUCCESS)
+        
+        # Verify state was updated and drive removed from triggered (>= 50% reduction)
+        self.assertAlmostEqual(state["drives"]["CARE"]["pressure"], 6.25, places=2)
+        self.assertNotIn("CARE", state["triggered_drives"])
+    
+    @patch('core.drives.cli.load_config')
+    @patch('core.drives.cli.load_state')
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('core.drives.cli.save_runtime_state')
+    @patch('core.drives.cli.save_with_lock')
+    def test_explicit_depth_overrides_auto_scale(self, mock_save, mock_save_runtime,
+                                                  mock_runtime_config, mock_load_state, mock_load_config):
+        """Explicit depth parameter should override auto-scaling."""
+        mock_load_config.return_value = {
+            "agent": {"name": "Test"},
+            "drives": {},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        # 25% pressure would auto-scale to 20%, but we specify 'deep' (75%)
+        state = {
+            "version": "1.0",
+            "drives": {
+                "CREATIVE": {
+                    "name": "CREATIVE",
+                    "pressure": 5.0,
+                    "threshold": 20.0,
+                    "satisfaction_events": []
+                }
+            },
+            "triggered_drives": []
+        }
+        mock_load_state.return_value = state
+        mock_save.return_value = True
+        mock_save_runtime.return_value = True
+        mock_runtime_config.return_value = ({"drives": {}, "triggered": []}, {}, Path("."))
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["satisfy", "creative", "deep"])
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stdout', captured):
+            result = cli.cmd_satisfy(args)
+        
+        output = captured.getvalue()
+        
+        # 75% reduction (deep): 5.0 * (1 - 0.75) = 1.25
+        self.assertIn("5.0 → 1.2", output)  # Rounded display
+        self.assertNotIn("auto-scaled", output.lower())  # Should NOT say auto-scaled
+        self.assertIn("[deep]", output)
+        self.assertEqual(result, cli.EXIT_SUCCESS)
+    
+    @patch('core.drives.cli.load_config')
+    @patch('core.drives.cli.load_state')
+    @patch('core.drives.cli.save_with_lock')
+    def test_drive_name_validation(self, mock_save, mock_load_state, mock_load_config):
+        """Invalid drive name should return error."""
+        mock_load_config.return_value = {
+            "agent": {"name": "Test"},
+            "drives": {},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        mock_load_state.return_value = {
+            "version": "1.0",
+            "drives": {
+                "CARE": {"name": "CARE", "pressure": 10.0, "threshold": 20.0}
+            },
+            "triggered_drives": []
+        }
+        mock_save.return_value = True
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["satisfy", "NONEXISTENT"])
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stderr', captured):
+            result = cli.cmd_satisfy(args)
+        
+        self.assertEqual(result, cli.EXIT_ERROR)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -751,7 +751,9 @@ def _show_irreducibility_test(review: dict) -> None:
 
 
 def cmd_satisfy(args) -> int:
-    """Satisfy a drive (reduce pressure)."""
+    """Satisfy a drive (reduce pressure) with auto-scaling or explicit depth."""
+    from .satisfaction import calculate_satisfaction_depth
+    
     state, config, state_path = get_state_and_config(args)
     
     if not args.name:
@@ -762,28 +764,70 @@ def cmd_satisfy(args) -> int:
     if not drive_name:
         return EXIT_ERROR
     
-    # Determine depth
-    depth = getattr(args, 'depth', None) or "moderate"
-    depth_map = {
-        's': 'shallow', 'shallow': 'shallow',
-        'm': 'moderate', 'moderate': 'moderate',
-        'd': 'deep', 'deep': 'deep',
-        'f': 'full', 'full': 'full',
-    }
-    depth = depth_map.get(depth.lower(), depth)
-    
     drive = state["drives"][drive_name]
     old_pressure = drive.get("pressure", 0.0)
+    threshold = drive.get("threshold", 1.0)
     
     if old_pressure == 0.0:
         print(f"ℹ {drive_name} is already at 0.0 — nothing to satisfy")
         return EXIT_SUCCESS
     
-    try:
-        result = satisfy_drive(state, drive_name, depth)
-    except ValueError as e:
-        print(f"✗ {e}", file=sys.stderr)
-        return EXIT_ERROR
+    # Determine depth - use auto-scaling if not specified
+    depth_arg = getattr(args, 'depth', None)
+    auto_scaled = False
+    
+    if depth_arg:
+        # Explicit depth provided - normalize it
+        depth_map = {
+            's': 'shallow', 'shallow': 'shallow',
+            'm': 'moderate', 'moderate': 'moderate',
+            'd': 'deep', 'deep': 'deep',
+            'f': 'full', 'full': 'full',
+        }
+        depth = depth_map.get(depth_arg.lower(), depth_arg.lower())
+    else:
+        # No depth provided - use auto-scaling based on pressure
+        auto_scaled = True
+        depth_label, reduction_ratio = calculate_satisfaction_depth(old_pressure, threshold)
+        
+        # Map auto-scaled reductions to standard depth names for satisfy_drive()
+        # We'll manually apply the custom reduction ratio
+        depth = depth_label
+    
+    # Apply satisfaction (custom reduction for auto-scaled, standard for explicit)
+    if auto_scaled:
+        # Manual pressure reduction with auto-scaled ratio
+        _, reduction_ratio = calculate_satisfaction_depth(old_pressure, threshold)
+        new_pressure = max(0.0, old_pressure * (1.0 - reduction_ratio))
+        drive["pressure"] = new_pressure
+        
+        # Record satisfaction event
+        if "satisfaction_events" not in drive:
+            drive["satisfaction_events"] = []
+        
+        now = datetime.now(timezone.utc).isoformat()
+        drive["satisfaction_events"].append(now)
+        drive["satisfaction_events"] = drive["satisfaction_events"][-10:]
+        
+        # Remove from triggered list if reduction is significant (>= 50%)
+        if reduction_ratio >= 0.5 and drive_name in state.get("triggered_drives", []):
+            state["triggered_drives"].remove(drive_name)
+        
+        result = {
+            "success": True,
+            "drive": drive_name,
+            "old_pressure": old_pressure,
+            "new_pressure": new_pressure,
+            "reduction_ratio": reduction_ratio,
+            "depth": depth,
+        }
+    else:
+        # Use standard satisfy_drive() for explicit depths
+        try:
+            result = satisfy_drive(state, drive_name, depth)
+        except ValueError as e:
+            print(f"✗ {e}", file=sys.stderr)
+            return EXIT_ERROR
     
     # Save state
     if not save_with_lock(state_path, state):
@@ -809,17 +853,30 @@ def cmd_satisfy(args) -> int:
     reduction = result["reduction_ratio"]
     reduction_pct = int(reduction * 100)
     
-    print(f"✓ {drive_name} satisfied ({old_pressure:.1f} → {new_pressure:.1f}) [{depth}]")
-    print(f"  Pressure reduced by {reduction_pct}%")
+    # Display results with auto-scaling info if applicable
+    pressure_pct = int((old_pressure / threshold) * 100) if threshold > 0 else 0
     
-    if depth not in ('full', 'f'):
-        remaining = "deep" if depth in ('shallow', 'moderate') else "full"
-        print(f"  Use 'drives satisfy {drive_name.lower()} {remaining}' for more reduction")
+    if auto_scaled:
+        print(f"✓ {drive_name} satisfied ({old_pressure:.1f} → {new_pressure:.1f}) [auto-scaled: {pressure_pct}% pressure]")
+        print(f"  Pressure reduced by {reduction_pct}% (auto-scaled based on current level)")
+    else:
+        print(f"✓ {drive_name} satisfied ({old_pressure:.1f} → {new_pressure:.1f}) [{depth}]")
+        print(f"  Pressure reduced by {reduction_pct}%")
     
+    # Show next steps if not fully satisfied
+    if new_pressure > 0.0:
+        if auto_scaled:
+            print(f"  For more relief, use explicit depth: 'drives satisfy {drive_name.lower()} deep' or 'full'")
+        elif depth not in ('full', 'f'):
+            remaining = "deep" if depth in ('shallow', 'moderate') else "full"
+            print(f"  Use 'drives satisfy {drive_name.lower()} {remaining}' for more reduction")
+    
+    # Show triggered status
     if drive_name in state.get("triggered_drives", []):
         print(f"  Still in triggered list — reduction not sufficient")
     else:
-        print(f"  Removed from triggered drives list")
+        if old_pressure >= threshold:  # Was over threshold
+            print(f"  Removed from triggered drives list")
     
     return EXIT_SUCCESS
 
