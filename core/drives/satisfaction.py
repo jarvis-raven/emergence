@@ -21,51 +21,155 @@ from typing import Optional, Tuple
 
 from .models import DriveState
 
-
-def calculate_satisfaction_depth(pressure: float, threshold: float) -> Tuple[str, float]:
-    """Calculate auto-scaled satisfaction depth based on current pressure.
+# History tracking
+def get_history_path() -> Path:
+    """Get path to satisfaction history file.
     
-    Implements pressure-based satisfaction scaling:
-    - 0-30%: 20% reduction (shallow touch)
-    - 30-75%: 35% reduction (moderate engagement)
-    - 75-100%: 50% reduction (significant relief)
-    - 100-150%: 75% reduction (deep satisfaction)
-    - 150%+: 90% reduction (emergency relief)
+    Returns:
+        Path to satisfaction_history.jsonl
+    """
+    state_dir = os.environ.get("EMERGENCE_STATE", 
+                               str(Path.home() / ".openclaw" / "state"))
+    return Path(state_dir) / "satisfaction_history.jsonl"
+
+
+def log_satisfaction(
+    drive_name: str,
+    pressure_before: float,
+    pressure_after: float,
+    band: str,
+    depth: str,
+    ratio: float,
+    source: str = "manual"
+) -> None:
+    """Log a satisfaction event to history.
+    
+    Args:
+        drive_name: Name of the drive
+        pressure_before: Pressure before satisfaction
+        pressure_after: Pressure after satisfaction
+        band: Threshold band (available/elevated/triggered/crisis)
+        depth: Satisfaction depth name
+        ratio: Reduction ratio applied
+        source: How satisfaction occurred (manual/session/auto)
+    """
+    history_path = get_history_path()
+    
+    event = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "drive": drive_name,
+        "pressure_before": round(pressure_before, 2),
+        "pressure_after": round(pressure_after, 2),
+        "band": band,
+        "depth": depth,
+        "ratio": ratio,
+        "source": source,
+    }
+    
+    try:
+        # Append to JSONL file
+        with history_path.open('a') as f:
+            f.write(json.dumps(event) + '\n')
+    except OSError:
+        # Failed to write history — non-fatal
+        pass
+
+
+def get_recent_satisfaction_history(
+    drive_name: Optional[str] = None,
+    limit: int = 50
+) -> list[dict]:
+    """Get recent satisfaction events from history.
+    
+    Args:
+        drive_name: Optional filter by drive name
+        limit: Maximum number of events to return
+        
+    Returns:
+        List of satisfaction event dicts (most recent first)
+    """
+    history_path = get_history_path()
+    
+    if not history_path.exists():
+        return []
+    
+    events = []
+    try:
+        with history_path.open('r') as f:
+            for line in f:
+                try:
+                    event = json.loads(line.strip())
+                    if drive_name is None or event.get("drive") == drive_name:
+                        events.append(event)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return []
+    
+    # Return most recent first
+    return list(reversed(events[-limit:]))
+
+
+def calculate_satisfaction_depth(
+    pressure: float, 
+    threshold: float,
+    thresholds: Optional[dict] = None
+) -> Tuple[str, str, float]:
+    """Calculate auto-scaled satisfaction depth based on threshold band.
+    
+    Implements band-based satisfaction scaling:
+    - available (30-75%): 25% reduction (shallow)
+    - elevated (75-100%): 50% reduction (moderate)
+    - triggered (100-150%): 75% reduction (deep)
+    - crisis (150%+): 90% reduction (emergency)
     
     Args:
         pressure: Current drive pressure
-        threshold: Drive threshold value
+        threshold: Drive threshold value (base, for backward compatibility)
+        thresholds: Optional dict with graduated thresholds
         
     Returns:
-        Tuple of (depth_name, reduction_ratio)
+        Tuple of (band_name, depth_name, reduction_ratio)
         
     Examples:
-        >>> calculate_satisfaction_depth(5.0, 20.0)  # 25%
-        ('auto-shallow', 0.2)
-        >>> calculate_satisfaction_depth(15.0, 20.0)  # 75%
-        ('auto-moderate', 0.35)
-        >>> calculate_satisfaction_depth(20.0, 20.0)  # 100%
-        ('auto-deep', 0.5)
-        >>> calculate_satisfaction_depth(25.0, 20.0)  # 125%
-        ('auto-deep', 0.75)
-        >>> calculate_satisfaction_depth(32.0, 20.0)  # 160%
-        ('auto-full', 0.9)
+        >>> calculate_satisfaction_depth(5.0, 20.0)  # Below available
+        ('below-available', 'auto-minimal', 0.15)
+        >>> calculate_satisfaction_depth(10.0, 20.0)  # 50% - available
+        ('available', 'auto-shallow', 0.25)
+        >>> calculate_satisfaction_depth(17.0, 20.0)  # 85% - elevated
+        ('elevated', 'auto-moderate', 0.5)
+        >>> calculate_satisfaction_depth(22.0, 20.0)  # 110% - triggered
+        ('triggered', 'auto-deep', 0.75)
+        >>> calculate_satisfaction_depth(32.0, 20.0)  # 160% - crisis
+        ('crisis', 'auto-full', 0.9)
     """
+    from .models import get_drive_thresholds, get_threshold_label
+    
     if threshold <= 0:
-        return ('auto-moderate', 0.35)  # Fallback for invalid threshold
+        return ('unknown', 'auto-moderate', 0.50)  # Fallback for invalid threshold
     
-    percentage = (pressure / threshold) * 100
+    # Get graduated thresholds
+    if thresholds is None:
+        # Use default ratios from models
+        drive = {"threshold": threshold}
+        thresholds = get_drive_thresholds(drive)
     
-    if percentage < 30:
-        return ('auto-shallow', 0.20)
-    elif percentage < 75:
-        return ('auto-moderate', 0.35)
-    elif percentage <= 100:
-        return ('auto-deep', 0.50)
-    elif percentage < 150:
-        return ('auto-deep', 0.75)
-    else:  # 150%+
-        return ('auto-full', 0.90)
+    # Determine which band we're in
+    band = get_threshold_label(pressure, thresholds)
+    
+    # Map bands to satisfaction depths
+    band_mappings = {
+        "available": ('auto-shallow', 0.25),
+        "elevated": ('auto-moderate', 0.50),
+        "triggered": ('auto-deep', 0.75),
+        "crisis": ('auto-full', 0.90),
+        "emergency": ('auto-full', 0.90),  # Same as crisis
+    }
+    
+    # Get depth and ratio for the band (default to moderate if unknown)
+    depth_name, ratio = band_mappings.get(band, ('auto-moderate', 0.50))
+    
+    return (band, depth_name, ratio)
 
 
 def get_ingest_dir() -> Path:
@@ -178,39 +282,71 @@ def write_completion(drive_name: str, session_key: Optional[str] = None, status:
     return filepath
 
 
-def assess_depth(breadcrumb: dict) -> str:
-    """Assess satisfaction depth for a completed session.
+def assess_depth(
+    breadcrumb: dict,
+    pressure: float = 0.0,
+    thresholds: Optional[dict] = None
+) -> Tuple[str, str, float]:
+    """Assess satisfaction depth for a completed session using threshold bands.
     
-    Deterministic assessment based on observable signals:
-    - shallow: session errored or timed out
-    - moderate: session completed normally
-    - deep: session completed AND wrote files
+    Combines session quality signals with threshold band to determine satisfaction:
+    - Session timed out/errored: reduce by one band level
+    - Session completed normally: use band-appropriate depth
+    - Session wrote files: use band-appropriate depth (same as normal)
     
     Args:
         breadcrumb: Parsed breadcrumb dict with spawn info
+        pressure: Current drive pressure
+        thresholds: Optional graduated thresholds dict
         
     Returns:
-        Depth string: "shallow", "moderate", or "deep"
+        Tuple of (band, depth_name, ratio)
         
     Examples:
-        >>> assess_depth({"spawned_epoch": 0, "timeout_seconds": 300, "timed_out": True})
-        'shallow'
+        >>> assess_depth({"spawned_epoch": 0, "timeout_seconds": 300, "timed_out": True}, 15.0)
+        ('session-error', 'shallow', 0.25)
     """
-    # Check if session timed out (age > timeout × 2)
-    if breadcrumb.get("timed_out", False):
-        return "shallow"
+    from .models import get_drive_thresholds, get_threshold_label
     
+    # Check if session timed out (age > timeout × 2)
+    timed_out = breadcrumb.get("timed_out", False)
     spawn_epoch = breadcrumb.get("spawned_epoch", 0)
     timeout = breadcrumb.get("timeout_seconds", 300)
     
-    if spawn_epoch > 0 and (time.time() - spawn_epoch) > (timeout * 2):
-        return "shallow"  # Likely timed out or stuck
+    if not timed_out and spawn_epoch > 0:
+        age = time.time() - spawn_epoch
+        if age > (timeout * 2):
+            timed_out = True
     
-    # Check if the session wrote any files since spawn
-    if _check_file_writes(spawn_epoch):
-        return "deep"
+    # Get threshold band for current pressure
+    if thresholds is None:
+        threshold = breadcrumb.get("threshold", 20.0)
+        drive = {"threshold": threshold}
+        thresholds = get_drive_thresholds(drive)
     
-    return "moderate"
+    band = get_threshold_label(pressure, thresholds)
+    
+    # Map bands to base satisfaction depths
+    band_depths = {
+        "available": ('shallow', 0.25),
+        "elevated": ('moderate', 0.50),
+        "triggered": ('deep', 0.75),
+        "crisis": ('full', 0.90),
+        "emergency": ('full', 0.90),
+    }
+    
+    # Session quality affects satisfaction
+    if timed_out:
+        # Timed out: reduce satisfaction by one level
+        depth_name, ratio = ('shallow', 0.25)
+        band = 'session-error'
+    elif band in band_depths:
+        depth_name, ratio = band_depths[band]
+    else:
+        # Below available
+        depth_name, ratio = ('shallow', 0.25)
+    
+    return (band, depth_name, ratio)
 
 
 def _check_file_writes(since_epoch: int) -> bool:
@@ -378,13 +514,35 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
             continue  # Can't tell yet, try next tick
         
         if complete:
-            # Assess satisfaction depth
-            depth = assess_depth(breadcrumb)
+            # Get drive data for threshold calculation
+            drive_data = state.get("drives", {}).get(drive_name, {})
+            current_pressure = drive_data.get("pressure", 0.0)
+            
+            # Get thresholds
+            from .models import get_drive_thresholds
+            thresholds = get_drive_thresholds(drive_data, config.get("drives", {}).get("thresholds"))
+            
+            # Assess satisfaction depth using threshold bands
+            band, depth_name, ratio = assess_depth(breadcrumb, current_pressure, thresholds)
+            
+            # Calculate new pressure
+            pressure_after = max(0.0, current_pressure * (1.0 - ratio))
             
             # Satisfy the drive
             try:
-                satisfy_drive(state, drive_name, depth=depth)
+                satisfy_drive(state, drive_name, depth=depth_name)
                 satisfied.append(drive_name)
+                
+                # Log satisfaction history
+                log_satisfaction(
+                    drive_name=drive_name,
+                    pressure_before=current_pressure,
+                    pressure_after=pressure_after,
+                    band=band,
+                    depth=depth_name,
+                    ratio=ratio,
+                    source="session"
+                )
             except (KeyError, ValueError):
                 # Drive doesn't exist — just clean up
                 satisfied.append(drive_name)

@@ -72,41 +72,48 @@ class TestWriteBreadcrumb:
 class TestAssessDepth:
     def test_timed_out(self):
         bc = {"timed_out": True, "spawned_epoch": 0, "timeout_seconds": 300}
-        assert assess_depth(bc) == "shallow"
+        band, depth, ratio = assess_depth(bc)
+        assert depth == "shallow"
+        assert band == "session-error"
     
     def test_very_old_session(self):
         bc = {"spawned_epoch": 1, "timeout_seconds": 300}  # epoch 1 = ancient
-        assert assess_depth(bc) == "shallow"
+        band, depth, ratio = assess_depth(bc)
+        assert depth == "shallow"
+        assert band == "session-error"
     
     def test_normal_completion(self):
         bc = {"spawned_epoch": time.time() - 60, "timeout_seconds": 300}
-        # No file writes detected → moderate
-        with patch("core.drives.satisfaction._check_file_writes", return_value=False):
-            assert assess_depth(bc) == "moderate"
+        # Low pressure (5/20 = 25%) -> below available -> shallow
+        band, depth, ratio = assess_depth(bc, pressure=5.0)
+        assert depth == "shallow"
+        assert ratio == 0.25
     
     def test_deep_with_file_writes(self):
         bc = {"spawned_epoch": time.time() - 60, "timeout_seconds": 300}
-        with patch("core.drives.satisfaction._check_file_writes", return_value=True):
-            assert assess_depth(bc) == "deep"
+        # High pressure (25/20 = 125%) -> triggered -> deep
+        band, depth, ratio = assess_depth(bc, pressure=25.0)
+        assert depth == "deep"
+        assert ratio == 0.75
 
 
 class TestIsSessionComplete:
     def test_young_session_unknown_without_breadcrumb(self):
         # Spawned 30 seconds ago, no completion breadcrumb — unknown
-        assert _is_session_complete("key", 300, time.time() - 30) is None
+        assert _is_session_complete("CREATIVE", "key", 300, time.time() - 30) is None
     
     def test_past_timeout_plus_buffer_is_complete(self):
         # Spawned 400 seconds ago, timeout 300 — past timeout+60
-        assert _is_session_complete("key", 300, time.time() - 400) is True
+        assert _is_session_complete("CREATIVE", "key", 300, time.time() - 400) is True
     
     def test_within_timeout_is_unknown(self):
         # Spawned 3 minutes ago, timeout 600 — still within timeout
-        result = _is_session_complete("key", 600, time.time() - 180)
+        result = _is_session_complete("CREATIVE", "key", 600, time.time() - 180)
         assert result is None
     
     def test_between_timeout_and_buffer_is_unknown(self):
         # Spawned 11 minutes ago, timeout 1800 — within timeout, no breadcrumb
-        assert _is_session_complete("key", 1800, time.time() - 660) is None
+        assert _is_session_complete("CREATIVE", "key", 1800, time.time() - 660) is None
     
     def test_completion_breadcrumb_detected(self, temp_ingest_dir):
         # Write a completion breadcrumb
@@ -114,7 +121,7 @@ class TestIsSessionComplete:
         with patch.dict(os.environ, {"EMERGENCE_STATE": str(temp_ingest_dir.parent)}):
             write_completion("TEST", "agent:main:cron:test-key")
             # Should detect as complete immediately
-            assert _is_session_complete("agent:main:cron:test-key", 900, time.time() - 5) is True
+            assert _is_session_complete("TEST", "agent:main:cron:test-key", 900, time.time() - 5) is True
 
 
 class TestCheckFileWrites:
@@ -213,98 +220,104 @@ class TestCheckCompletedSessions:
 
 
 class TestCalculateSatisfactionDepth:
-    """Tests for auto-scaled satisfaction depth calculation (issue #35)."""
+    """Tests for auto-scaled satisfaction depth calculation (issue #38 - band-based)."""
     
     def test_0_to_30_percent_shallow(self):
-        """0-30% pressure: 20% reduction"""
-        # 25% pressure (5/20)
-        depth, reduction = calculate_satisfaction_depth(5.0, 20.0)
+        """Below 30% (available band): 25% reduction"""
+        # 25% pressure (5/20) - below available threshold
+        band, depth, reduction = calculate_satisfaction_depth(5.0, 20.0)
         assert depth == 'auto-shallow'
-        assert reduction == 0.20
+        assert reduction == 0.25
+        assert band in ('below-available', 'available')
         
         # 15% pressure (3/20)
-        depth, reduction = calculate_satisfaction_depth(3.0, 20.0)
+        band, depth, reduction = calculate_satisfaction_depth(3.0, 20.0)
         assert depth == 'auto-shallow'
-        assert reduction == 0.20
+        assert reduction == 0.25
     
     def test_30_to_75_percent_moderate(self):
-        """30-75% pressure: 35% reduction"""
-        # 50% pressure (10/20)
-        depth, reduction = calculate_satisfaction_depth(10.0, 20.0)
-        assert depth == 'auto-moderate'
-        assert reduction == 0.35
+        """30-75% (available band): 25% reduction"""
+        # 50% pressure (10/20) - available
+        band, depth, reduction = calculate_satisfaction_depth(10.0, 20.0)
+        assert depth == 'auto-shallow'
+        assert reduction == 0.25
+        assert band == 'available'
         
         # 60% pressure (12/20)
-        depth, reduction = calculate_satisfaction_depth(12.0, 20.0)
-        assert depth == 'auto-moderate'
-        assert reduction == 0.35
+        band, depth, reduction = calculate_satisfaction_depth(12.0, 20.0)
+        assert depth == 'auto-shallow'
+        assert reduction == 0.25
     
     def test_75_to_100_percent_deep(self):
-        """75-100% pressure: 50% reduction"""
-        # 75% pressure (15/20)
-        depth, reduction = calculate_satisfaction_depth(15.0, 20.0)
-        assert depth == 'auto-deep'
+        """75-100% (elevated band): 50% reduction"""
+        # 75% pressure (15/20) - elevated
+        band, depth, reduction = calculate_satisfaction_depth(15.0, 20.0)
+        assert depth == 'auto-moderate'
         assert reduction == 0.50
+        assert band == 'elevated'
         
         # 90% pressure (18/20)
-        depth, reduction = calculate_satisfaction_depth(18.0, 20.0)
-        assert depth == 'auto-deep'
+        band, depth, reduction = calculate_satisfaction_depth(18.0, 20.0)
+        assert depth == 'auto-moderate'
         assert reduction == 0.50
         
-        # Exactly 100% (20/20)
-        depth, reduction = calculate_satisfaction_depth(20.0, 20.0)
-        assert depth == 'auto-deep'
-        assert reduction == 0.50
-    
-    def test_100_to_150_percent_deep_75(self):
-        """100-150% pressure: 75% reduction"""
-        # 110% pressure (22/20)
-        depth, reduction = calculate_satisfaction_depth(22.0, 20.0)
+        # Exactly 100% (20/20) - now in triggered band (100-150%)
+        band, depth, reduction = calculate_satisfaction_depth(20.0, 20.0)
         assert depth == 'auto-deep'
         assert reduction == 0.75
+        assert band == 'triggered'
+    
+    def test_100_to_150_percent_deep_75(self):
+        """100-150% (triggered band): 75% reduction"""
+        # 110% pressure (22/20) - triggered
+        band, depth, reduction = calculate_satisfaction_depth(22.0, 20.0)
+        assert depth == 'auto-deep'
+        assert reduction == 0.75
+        assert band == 'triggered'
         
         # 125% pressure (25/20)
-        depth, reduction = calculate_satisfaction_depth(25.0, 20.0)
+        band, depth, reduction = calculate_satisfaction_depth(25.0, 20.0)
         assert depth == 'auto-deep'
         assert reduction == 0.75
     
     def test_150_plus_percent_full(self):
-        """150%+ pressure: 90% reduction"""
-        # 150% pressure (30/20)
-        depth, reduction = calculate_satisfaction_depth(30.0, 20.0)
+        """150%+ (crisis/emergency): 90% reduction"""
+        # 150% pressure (30/20) - crisis
+        band, depth, reduction = calculate_satisfaction_depth(30.0, 20.0)
         assert depth == 'auto-full'
         assert reduction == 0.90
+        assert band in ('crisis', 'emergency')
         
         # 200% pressure (40/20)
-        depth, reduction = calculate_satisfaction_depth(40.0, 20.0)
+        band, depth, reduction = calculate_satisfaction_depth(40.0, 20.0)
         assert depth == 'auto-full'
         assert reduction == 0.90
     
     def test_edge_case_zero_threshold(self):
         """Handle invalid threshold gracefully"""
-        depth, reduction = calculate_satisfaction_depth(10.0, 0.0)
+        band, depth, reduction = calculate_satisfaction_depth(10.0, 0.0)
         assert depth == 'auto-moderate'
-        assert reduction == 0.35
+        assert reduction == 0.50
     
     def test_edge_case_zero_pressure(self):
-        """Zero pressure should still calculate (edge of 0-30% band)"""
-        depth, reduction = calculate_satisfaction_depth(0.0, 20.0)
-        assert depth == 'auto-shallow'
-        assert reduction == 0.20
+        """Zero pressure should still calculate (below available)"""
+        band, depth, reduction = calculate_satisfaction_depth(0.0, 20.0)
+        # Below available band gets 25% shallow
+        assert reduction == 0.25
     
     def test_boundary_conditions(self):
         """Test exact boundary values"""
-        # Exactly 30% - should be moderate (30 is not less than 30)
-        depth, reduction = calculate_satisfaction_depth(6.0, 20.0)
-        assert depth == 'auto-moderate'
-        assert reduction == 0.35
+        # Exactly 30% - should be available (25% reduction)
+        band, depth, reduction = calculate_satisfaction_depth(6.0, 20.0)
+        assert depth == 'auto-shallow'
+        assert reduction == 0.25
         
-        # Just below 75% - should be moderate
-        depth, reduction = calculate_satisfaction_depth(14.99, 20.0)
-        assert depth == 'auto-moderate'
-        assert reduction == 0.35
+        # Just below 75% - should be available (25% reduction)
+        band, depth, reduction = calculate_satisfaction_depth(14.99, 20.0)
+        assert depth == 'auto-shallow'
+        assert reduction == 0.25
         
-        # Exactly 150% - should be full (not less than 150)
-        depth, reduction = calculate_satisfaction_depth(30.0, 20.0)
+        # Exactly 150% - should be crisis/emergency (90% reduction)
+        band, depth, reduction = calculate_satisfaction_depth(30.0, 20.0)
         assert depth == 'auto-full'
         assert reduction == 0.90
