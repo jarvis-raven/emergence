@@ -11,6 +11,7 @@ from pathlib import Path
 from core.setup.migrate.migrate import (
     export_bundle,
     import_bundle,
+    rewrite_openclaw_state,
     rewrite_paths,
     scan_for_paths,
     validate_workspace,
@@ -311,6 +312,144 @@ class TestValidateWorkspace(unittest.TestCase):
     def test_nonexistent_workspace(self):
         results = validate_workspace(Path("/nonexistent/path"))
         self.assertFalse(results["valid"])
+
+
+class TestRewriteOpenClawState(unittest.TestCase):
+    """Tests for rewriting paths in OpenClaw state directories.
+
+    This specifically covers the bug that broke Aurora's communication:
+    sessions.json files under ~/.openclaw/agents/*/sessions/ contained
+    hardcoded absolute paths that weren't updated during migration.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.oc_root = Path(self.tmpdir) / ".openclaw"
+        # Create agent sessions structure
+        sessions_dir = self.oc_root / "agents" / "main" / "sessions"
+        sessions_dir.mkdir(parents=True)
+        # Create a sessions.json with old paths (the Aurora bug)
+        self.sessions_file = sessions_dir / "sessions.json"
+        self.sessions_data = {
+            f"sess_{i}": {
+                "path": f"/home/dan/.openclaw/agents/main/sessions/sess_{i}.json",
+                "workspace": "/home/dan/.openclaw/workspace",
+            }
+            for i in range(5)
+        }
+        self.sessions_file.write_text(json.dumps(self.sessions_data))
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir)
+
+    def test_rewrites_sessions_json(self):
+        """The core Aurora bug: sessions.json paths must be rewritten."""
+        stats = rewrite_openclaw_state(
+            self.oc_root, "/home/dan", "/home/aurora",
+        )
+        self.assertEqual(stats["files_modified"], 1)
+        self.assertGreater(stats["replacements"], 0)
+
+        result = json.loads(self.sessions_file.read_text())
+        for sess in result.values():
+            self.assertIn("/home/aurora/", sess["path"])
+            self.assertNotIn("/home/dan", sess["path"])
+
+    def test_dry_run_no_changes(self):
+        original = self.sessions_file.read_text()
+        stats = rewrite_openclaw_state(
+            self.oc_root, "/home/dan", "/home/aurora", dry_run=True,
+        )
+        self.assertGreater(stats["replacements"], 0)
+        self.assertTrue(stats["dry_run"])
+        self.assertEqual(self.sessions_file.read_text(), original)
+
+    def test_handles_multiple_agents(self):
+        """Should process sessions for all agents, not just main."""
+        other_dir = self.oc_root / "agents" / "aurora" / "sessions"
+        other_dir.mkdir(parents=True)
+        other_file = other_dir / "sessions.json"
+        other_file.write_text(json.dumps({
+            "s1": "/home/dan/.openclaw/agents/aurora/sessions/s1.json",
+        }))
+
+        stats = rewrite_openclaw_state(
+            self.oc_root, "/home/dan", "/home/aurora",
+        )
+        self.assertEqual(stats["files_modified"], 2)
+
+        result = json.loads(other_file.read_text())
+        self.assertNotIn("/home/dan", result["s1"])
+
+    def test_handles_missing_openclaw_root(self):
+        stats = rewrite_openclaw_state(
+            Path("/nonexistent"), "/home/dan", "/home/aurora",
+        )
+        self.assertEqual(stats["files_modified"], 0)
+        self.assertGreater(len(stats["errors"]), 0)
+
+    def test_rewrite_paths_with_openclaw_root(self):
+        """rewrite_paths should process openclaw state when root is given."""
+        workspace = Path(self.tmpdir) / "workspace"
+        workspace.mkdir()
+        (workspace / "test.json").write_text('{"p": "/home/dan/stuff"}')
+
+        stats = rewrite_paths(
+            workspace, "/home/dan", "/home/aurora",
+            openclaw_root=self.oc_root,
+        )
+        # Should have modified both workspace file and sessions.json
+        self.assertGreaterEqual(stats["files_modified"], 2)
+        self.assertIn("openclaw_stats", stats)
+
+    def test_also_rewrites_top_level_json(self):
+        """Config JSON at the openclaw root level should also be rewritten."""
+        config = self.oc_root / "config.json"
+        config.write_text(json.dumps({"home": "/home/dan/.openclaw"}))
+
+        # Need config dir too
+        config_dir = self.oc_root / "config"
+        config_dir.mkdir(exist_ok=True)
+        (config_dir / "settings.json").write_text(
+            json.dumps({"root": "/home/dan/.openclaw"})
+        )
+
+        stats = rewrite_openclaw_state(
+            self.oc_root, "/home/dan", "/home/aurora",
+        )
+        # sessions.json + config.json + config/settings.json
+        self.assertGreaterEqual(stats["files_modified"], 2)
+
+
+class TestManifestRelativePaths(unittest.TestCase):
+    """Test that export manifests include relative path info for robustness."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.source = Path(self.tmpdir) / "source"
+        self.source.mkdir()
+        (self.source / "SOUL.md").write_text("# Test\n")
+        (self.source / "emergence.json").write_text(json.dumps({
+            "agent": {"name": "Test"},
+        }))
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir)
+
+    def test_manifest_contains_relative_paths(self):
+        import tarfile
+        bundle = export_bundle(self.source, Path(self.tmpdir) / "b.tar.gz")
+        with tarfile.open(str(bundle), "r:gz") as tar:
+            f = tar.extractfile("__manifest__.json")
+            manifest = json.loads(f.read())
+
+        self.assertEqual(manifest["version"], "1.1")
+        self.assertIn("workspace_rel_home", manifest)
+        self.assertIn("openclaw_root", manifest)
+        self.assertIn("openclaw_root_rel", manifest)
+        self.assertIn("source_home", manifest)
 
 
 class TestCLI(unittest.TestCase):

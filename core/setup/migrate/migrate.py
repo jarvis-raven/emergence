@@ -128,6 +128,86 @@ def scan_for_paths(
     return matches
 
 
+def rewrite_openclaw_state(
+    openclaw_root: Path,
+    old_path: str,
+    new_path: str,
+    *,
+    dry_run: bool = False,
+) -> Dict[str, Any]:
+    """Rewrite hardcoded paths inside OpenClaw state files.
+
+    Targets sessions.json files under ~/.openclaw/agents/*/sessions/
+    which store absolute paths that break after migration.  This is the
+    exact bug that broke Aurora's communication after her first migration.
+
+    Args:
+        openclaw_root: Root of the OpenClaw state directory (e.g. ~/.openclaw)
+        old_path: Old absolute path prefix to replace
+        new_path: New absolute path prefix
+        dry_run: If True, report changes without writing
+
+    Returns:
+        Dict with rewrite stats matching the rewrite_paths format.
+    """
+    old_normalized = old_path.rstrip("/")
+    new_normalized = new_path.rstrip("/")
+
+    stats: Dict[str, Any] = {
+        "files_scanned": 0,
+        "files_modified": 0,
+        "replacements": 0,
+        "modified_files": [],
+        "errors": [],
+        "dry_run": dry_run,
+    }
+
+    openclaw_root = openclaw_root.resolve()
+    if not openclaw_root.is_dir():
+        stats["errors"].append(f"OpenClaw root not found: {openclaw_root}")
+        return stats
+
+    # Scan agents/*/sessions/sessions.json and any other text files
+    agents_dir = openclaw_root / "agents"
+    if not agents_dir.is_dir():
+        return stats
+
+    # Collect all text files under the openclaw root that may contain paths
+    target_patterns = [
+        agents_dir.glob("*/sessions/sessions.json"),
+        agents_dir.glob("*/sessions/*.json"),
+        openclaw_root.glob("*.json"),
+        openclaw_root.glob("config/*.json"),
+        openclaw_root.glob("state/*.json"),
+    ]
+
+    seen: Set[Path] = set()
+    for pattern in target_patterns:
+        for fpath in pattern:
+            if fpath in seen or not fpath.is_file():
+                continue
+            seen.add(fpath)
+            stats["files_scanned"] += 1
+            try:
+                content = fpath.read_text(encoding="utf-8", errors="replace")
+                if old_normalized not in content:
+                    continue
+                count = content.count(old_normalized)
+                new_content = content.replace(old_normalized, new_normalized)
+                if not dry_run:
+                    fpath.write_text(new_content, encoding="utf-8")
+                stats["files_modified"] += 1
+                stats["replacements"] += count
+                stats["modified_files"].append({
+                    "path": str(fpath),
+                    "replacements": count,
+                })
+            except (OSError, UnicodeDecodeError) as e:
+                stats["errors"].append(f"{fpath}: {e}")
+
+    return stats
+
+
 def rewrite_paths(
     workspace: Path,
     old_path: str,
@@ -135,6 +215,7 @@ def rewrite_paths(
     *,
     dry_run: bool = False,
     include_sqlite: bool = True,
+    openclaw_root: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Rewrite all occurrences of old_path to new_path in workspace files.
 
@@ -146,6 +227,7 @@ def rewrite_paths(
         new_path: New absolute path prefix (e.g., /home/aurora)
         dry_run: If True, report changes without making them
         include_sqlite: If True, also rewrite paths in SQLite databases
+        openclaw_root: If provided, also rewrite paths in OpenClaw state dir
 
     Returns:
         Dict with stats: files_scanned, files_modified, replacements, errors
@@ -250,6 +332,18 @@ def rewrite_paths(
                 except (sqlite3.Error, OSError) as e:
                     stats["errors"].append(f"{fpath}: {e}")
 
+    # Also rewrite paths in OpenClaw state directory if specified
+    if openclaw_root is not None:
+        oc_stats = rewrite_openclaw_state(
+            openclaw_root, old_path, new_path, dry_run=dry_run,
+        )
+        stats["files_scanned"] += oc_stats["files_scanned"]
+        stats["files_modified"] += oc_stats["files_modified"]
+        stats["replacements"] += oc_stats["replacements"]
+        stats["modified_files"].extend(oc_stats["modified_files"])
+        stats["errors"].extend(oc_stats["errors"])
+        stats["openclaw_stats"] = oc_stats
+
     return stats
 
 
@@ -348,12 +442,33 @@ def export_bundle(
         raise ValueError("No files found to bundle. Is this an Emergence workspace?")
 
     # Create the bundle
-    # Include a manifest
+    # Include a manifest with both absolute and relative paths for robustness.
+    # The relative openclaw_root_rel lets import reconstruct the OpenClaw location
+    # even when the new machine has a different home directory structure.
+    home = Path.home()
+    openclaw_default = home / ".openclaw"
+
+    # Capture relative path of OpenClaw root from workspace perspective
+    try:
+        openclaw_root_rel = str(os.path.relpath(openclaw_default, workspace))
+    except ValueError:
+        # On Windows, relpath fails across drives
+        openclaw_root_rel = None
+
+    # Capture relative path of workspace from home
+    try:
+        workspace_rel_home = str(os.path.relpath(workspace, home))
+    except ValueError:
+        workspace_rel_home = None
+
     manifest = {
-        "version": "1.0",
+        "version": "1.1",
         "created": datetime.now(timezone.utc).isoformat(),
         "source_workspace": str(workspace),
-        "source_home": str(Path.home()),
+        "source_home": str(home),
+        "workspace_rel_home": workspace_rel_home,
+        "openclaw_root": str(openclaw_default),
+        "openclaw_root_rel": openclaw_root_rel,
         "file_count": len(files_to_bundle),
         "files": [str(f.relative_to(workspace)) for f in files_to_bundle],
     }
@@ -380,6 +495,7 @@ def import_bundle(
     *,
     old_home: Optional[str] = None,
     new_home: Optional[str] = None,
+    openclaw_root: Optional[Path] = None,
     backup: bool = True,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
@@ -390,6 +506,7 @@ def import_bundle(
         workspace: Destination workspace directory
         old_home: Old home directory to replace (auto-detected from manifest)
         new_home: New home directory (defaults to current $HOME)
+        openclaw_root: OpenClaw state directory to also rewrite (default: ~/.openclaw)
         backup: Create backup of existing workspace before import
         dry_run: Preview changes without applying
 
@@ -458,13 +575,26 @@ def import_bundle(
     if new_home is None:
         new_home = str(Path.home())
 
+    # Resolve OpenClaw root — use manifest's relative path if available
+    if openclaw_root is None:
+        oc_rel = manifest.get("openclaw_root_rel")
+        if oc_rel and new_home:
+            # Re-evaluate relative path against new home
+            openclaw_root = Path(new_home) / ".openclaw"
+        else:
+            openclaw_root = Path.home() / ".openclaw"
+
     # Rewrite paths if we have both old and new
     if old_home and new_home and old_home != new_home:
         if not dry_run:
-            rewrite_stats = rewrite_paths(workspace, old_home, new_home)
+            rewrite_stats = rewrite_paths(
+                workspace, old_home, new_home,
+                openclaw_root=openclaw_root,
+            )
         else:
             rewrite_stats = rewrite_paths(
-                workspace, old_home, new_home, dry_run=True
+                workspace, old_home, new_home, dry_run=True,
+                openclaw_root=openclaw_root,
             )
         result["rewrite_stats"] = rewrite_stats
     elif old_home == new_home:
@@ -638,6 +768,10 @@ def main(args: Optional[List[str]] = None):
     p_import.add_argument("--old-home", help="Override old home dir detection")
     p_import.add_argument("--new-home", help="Override new home dir (default: $HOME)")
     p_import.add_argument(
+        "--openclaw-state", type=Path, default=None,
+        help="OpenClaw state directory to also rewrite (default: ~/.openclaw)",
+    )
+    p_import.add_argument(
         "--no-backup", action="store_true", help="Skip backup of existing workspace",
     )
     p_import.add_argument(
@@ -653,6 +787,10 @@ def main(args: Optional[List[str]] = None):
     p_rewrite.add_argument(
         "--workspace", "-w", type=Path, default=Path("."),
         help="Workspace to scan",
+    )
+    p_rewrite.add_argument(
+        "--openclaw-state", type=Path, default=None,
+        help="Also rewrite paths in OpenClaw state dir (default: ~/.openclaw)",
     )
     p_rewrite.add_argument(
         "--dry-run", action="store_true", help="Preview without changes",
@@ -703,6 +841,7 @@ def main(args: Optional[List[str]] = None):
                 parsed.workspace,
                 old_home=parsed.old_home,
                 new_home=parsed.new_home,
+                openclaw_root=parsed.openclaw_state,
                 backup=not parsed.no_backup,
                 dry_run=parsed.dry_run,
             )
@@ -742,7 +881,9 @@ def main(args: Optional[List[str]] = None):
 
     elif parsed.subcommand == "rewrite-paths":
         stats = rewrite_paths(
-            parsed.workspace, parsed.old, parsed.new, dry_run=parsed.dry_run,
+            parsed.workspace, parsed.old, parsed.new,
+            dry_run=parsed.dry_run,
+            openclaw_root=parsed.openclaw_state,
         )
         prefix = "[DRY RUN] " if parsed.dry_run else ""
         print(f"{prefix}Path rewrite complete:")
