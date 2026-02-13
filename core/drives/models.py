@@ -35,6 +35,7 @@ class Drive(TypedDict, total=False):
         min_interval_seconds: Minimum seconds between triggers (0 = no limit)
         valence: Emotional tone - 'appetitive' (approach), 'aversive' (distress), 'neutral' (low pressure)
         thwarting_count: Number of consecutive triggers without satisfaction (resets on satisfaction)
+        last_emergency_spawn: ISO 8601 timestamp of last emergency auto-spawn (safety valve)
     """
     name: str
     base_drive: bool
@@ -55,6 +56,7 @@ class Drive(TypedDict, total=False):
     min_interval_seconds: int
     valence: Literal["appetitive", "aversive", "neutral"]
     thwarting_count: int
+    last_emergency_spawn: Optional[str]
 
 
 class DriveState(TypedDict, total=False):
@@ -264,6 +266,7 @@ def ensure_drive_defaults(drive: dict) -> dict:
         "thresholds": None,  # Graduated thresholds (optional)
         "valence": "appetitive",  # Default valence (positive motivation)
         "thwarting_count": 0,  # No thwarting yet
+        "last_emergency_spawn": None,  # No emergency spawn yet
     }
     
     for key, default_value in defaults.items():

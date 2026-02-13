@@ -85,6 +85,103 @@ def write_log(log_path: Path, message: str, level: str = "INFO") -> None:
         pass
 
 
+def _check_emergency_spawns(
+    state: dict,
+    config: dict,
+    log_path: Path,
+    result: dict,
+    emergency_threshold_ratio: float,
+    emergency_cooldown_hours: float,
+) -> list[str]:
+    """Check all drives for emergency-level pressure and auto-spawn if needed.
+    
+    Safety valve: even in manual mode, drives at 200%+ pressure get auto-spawned
+    to prevent complete neglect. Rate-limited to 1 spawn per drive per 6 hours.
+    
+    Args:
+        state: Current drive state (modified in place)
+        config: Configuration dictionary
+        log_path: Path to log file
+        result: Tick result dict to append emergency info to
+        emergency_threshold_ratio: Pressure ratio that triggers emergency (default 2.0)
+        emergency_cooldown_hours: Min hours between emergency spawns per drive
+        
+    Returns:
+        List of drive names that were emergency-spawned
+    """
+    spawned_drives = []
+    now = datetime.now(timezone.utc)
+    cooldown_seconds = emergency_cooldown_hours * 3600
+    
+    for name, drive in state.get("drives", {}).items():
+        pressure = drive.get("pressure", 0.0)
+        threshold = drive.get("threshold", 1.0)
+        
+        if threshold <= 0:
+            continue
+        
+        ratio = pressure / threshold
+        if ratio < emergency_threshold_ratio:
+            continue
+        
+        # Check rate limiting
+        last_emergency = drive.get("last_emergency_spawn")
+        if last_emergency:
+            try:
+                last_dt = datetime.fromisoformat(last_emergency)
+                if last_dt.tzinfo is None:
+                    last_dt = last_dt.replace(tzinfo=timezone.utc)
+                elapsed = (now - last_dt).total_seconds()
+                if elapsed < cooldown_seconds:
+                    remaining_h = (cooldown_seconds - elapsed) / 3600
+                    write_log(
+                        log_path,
+                        f"Emergency spawn rate-limited for {name} "
+                        f"({ratio:.0%} pressure, {remaining_h:.1f}h cooldown remaining)",
+                        "WARN"
+                    )
+                    continue
+            except (ValueError, TypeError):
+                pass  # Invalid timestamp, allow spawn
+        
+        # Emergency spawn!
+        pct = int(ratio * 100)
+        write_log(log_path, f"Emergency spawn for {name} at {pct}%", "WARN")
+        
+        # Record in result
+        result.setdefault("emergency_spawns", []).append({
+            "name": name,
+            "pressure": pressure,
+            "threshold": threshold,
+            "ratio": ratio,
+        })
+        
+        # Attempt spawn with crisis-level depth (90%)
+        try:
+            from .spawn import spawn_session, record_trigger
+            drive_prompt = drive.get("prompt", f"EMERGENCY: Your {name} drive is critically neglected.")
+            spawned = spawn_session(name, drive_prompt, config, pressure, threshold)
+            if spawned:
+                record_trigger(state, name, pressure, threshold, True)
+                # Apply crisis-level satisfaction (90% reduction)
+                new_pressure = pressure * 0.10  # 90% reduction
+                drive["pressure"] = new_pressure
+                drive["last_emergency_spawn"] = now.isoformat()
+                spawned_drives.append(name)
+                write_log(
+                    log_path,
+                    f"Emergency spawn succeeded for {name}: "
+                    f"{pressure:.1f} → {new_pressure:.1f} (90% reduction)",
+                    "WARN"
+                )
+            else:
+                write_log(log_path, f"Emergency spawn FAILED for {name}", "ERROR")
+        except Exception as e:
+            write_log(log_path, f"Emergency spawn error for {name}: {e}", "ERROR")
+    
+    return spawned_drives
+
+
 def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) -> dict:
     """Run a single tick cycle: update pressures and check triggers.
     
@@ -128,6 +225,17 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
         # Check for triggers and spawn sessions
         triggered = check_thresholds(state, config, respect_quiet_hours=True)
         manual_mode = config.get("drives", {}).get("manual_mode", False)
+        
+        # Emergency spawn safety valve: check ALL drives for 200%+ pressure
+        emergency_spawn_enabled = config.get("drives", {}).get("emergency_spawn", True)
+        emergency_threshold_ratio = config.get("drives", {}).get("emergency_threshold", 2.0)
+        emergency_cooldown_hours = config.get("drives", {}).get("emergency_cooldown_hours", 6)
+        
+        if emergency_spawn_enabled and manual_mode:
+            emergency_spawned = _check_emergency_spawns(
+                state, config, log_path, result,
+                emergency_threshold_ratio, emergency_cooldown_hours
+            )
         
         for name in triggered:
             drive = state["drives"][name]

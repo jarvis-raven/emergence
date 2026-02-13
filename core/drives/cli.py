@@ -1952,10 +1952,25 @@ def cmd_dashboard(args) -> int:
     if not triggered_drives and not elevated_drives:
         print(f"  {COLOR_BUDGET_LOW}✓ All drives in healthy range{COLOR_RESET}")
     
+    # Emergency warnings for drives approaching 180%+
+    emergency_warnings = [d for d in triggered_drives if d["ratio"] >= 1.80]
+    if emergency_warnings:
+        print(f"\n  {COLOR_BUDGET_HIGH}⚠ EMERGENCY WARNING:{COLOR_RESET}")
+        for d in emergency_warnings:
+            pct = int(d["ratio"] * 100)
+            if d["ratio"] >= 2.0:
+                print(f"    {COLOR_BUDGET_HIGH}🚨 {d['name']} at {pct}% — EMERGENCY AUTO-SPAWN ACTIVE{COLOR_RESET}")
+            else:
+                print(f"    {COLOR_WARNING}⚠ {d['name']} at {pct}% — approaching emergency threshold (200%){COLOR_RESET}")
+    
     # Manual mode note
     manual_mode = config.get("drives", {}).get("manual_mode", False)
     if manual_mode:
-        print(f"\n  {COLOR_DIM}ℹ Manual mode enabled — drives won't auto-trigger{COLOR_RESET}")
+        emergency_spawn = config.get("drives", {}).get("emergency_spawn", True)
+        if emergency_spawn:
+            print(f"\n  {COLOR_DIM}ℹ Manual mode enabled — drives won't auto-trigger (emergency spawn active at 200%+){COLOR_RESET}")
+        else:
+            print(f"\n  {COLOR_DIM}ℹ Manual mode enabled — drives won't auto-trigger{COLOR_RESET}")
     
     print(f"\nRun 'emergence drives status' for detailed view")
     
