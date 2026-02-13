@@ -4,12 +4,14 @@ Replaces the broken cron-API-based _check_completed_sessions().
 Uses breadcrumb files in sessions_ingest/ to track spawned sessions
 and determine when they complete.
 
-Also provides manual satisfaction with auto-scaling based on pressure level.
+Also provides manual satisfaction with auto-scaling based on pressure level,
+including aversive-state specific satisfaction approaches.
 
 Architecture:
     spawn_session() writes breadcrumb → sessions_ingest/
     tick scans sessions_ingest/ → checks completion → satisfies drive
     CLI commands use calculate_satisfaction_depth() for smart manual satisfaction
+    Aversive drives get investigation-focused prompts and alternative approaches
 """
 
 import json
@@ -110,10 +112,92 @@ def get_recent_satisfaction_history(
     return list(reversed(events[-limit:]))
 
 
+def get_aversive_satisfaction_options(
+    drive_name: str,
+    pressure: float,
+    threshold: float,
+    thwarting_count: int = 0
+) -> dict:
+    """Get aversive-specific satisfaction options for a thwarted drive.
+    
+    Returns different approaches than appetitive drives:
+    - Reflective investigation of blockages
+    - Threshold adjustment recommendations
+    - Alternative satisfaction routes
+    - Deeper satisfaction to reset thwarting state
+    
+    Args:
+        drive_name: Name of the drive
+        pressure: Current pressure level
+        threshold: Drive threshold
+        thwarting_count: Number of thwarting events
+        
+    Returns:
+        Dict with options and recommendations
+        
+    Examples:
+        >>> opts = get_aversive_satisfaction_options("CREATIVE", 32.0, 20.0, 3)
+        >>> "investigate" in opts
+        True
+        >>> "threshold_adjustment" in opts
+        True
+    """
+    options = {
+        "approach": "aversive",
+        "recommended_action": "investigate",
+        "options": []
+    }
+    
+    # Option 1: Investigate blockage (reflective, no immediate pressure reduction)
+    options["options"].append({
+        "name": "investigate",
+        "label": "Investigate Blockage",
+        "description": "Reflective session to identify what's preventing satisfaction",
+        "pressure_reduction": 0.0,  # No immediate reduction
+        "resets_thwarting": False,
+        "prompt": f"What's blocking your ability to satisfy {drive_name}? Explore obstacles, constraints, and alternative approaches."
+    })
+    
+    # Option 2: Partial/alternative satisfaction (gentler reduction)
+    ratio = pressure / threshold if threshold > 0 else 0
+    alt_reduction = min(0.35, ratio * 0.25)  # Gentler than appetitive
+    options["options"].append({
+        "name": "alternative",
+        "label": "Alternative Approach",
+        "description": "Try a different route to partial satisfaction",
+        "pressure_reduction": alt_reduction,
+        "resets_thwarting": False,
+        "prompt": f"Find an alternative way to engage with {drive_name} that works around current blockages."
+    })
+    
+    # Option 3: Deep satisfaction with threshold awareness (resets thwarting)
+    deep_reduction = min(0.75, ratio * 0.6)
+    options["options"].append({
+        "name": "deep",
+        "label": "Deep Satisfaction",
+        "description": "Full engagement attempt (resets thwarting count)",
+        "pressure_reduction": deep_reduction,
+        "resets_thwarting": True,
+        "prompt": f"Fully engage with {drive_name}, acknowledging past blockages. Document what's different this time."
+    })
+    
+    # Threshold adjustment recommendation
+    if thwarting_count >= 3:
+        options["threshold_adjustment"] = {
+            "recommended": True,
+            "reason": f"Drive has been thwarted {thwarting_count} times",
+            "suggestion": f"Consider temporarily raising threshold to {threshold * 1.25:.1f} to reduce pressure",
+            "temporary_duration": "24-48 hours"
+        }
+    
+    return options
+
+
 def calculate_satisfaction_depth(
     pressure: float, 
     threshold: float,
-    thresholds: Optional[dict] = None
+    thresholds: Optional[dict] = None,
+    valence: str = "appetitive"
 ) -> Tuple[str, str, float]:
     """Calculate auto-scaled satisfaction depth based on threshold band.
     
@@ -123,10 +207,14 @@ def calculate_satisfaction_depth(
     - triggered (100-150%): 75% reduction (deep)
     - crisis (150%+): 90% reduction (emergency)
     
+    For aversive drives, reductions are gentler to encourage investigation
+    over forced satisfaction.
+    
     Args:
         pressure: Current drive pressure
         threshold: Drive threshold value (base, for backward compatibility)
         thresholds: Optional dict with graduated thresholds
+        valence: Drive valence (appetitive/aversive/neutral)
         
     Returns:
         Tuple of (band_name, depth_name, reduction_ratio)
@@ -142,6 +230,8 @@ def calculate_satisfaction_depth(
         ('triggered', 'auto-deep', 0.75)
         >>> calculate_satisfaction_depth(32.0, 20.0)  # 160% - crisis
         ('crisis', 'auto-full', 0.9)
+        >>> calculate_satisfaction_depth(32.0, 20.0, valence='aversive')  # Aversive
+        ('crisis', 'auto-investigate', 0.0)
     """
     from .models import get_drive_thresholds, get_threshold_label
     
@@ -157,7 +247,13 @@ def calculate_satisfaction_depth(
     # Determine which band we're in
     band = get_threshold_label(pressure, thresholds)
     
-    # Map bands to satisfaction depths
+    # Aversive drives use different satisfaction approach
+    if valence == "aversive":
+        # For aversive drives, default to investigation (no reduction)
+        # User must explicitly choose deep satisfaction to reset
+        return (band, 'auto-investigate', 0.0)
+    
+    # Map bands to satisfaction depths (appetitive/neutral)
     band_mappings = {
         "available": ('auto-shallow', 0.25),
         "elevated": ('auto-moderate', 0.50),
