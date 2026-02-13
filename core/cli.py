@@ -50,6 +50,11 @@ def main():
         sys.argv = ["emergence-consolidate"] + args
         consolidate_main()
     
+    elif command == "migrate":
+        from core.setup.migrate.migrate import main as migrate_main
+        sys.argv = ["emergence-migrate"] + args
+        migrate_main()
+    
     elif command in ("nightly", "nightly-build"):
         from core.memory.nightly_build import main as nightly_main
         sys.argv = ["emergence-nightly"] + args
@@ -128,6 +133,7 @@ Commands:
   memory          Memory lifecycle management
   consolidate     Run memory consolidation
   nightly         Run nightly build routine
+  migrate         Migrate agent between machines (export/import/rewrite-paths)
   openclaw-hook   Install/manage OpenClaw drives integration
   status          Show overall Emergence status
   version         Show version
