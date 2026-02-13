@@ -729,13 +729,13 @@ class TestCLIAutoScaledSatisfaction(unittest.TestCase):
         
         output = captured.getvalue()
         
-        # 20% reduction: 5.0 * (1 - 0.20) = 4.0
-        self.assertIn("5.0 → 4.0", output)
+        # 25% reduction (available band): 5.0 * (1 - 0.25) = 3.75
+        self.assertIn("5.0 → 3.8", output)
         self.assertIn("auto-scaled", output.lower())
         self.assertEqual(result, cli.EXIT_SUCCESS)
         
         # Verify state was updated
-        self.assertEqual(state["drives"]["CREATIVE"]["pressure"], 4.0)
+        self.assertAlmostEqual(state["drives"]["CREATIVE"]["pressure"], 3.75, places=1)
     
     @patch('core.drives.cli.load_config')
     @patch('core.drives.cli.load_state')
