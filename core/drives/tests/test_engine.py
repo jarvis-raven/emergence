@@ -293,7 +293,8 @@ class TestReset(unittest.TestCase):
         
         result = reset_all_drives(state)
         
-        self.assertEqual(result["drives_reset"], 3)  # 3 core drives
+        # Number of core drives (CARE, MAINTENANCE, REST, WANDER)
+        self.assertEqual(result["drives_reset"], 4)
         self.assertEqual(result["triggered_cleared"], 2)
         
         for drive in state["drives"].values():
@@ -306,13 +307,14 @@ class TestGetDriveStatus(unittest.TestCase):
     """Test drive status retrieval."""
     
     def test_get_status_normal(self):
-        """Normal status when below 75%."""
+        """Status 'available' when below elevated threshold."""
         state = create_default_state()
         state["drives"]["CARE"]["pressure"] = 10.0  # 50%
         
         status = get_drive_status(state, "CARE")
         
-        self.assertEqual(status["status"], "normal")
+        # With graduated thresholds, 50% is "available" (between 30% and 75%)
+        self.assertEqual(status["status"], "available")
         self.assertEqual(status["percentage"], 50.0)
     
     def test_get_status_elevated(self):
@@ -325,13 +327,14 @@ class TestGetDriveStatus(unittest.TestCase):
         self.assertEqual(status["status"], "elevated")
     
     def test_get_status_over_threshold(self):
-        """Over threshold status at 100%+."""
+        """Status at triggered threshold (100%+)."""
         state = create_default_state()
         state["drives"]["CARE"]["pressure"] = 25.0  # 125%
         
         status = get_drive_status(state, "CARE")
         
-        self.assertEqual(status["status"], "over_threshold")
+        # With graduated thresholds, 125% is "triggered" (between 100% and 150%)
+        self.assertEqual(status["status"], "triggered")
     
     def test_get_status_triggered(self):
         """Triggered status when in triggered_drives."""

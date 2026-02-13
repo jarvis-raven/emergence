@@ -19,7 +19,8 @@ class Drive(TypedDict, total=False):
         base_drive: True if this is a core motivation (not just an aspect)
         aspects: List of aspect names that enrich this drive
         pressure: Current accumulated pressure level (0.0+)
-        threshold: Pressure level at which drive triggers action
+        threshold: Pressure level at which drive triggers action (legacy, or base threshold)
+        thresholds: Optional graduated thresholds (available/elevated/triggered/crisis/emergency)
         rate_per_hour: Pressure accumulation per hour of elapsed time
         max_rate: Maximum allowed rate_per_hour (0.0 = no cap)
         description: Human-readable explanation of drive's purpose
@@ -38,6 +39,7 @@ class Drive(TypedDict, total=False):
     aspects: list[str]
     pressure: float
     threshold: float
+    thresholds: Optional[dict[str, float]]
     rate_per_hour: float
     max_rate: float
     description: str
@@ -255,6 +257,7 @@ def ensure_drive_defaults(drive: dict) -> dict:
         "max_rate": 0.0,  # 0 means no cap
         "last_triggered": None,
         "min_interval_seconds": 0,
+        "thresholds": None,  # Graduated thresholds (optional)
     }
     
     for key, default_value in defaults.items():
@@ -262,3 +265,88 @@ def ensure_drive_defaults(drive: dict) -> dict:
             drive[key] = default_value
     
     return drive
+
+
+def get_drive_thresholds(drive: dict, global_thresholds: Optional[dict] = None) -> dict:
+    """Get graduated thresholds for a drive.
+    
+    Priority order:
+    1. Drive-specific thresholds (drive["thresholds"])
+    2. Global thresholds from config
+    3. Legacy single threshold converted to graduated (if no global config)
+    4. Default thresholds
+    
+    Args:
+        drive: Drive dictionary with optional thresholds
+        global_thresholds: Global threshold config from emergence.json
+        
+    Returns:
+        Dictionary with available/elevated/triggered/crisis/emergency keys
+        
+    Examples:
+        >>> drive = {"threshold": 20.0}
+        >>> thresholds = get_drive_thresholds(drive)
+        >>> thresholds["triggered"]
+        20.0
+        >>> thresholds["elevated"]
+        15.0
+    """
+    # Default ratios (if nothing else specified)
+    from .config import DEFAULT_THRESHOLDS
+    default_ratios = DEFAULT_THRESHOLDS.copy()
+    
+    # Priority 1: Drive-specific thresholds
+    if drive.get("thresholds"):
+        return drive["thresholds"].copy()
+    
+    # Priority 2: Global thresholds from config (as ratios)
+    base_threshold = drive.get("threshold", 1.0)
+    
+    if global_thresholds:
+        # Apply global ratios to drive's base threshold
+        return {
+            level: base_threshold * ratio
+            for level, ratio in global_thresholds.items()
+        }
+    
+    # Priority 3: Legacy single threshold → graduated system
+    # Use default ratios applied to base threshold
+    return {
+        level: base_threshold * ratio
+        for level, ratio in default_ratios.items()
+    }
+
+
+def get_threshold_label(pressure: float, thresholds: dict) -> str:
+    """Determine which threshold band the pressure falls into.
+    
+    Returns label: available, elevated, triggered, crisis, or emergency.
+    
+    Args:
+        pressure: Current pressure value
+        thresholds: Threshold dict with all five levels
+        
+    Returns:
+        Threshold label (available/elevated/triggered/crisis/emergency)
+        
+    Examples:
+        >>> thresholds = {"available": 6, "elevated": 15, "triggered": 20, 
+        ...               "crisis": 30, "emergency": 40}
+        >>> get_threshold_label(5, thresholds)
+        'available'
+        >>> get_threshold_label(18, thresholds)
+        'elevated'
+        >>> get_threshold_label(25, thresholds)
+        'crisis'
+    """
+    # Check from highest to lowest
+    if pressure >= thresholds.get("emergency", float("inf")):
+        return "emergency"
+    elif pressure >= thresholds.get("crisis", float("inf")):
+        return "crisis"
+    elif pressure >= thresholds.get("triggered", float("inf")):
+        return "triggered"
+    elif pressure >= thresholds.get("elevated", float("inf")):
+        return "elevated"
+    else:
+        return "available"

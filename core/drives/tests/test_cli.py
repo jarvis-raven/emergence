@@ -303,15 +303,18 @@ class TestCLIOutputFormatting(unittest.TestCase):
         self.assertEqual(cli.get_indicator("unknown"), cli.INDICATOR_NORMAL)
     
     @patch('core.drives.cli.load_config')
-    @patch('core.drives.cli.load_state')
-    def test_status_json_output(self, mock_load_state, mock_load_config):
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    def test_status_json_output(self, mock_get_runtime, mock_load_config):
         """Status with --json should output valid JSON."""
+        from pathlib import Path
+        
         mock_load_config.return_value = {
             "agent": {"name": "Test"},
             "drives": {"quiet_hours": [23, 7]},
             "paths": {"state": ".", "workspace": "."}
         }
-        mock_load_state.return_value = {
+        
+        runtime_state = {
             "version": "1.0",
             "last_tick": datetime.now(timezone.utc).isoformat(),
             "drives": {
@@ -321,11 +324,21 @@ class TestCLIOutputFormatting(unittest.TestCase):
                     "threshold": 20.0,
                     "rate_per_hour": 2.0,
                     "description": "Test",
-                    "category": "core"
+                    "category": "core",
+                    "base_drive": True,
+                    "aspects": [],
                 }
             },
             "triggered_drives": []
         }
+        
+        config = {
+            "agent": {"name": "Test"},
+            "drives": {"quiet_hours": [23, 7], "thresholds": None},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        mock_get_runtime.return_value = (runtime_state, config, Path(".emergence/state/drives-state.json"))
         
         parser = cli.create_parser()
         args = parser.parse_args(["status", "--json"])

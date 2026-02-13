@@ -10,6 +10,15 @@ from pathlib import Path
 from typing import Optional
 
 
+# Default graduated thresholds for all drives
+DEFAULT_THRESHOLDS: dict = {
+    "available": 0.30,    # 30% - Drive is available but not pressing
+    "elevated": 0.75,     # 75% - Drive is building, noticeable
+    "triggered": 1.0,     # 100% - Drive triggers action (old threshold)
+    "crisis": 1.5,        # 150% - High urgency, sustained neglect
+    "emergency": 2.0,     # 200% - Critical, needs immediate attention
+}
+
 # Default configuration values
 DEFAULT_CONFIG: dict = {
     "agent": {
@@ -23,6 +32,7 @@ DEFAULT_CONFIG: dict = {
         "cooldown_minutes": 30,     # Minimum between triggers
         "max_pressure_ratio": 1.5,  # Cap pressure at threshold * 1.5
         "manual_mode": False,       # If True, disable auto-spawn (v0.3.0+)
+        "thresholds": DEFAULT_THRESHOLDS.copy(),  # Global threshold ratios
     },
     "paths": {
         "workspace": ".",

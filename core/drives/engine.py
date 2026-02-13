@@ -160,12 +160,12 @@ def check_thresholds(
     
     Returns drives sorted by pressure ratio (highest first) that are:
     - Not already triggered
-    - Over their threshold (pressure >= threshold)
+    - Over their "triggered" threshold (graduated system)
     - Outside quiet hours (if respect_quiet_hours=True)
     
     Args:
         state: Current drive state
-        config: Configuration with quiet_hours setting
+        config: Configuration with quiet_hours and thresholds setting
         respect_quiet_hours: If True, return empty list during quiet hours
         
     Returns:
@@ -177,11 +177,14 @@ def check_thresholds(
         >>> check_thresholds(state, DEFAULT_CONFIG)
         ['CARE']
     """
+    from .models import get_drive_thresholds
+    
     if respect_quiet_hours and is_quiet_hours(config):
         return []
     
     triggered = set(state.get("triggered_drives", []))
     candidates = []
+    global_thresholds = config.get("drives", {}).get("thresholds")
     
     for name, drive in state.get("drives", {}).items():
         # Skip already triggered
@@ -189,10 +192,13 @@ def check_thresholds(
             continue
         
         pressure = drive.get("pressure", 0.0)
-        threshold = drive.get("threshold", 1.0)
         
-        if threshold > 0 and pressure >= threshold:
-            ratio = pressure / threshold
+        # Get graduated thresholds for this drive
+        thresholds = get_drive_thresholds(drive, global_thresholds)
+        triggered_level = thresholds.get("triggered", drive.get("threshold", 1.0))
+        
+        if triggered_level > 0 and pressure >= triggered_level:
+            ratio = pressure / triggered_level
             candidates.append((name, ratio))
     
     # Sort by ratio descending (highest pressure first)
@@ -338,12 +344,13 @@ def bump_drive(
     }
 
 
-def get_drive_status(state: DriveState, drive_name: str) -> Optional[dict]:
+def get_drive_status(state: DriveState, drive_name: str, config: Optional[dict] = None) -> Optional[dict]:
     """Get detailed status for a single drive.
     
     Args:
         state: Current drive state
         drive_name: Name of drive (fuzzy matched)
+        config: Optional config dict for global thresholds
         
     Returns:
         Status dict or None if drive not found
@@ -354,8 +361,10 @@ def get_drive_status(state: DriveState, drive_name: str) -> Optional[dict]:
         >>> status["ratio"]
         0.0
     """
+    from .models import get_drive_thresholds, get_threshold_label
+    
     drives = state.get("drives", {})
-    triggered = set(state.get("triggered_drives", []))
+    triggered_list = set(state.get("triggered_drives", []))
     
     normalized_name = fuzzy_match(drive_name, list(drives.keys()))
     if not normalized_name:
@@ -363,26 +372,31 @@ def get_drive_status(state: DriveState, drive_name: str) -> Optional[dict]:
     
     drive = drives[normalized_name]
     pressure = drive.get("pressure", 0.0)
-    threshold = drive.get("threshold", 1.0)
-    ratio = pressure / threshold if threshold > 0 else 0.0
+    base_threshold = drive.get("threshold", 1.0)
     
-    # Determine status category
-    if normalized_name in triggered:
+    # Get graduated thresholds
+    global_thresholds = config.get("drives", {}).get("thresholds") if config else None
+    thresholds = get_drive_thresholds(drive, global_thresholds)
+    
+    # Calculate ratio based on "triggered" level
+    triggered_threshold = thresholds.get("triggered", base_threshold)
+    ratio = pressure / triggered_threshold if triggered_threshold > 0 else 0.0
+    
+    # Determine status category using graduated thresholds
+    if normalized_name in triggered_list:
         status = "triggered"
-    elif ratio >= 1.0:
-        status = "over_threshold"
-    elif ratio >= 0.75:
-        status = "elevated"
     else:
-        status = "normal"
+        status = get_threshold_label(pressure, thresholds)
     
     return {
         "name": normalized_name,
         "pressure": pressure,
-        "threshold": threshold,
+        "threshold": base_threshold,
+        "thresholds": thresholds,
         "ratio": ratio,
         "percentage": ratio * 100,
         "status": status,
+        "threshold_label": status,  # Alias for clarity
         "category": drive.get("category", "unknown"),
         "rate_per_hour": drive.get("rate_per_hour", 0.0),
         "activity_driven": drive.get("activity_driven", False),
