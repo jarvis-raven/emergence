@@ -197,7 +197,7 @@ Full content of your session...
 
 IMPORTANT: When your session is complete, signal completion by running:
 ```
-cd {workspace} && "{python_path}" -c "from core.drives.satisfaction import write_completion; write_completion('{drive_name}')"
+emergence drives satisfy {drive_name}
 ```
 This triggers instant satisfaction of your drive. Without it, satisfaction is delayed.
 """
