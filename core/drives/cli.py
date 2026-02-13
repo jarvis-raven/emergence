@@ -580,9 +580,15 @@ def cmd_status(args) -> int:
 
 def _print_drive_line(name: str, drive: dict, triggered: set, cooldown_info: dict) -> None:
     """Print a single drive line with status indicator and pressure bar."""
+    from .models import get_drive_thresholds, get_threshold_label
+    
     pressure = drive.get("pressure", 0.0)
     threshold = drive.get("threshold", 1.0)
     ratio = pressure / threshold if threshold > 0 else 0.0
+    
+    # Get threshold band
+    thresholds = get_drive_thresholds(drive)
+    band = get_threshold_label(pressure, thresholds)
     
     # Determine status
     if name in triggered:
@@ -607,30 +613,40 @@ def _print_drive_line(name: str, drive: dict, triggered: set, cooldown_info: dic
     empty = width - filled
     bar = "█" * filled + "░" * empty
     
-    # Status text
+    # Band-based color coding
+    band_colors = {
+        "available": COLOR_DIM,
+        "elevated": COLOR_BUDGET_LOW,
+        "triggered": COLOR_BUDGET_MED,
+        "crisis": COLOR_BUDGET_HIGH,
+        "emergency": COLOR_BUDGET_HIGH,
+    }
+    band_color = band_colors.get(band, "")
+    
+    # Status text with band info
     if status == "triggered":
-        status_text = f"{COLOR_BUDGET_HIGH}Triggered{COLOR_RESET}"
+        status_text = f"{COLOR_BUDGET_HIGH}Triggered{COLOR_RESET} ({band_color}{band}{COLOR_RESET})"
     elif status == "over_threshold":
         remaining = cooldown_info.get("ready_in_minutes", 0)
         if remaining > 0:
-            status_text = format_time_remaining(remaining)
+            status_text = f"{format_time_remaining(remaining)} ({band_color}{band}{COLOR_RESET})"
         else:
-            status_text = f"{COLOR_BUDGET_HIGH}Over threshold{COLOR_RESET}"
+            status_text = f"{COLOR_BUDGET_HIGH}Over threshold{COLOR_RESET} ({band_color}{band}{COLOR_RESET})"
     elif status == "elevated":
         elapsed = get_elapsed_since_last_satisfaction(drive)
         if elapsed is not None:
-            status_text = format_elapsed_time(elapsed)
+            status_text = f"{format_elapsed_time(elapsed)} ({band_color}{band}{COLOR_RESET})"
         else:
-            status_text = format_time_remaining(int((1.0 - ratio) * threshold / drive.get("rate_per_hour", 1.0) * 60))
+            status_text = f"{format_time_remaining(int((1.0 - ratio) * threshold / drive.get('rate_per_hour', 1.0) * 60))} ({band_color}{band}{COLOR_RESET})"
     else:
         if drive.get("activity_driven"):
-            status_text = "Activity-driven"
+            status_text = f"Activity-driven ({band_color}{band}{COLOR_RESET})"
         else:
             elapsed = get_elapsed_since_last_satisfaction(drive)
             if elapsed is not None:
-                status_text = format_elapsed_time(elapsed)
+                status_text = f"{format_elapsed_time(elapsed)} ({band_color}{band}{COLOR_RESET})"
             else:
-                status_text = ""
+                status_text = f"({band_color}{band}{COLOR_RESET})"
     
     print(f"  {indicator} {name_padded} [{bar}] {pct}%  {status_text}")
     
@@ -775,6 +791,7 @@ def cmd_satisfy(args) -> int:
     # Determine depth - use auto-scaling if not specified
     depth_arg = getattr(args, 'depth', None)
     auto_scaled = False
+    band_name = None
     
     if depth_arg:
         # Explicit depth provided - normalize it
@@ -786,9 +803,13 @@ def cmd_satisfy(args) -> int:
         }
         depth = depth_map.get(depth_arg.lower(), depth_arg.lower())
     else:
-        # No depth provided - use auto-scaling based on pressure
+        # No depth provided - use auto-scaling based on pressure and threshold bands
+        from .models import get_drive_thresholds
         auto_scaled = True
-        depth_label, reduction_ratio = calculate_satisfaction_depth(old_pressure, threshold)
+        thresholds = get_drive_thresholds(drive, config.get("drives", {}).get("thresholds"))
+        band_name, depth_label, reduction_ratio = calculate_satisfaction_depth(
+            old_pressure, threshold, thresholds
+        )
         
         # Map auto-scaled reductions to standard depth names for satisfy_drive()
         # We'll manually apply the custom reduction ratio
@@ -797,7 +818,10 @@ def cmd_satisfy(args) -> int:
     # Apply satisfaction (custom reduction for auto-scaled, standard for explicit)
     if auto_scaled:
         # Manual pressure reduction with auto-scaled ratio
-        _, reduction_ratio = calculate_satisfaction_depth(old_pressure, threshold)
+        from .models import get_drive_thresholds
+        from .satisfaction import log_satisfaction
+        thresholds = get_drive_thresholds(drive, config.get("drives", {}).get("thresholds"))
+        band_name, _, reduction_ratio = calculate_satisfaction_depth(old_pressure, threshold, thresholds)
         new_pressure = max(0.0, old_pressure * (1.0 - reduction_ratio))
         drive["pressure"] = new_pressure
         
@@ -813,6 +837,17 @@ def cmd_satisfy(args) -> int:
         if reduction_ratio >= 0.5 and drive_name in state.get("triggered_drives", []):
             state["triggered_drives"].remove(drive_name)
         
+        # Log satisfaction history
+        log_satisfaction(
+            drive_name=drive_name,
+            pressure_before=old_pressure,
+            pressure_after=new_pressure,
+            band=band_name,
+            depth=depth,
+            ratio=reduction_ratio,
+            source="manual"
+        )
+        
         result = {
             "success": True,
             "drive": drive_name,
@@ -820,6 +855,7 @@ def cmd_satisfy(args) -> int:
             "new_pressure": new_pressure,
             "reduction_ratio": reduction_ratio,
             "depth": depth,
+            "band": band_name,
         }
     else:
         # Use standard satisfy_drive() for explicit depths
@@ -857,8 +893,9 @@ def cmd_satisfy(args) -> int:
     pressure_pct = int((old_pressure / threshold) * 100) if threshold > 0 else 0
     
     if auto_scaled:
-        print(f"✓ {drive_name} satisfied ({old_pressure:.1f} → {new_pressure:.1f}) [auto-scaled: {pressure_pct}% pressure]")
-        print(f"  Pressure reduced by {reduction_pct}% (auto-scaled based on current level)")
+        band_display = result.get("band", "unknown")
+        print(f"✓ {drive_name} satisfied ({old_pressure:.1f} → {new_pressure:.1f}) [band: {band_display}]")
+        print(f"  Pressure reduced by {reduction_pct}% (auto-scaled: {band_display} threshold)")
     else:
         print(f"✓ {drive_name} satisfied ({old_pressure:.1f} → {new_pressure:.1f}) [{depth}]")
         print(f"  Pressure reduced by {reduction_pct}%")
