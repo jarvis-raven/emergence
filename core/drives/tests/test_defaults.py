@@ -27,13 +27,14 @@ class TestLoadCoreDrives(unittest.TestCase):
     """Test loading core drive definitions from defaults.json."""
     
     def test_loads_all_three_core_drives(self):
-        """All three core drives should be loaded."""
+        """All core drives should be loaded."""
         drives = load_core_drives()
         
         self.assertIn("CARE", drives)
         self.assertIn("MAINTENANCE", drives)
         self.assertIn("REST", drives)
-        self.assertEqual(len(drives), 3)
+        self.assertIn("WANDER", drives)
+        self.assertEqual(len(drives), 4)
     
     def test_care_default_values(self):
         """CARE should have correct default values."""
@@ -147,8 +148,8 @@ class TestIsCoreDrive(unittest.TestCase):
         self.assertFalse(is_core_drive("CREATIVE"))
     
     def test_core_drive_names_constant(self):
-        """CORE_DRIVE_NAMES should contain all three drives."""
-        self.assertEqual(CORE_DRIVE_NAMES, {"CARE", "MAINTENANCE", "REST"})
+        """CORE_DRIVE_NAMES should contain all core drives."""
+        self.assertEqual(CORE_DRIVE_NAMES, {"CARE", "MAINTENANCE", "REST", "WANDER"})
 
 
 class TestEnsureCoreDrives(unittest.TestCase):
@@ -293,7 +294,7 @@ class TestMergeHumanOverrides(unittest.TestCase):
         merged = merge_human_overrides(defaults, overrides)
         
         self.assertNotIn("NEW_DRIVE", merged)
-        self.assertEqual(len(merged), 3)
+        self.assertEqual(len(merged), 4)  # CARE, MAINTENANCE, REST, WANDER
     
     def test_multiple_overrides(self):
         """Multiple drive overrides should all be applied."""
