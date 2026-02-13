@@ -5,6 +5,68 @@ All notable changes to Emergence will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-14
+
+### Added
+
+**Manual Drive Satisfaction (Issues #34, #35)**
+- New `manual_mode` config option: disables auto-spawn, agents choose when to satisfy
+- Three satisfaction depths: light (30%), moderate (60%), deep (90%)
+- Auto-scaling depth selection when no depth specified
+- `emergence drives satisfy <drive> [depth]` CLI command
+- Dashboard satisfaction controls via Room UI
+
+**Graduated Threshold System (Issue #36)**
+- Five pressure bands: available (30%), elevated (75%), triggered (100%), crisis (150%), emergency (200%)
+- Per-drive and global threshold configuration
+- Threshold band displayed in `drives status` output
+- Color-coded pressure bars in dashboard and Room
+
+**Aversive States & Thwarting Detection (Issues #37, #38, #39)**
+- Thwarting detection: tracks repeated failed satisfaction attempts
+- Valence tracking: positive (approach) ↔ negative (aversive) shift
+- Aversive-state specific satisfaction prompts and approaches
+- Thwarting indicators in status output and dashboard (🔄)
+- New modules: `core/drives/thwarting.py`, valence tracking in `core/drives/models.py`
+
+**Emergency Spawn Safety Valve (Issue #40)**
+- Auto-spawns session at 200%+ pressure even in manual mode
+- Configurable: `emergency_spawn`, `emergency_threshold`, `emergency_cooldown_hours`
+- Max one emergency spawn per drive per cooldown period
+- Prevents runaway aversive states while preserving agent autonomy
+
+**Interactive Dashboard (Issue #41)**
+- `emergence drives dashboard` terminal UI
+- Live pressure bars with threshold band markers
+- Manual mode toggle
+- Keyboard-driven satisfaction (select drive → choose depth)
+- Thwarting and valence indicators
+
+**Migration Script (Issue #42)**
+- `emergence migrate export` — portable state archive
+- `emergence migrate import <file>` — restore from archive
+- `emergence migrate rewrite-paths` — update paths after moving directories
+
+**Documentation (Issue #45)**
+- Phenomenology guide: what each pressure level feels like (`docs/phenomenology.md`)
+- API reference: CLI commands, config fields, Room endpoints (`docs/api.md`)
+- Migration guide: v0.2.x → v0.3.0 (`MIGRATION.md`)
+- Release notes: user-facing v0.3.0 summary (`RELEASE-NOTES.md`)
+
+### Changed
+- `drives status` now shows threshold band labels and thwarting indicators
+- Room dashboard adds pressure bars, satisfaction controls, manual mode toggle
+- Drive pressure can now exceed 100% (up to emergency threshold) in manual mode
+- Default `max_pressure_ratio` effectively superseded by graduated thresholds
+
+### Technical
+- No breaking changes to existing v0.2.x configurations
+- All new config fields have backwards-compatible defaults
+- New state fields (thwarting_count, valence) auto-initialize on first tick
+- Satisfaction history logged to `satisfaction_history.jsonl`
+
+---
+
 ## [0.2.2] - 2026-02-12
 
 ### Added
@@ -200,6 +262,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dream engine
 - Setup wizard (`emergence awaken`)
 
+[0.3.0]: https://github.com/jarvis-raven/emergence/compare/v0.2.2...v0.3.0
+[0.2.2]: https://github.com/jarvis-raven/emergence/compare/v0.2.0...v0.2.2
 [0.2.0]: https://github.com/jarvis-raven/emergence/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/jarvis-raven/emergence/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jarvis-raven/emergence/compare/v0.1.0...v0.1.1
