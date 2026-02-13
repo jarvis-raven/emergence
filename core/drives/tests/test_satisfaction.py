@@ -1,4 +1,4 @@
-"""Tests for the file-based drive satisfaction system."""
+"""Tests for the file-based drive satisfaction system and manual satisfaction."""
 
 import json
 import os
@@ -16,6 +16,7 @@ from core.drives.satisfaction import (
     check_completed_sessions,
     _is_session_complete,
     _check_file_writes,
+    calculate_satisfaction_depth,
 )
 
 
@@ -209,3 +210,101 @@ class TestCheckCompletedSessions:
             check_completed_sessions(state, {})
         
         assert not bc_path.exists()
+
+
+class TestCalculateSatisfactionDepth:
+    """Tests for auto-scaled satisfaction depth calculation (issue #35)."""
+    
+    def test_0_to_30_percent_shallow(self):
+        """0-30% pressure: 20% reduction"""
+        # 25% pressure (5/20)
+        depth, reduction = calculate_satisfaction_depth(5.0, 20.0)
+        assert depth == 'auto-shallow'
+        assert reduction == 0.20
+        
+        # 15% pressure (3/20)
+        depth, reduction = calculate_satisfaction_depth(3.0, 20.0)
+        assert depth == 'auto-shallow'
+        assert reduction == 0.20
+    
+    def test_30_to_75_percent_moderate(self):
+        """30-75% pressure: 35% reduction"""
+        # 50% pressure (10/20)
+        depth, reduction = calculate_satisfaction_depth(10.0, 20.0)
+        assert depth == 'auto-moderate'
+        assert reduction == 0.35
+        
+        # 60% pressure (12/20)
+        depth, reduction = calculate_satisfaction_depth(12.0, 20.0)
+        assert depth == 'auto-moderate'
+        assert reduction == 0.35
+    
+    def test_75_to_100_percent_deep(self):
+        """75-100% pressure: 50% reduction"""
+        # 75% pressure (15/20)
+        depth, reduction = calculate_satisfaction_depth(15.0, 20.0)
+        assert depth == 'auto-deep'
+        assert reduction == 0.50
+        
+        # 90% pressure (18/20)
+        depth, reduction = calculate_satisfaction_depth(18.0, 20.0)
+        assert depth == 'auto-deep'
+        assert reduction == 0.50
+        
+        # Exactly 100% (20/20)
+        depth, reduction = calculate_satisfaction_depth(20.0, 20.0)
+        assert depth == 'auto-deep'
+        assert reduction == 0.50
+    
+    def test_100_to_150_percent_deep_75(self):
+        """100-150% pressure: 75% reduction"""
+        # 110% pressure (22/20)
+        depth, reduction = calculate_satisfaction_depth(22.0, 20.0)
+        assert depth == 'auto-deep'
+        assert reduction == 0.75
+        
+        # 125% pressure (25/20)
+        depth, reduction = calculate_satisfaction_depth(25.0, 20.0)
+        assert depth == 'auto-deep'
+        assert reduction == 0.75
+    
+    def test_150_plus_percent_full(self):
+        """150%+ pressure: 90% reduction"""
+        # 150% pressure (30/20)
+        depth, reduction = calculate_satisfaction_depth(30.0, 20.0)
+        assert depth == 'auto-full'
+        assert reduction == 0.90
+        
+        # 200% pressure (40/20)
+        depth, reduction = calculate_satisfaction_depth(40.0, 20.0)
+        assert depth == 'auto-full'
+        assert reduction == 0.90
+    
+    def test_edge_case_zero_threshold(self):
+        """Handle invalid threshold gracefully"""
+        depth, reduction = calculate_satisfaction_depth(10.0, 0.0)
+        assert depth == 'auto-moderate'
+        assert reduction == 0.35
+    
+    def test_edge_case_zero_pressure(self):
+        """Zero pressure should still calculate (edge of 0-30% band)"""
+        depth, reduction = calculate_satisfaction_depth(0.0, 20.0)
+        assert depth == 'auto-shallow'
+        assert reduction == 0.20
+    
+    def test_boundary_conditions(self):
+        """Test exact boundary values"""
+        # Exactly 30% - should be moderate (30 is not less than 30)
+        depth, reduction = calculate_satisfaction_depth(6.0, 20.0)
+        assert depth == 'auto-moderate'
+        assert reduction == 0.35
+        
+        # Just below 75% - should be moderate
+        depth, reduction = calculate_satisfaction_depth(14.99, 20.0)
+        assert depth == 'auto-moderate'
+        assert reduction == 0.35
+        
+        # Exactly 150% - should be full (not less than 150)
+        depth, reduction = calculate_satisfaction_depth(30.0, 20.0)
+        assert depth == 'auto-full'
+        assert reduction == 0.90
