@@ -1781,6 +1781,150 @@ def cmd_aspects(args) -> int:
     return EXIT_SUCCESS
 
 
+def cmd_dashboard(args) -> int:
+    """Show all drives grouped by urgency/pressure level."""
+    # Use lightweight runtime state for status display (prevents context bloat)
+    runtime_state, config, runtime_state_path = get_runtime_state_and_config(args)
+    
+    drives = runtime_state.get("drives", {})
+    
+    # Get triggered drives from full state
+    try:
+        full_state_path = runtime_state_path.parent / "drives.json"
+        if full_state_path.exists():
+            with open(full_state_path, 'r') as f:
+                full_state = json.load(f)
+            triggered = set(full_state.get("triggered_drives", []))
+            # Load descriptions from full state
+            full_drives = full_state.get("drives", {})
+        else:
+            triggered = set()
+            full_drives = {}
+    except (IOError, json.JSONDecodeError):
+        triggered = set()
+        full_drives = {}
+    
+    if not drives:
+        print("ℹ No drives configured yet")
+        return EXIT_SUCCESS
+    
+    # Group drives by pressure level
+    triggered_drives = []      # 100%+
+    elevated_drives = []       # 75-100%
+    available_drives = []      # 30-75%
+    low_drives = []            # <30%
+    
+    for name, drive in drives.items():
+        # Skip latent drives unless explicitly requested
+        if drive.get("status") == "latent":
+            continue
+        
+        pressure = drive.get("pressure", 0.0)
+        threshold = drive.get("threshold", 1.0)
+        ratio = pressure / threshold if threshold > 0 else 0.0
+        
+        drive_info = {
+            "name": name,
+            "pressure": pressure,
+            "threshold": threshold,
+            "ratio": ratio,
+            "description": full_drives.get(name, {}).get("description", ""),
+        }
+        
+        if name in triggered or ratio >= 1.0:
+            triggered_drives.append(drive_info)
+        elif ratio >= 0.75:
+            elevated_drives.append(drive_info)
+        elif ratio >= 0.30:
+            available_drives.append(drive_info)
+        else:
+            low_drives.append(drive_info)
+    
+    # Header
+    print("🧠 Drive Dashboard")
+    print("=" * 70)
+    
+    # Display groups (skip empty groups)
+    
+    # Triggered (100%+) - RED
+    if triggered_drives:
+        print(f"\n{COLOR_BUDGET_HIGH}🔥 TRIGGERED (≥100%){COLOR_RESET}")
+        print("─" * 70)
+        for drive in sorted(triggered_drives, key=lambda d: d["ratio"], reverse=True):
+            _print_dashboard_drive(drive, COLOR_BUDGET_HIGH)
+    
+    # Elevated (75-100%) - YELLOW
+    if elevated_drives:
+        print(f"\n{COLOR_BUDGET_MED}⚡ ELEVATED (75-100%){COLOR_RESET}")
+        print("─" * 70)
+        for drive in sorted(elevated_drives, key=lambda d: d["ratio"], reverse=True):
+            _print_dashboard_drive(drive, COLOR_BUDGET_MED)
+    
+    # Available (30-75%) - GREEN
+    if available_drives:
+        print(f"\n{COLOR_BUDGET_LOW}▫ AVAILABLE (30-75%){COLOR_RESET}")
+        print("─" * 70)
+        for drive in sorted(available_drives, key=lambda d: d["ratio"], reverse=True):
+            _print_dashboard_drive(drive, COLOR_BUDGET_LOW)
+    
+    # Low (<30%) - DIM (optional, only if verbose)
+    if getattr(args, 'show_all', False) and low_drives:
+        print(f"\n{COLOR_DIM}○ LOW (<30%){COLOR_RESET}")
+        print("─" * 70)
+        for drive in sorted(low_drives, key=lambda d: d["ratio"], reverse=True):
+            _print_dashboard_drive(drive, COLOR_DIM)
+    
+    # Footer with suggested commands
+    print("\n" + "=" * 70)
+    print("\n💡 Suggested Actions:")
+    
+    if triggered_drives:
+        first_triggered = triggered_drives[0]["name"]
+        print(f"  {COLOR_BUDGET_HIGH}• Address triggered drives:{COLOR_RESET}")
+        print(f"    emergence drives satisfy {first_triggered.lower()} [shallow|moderate|deep|full]")
+    
+    if elevated_drives and not triggered_drives:
+        first_elevated = elevated_drives[0]["name"]
+        print(f"  {COLOR_BUDGET_MED}• Check elevated drives:{COLOR_RESET}")
+        print(f"    emergence drives show {first_elevated.lower()}")
+    
+    if not triggered_drives and not elevated_drives:
+        print(f"  {COLOR_BUDGET_LOW}✓ All drives in healthy range{COLOR_RESET}")
+    
+    # Manual mode note
+    manual_mode = config.get("drives", {}).get("manual_mode", False)
+    if manual_mode:
+        print(f"\n  {COLOR_DIM}ℹ Manual mode enabled — drives won't auto-trigger{COLOR_RESET}")
+    
+    print(f"\nRun 'emergence drives status' for detailed view")
+    
+    return EXIT_SUCCESS
+
+
+def _print_dashboard_drive(drive: dict, color: str) -> None:
+    """Print a single drive line for the dashboard.
+    
+    Args:
+        drive: Dict with name, pressure, threshold, ratio, description
+        color: ANSI color code for the line
+    """
+    name = drive["name"]
+    pressure = drive["pressure"]
+    threshold = drive["threshold"]
+    ratio = drive["ratio"]
+    description = drive["description"]
+    
+    # Format pressure bar (20 chars wide)
+    bar_str = format_pressure_bar(pressure, threshold, width=20)
+    pct = int(ratio * 100)
+    
+    # Truncate description to fit on one line (35 chars)
+    desc_truncated = description[:35] + "..." if len(description) > 35 else description
+    
+    # Format: NAME [████████░░] 85% — Description
+    print(f"{color}  {name:<14} {bar_str:26} — {desc_truncated}{COLOR_RESET}")
+
+
 def cmd_help(args) -> int:
     """Show detailed help for topics."""
     topic = getattr(args, 'topic', None)
@@ -2080,6 +2224,18 @@ Exit codes:
         help="Show latent/consolidated drives"
     )
     
+    # dashboard command
+    dashboard_parser = subparsers.add_parser(
+        "dashboard",
+        help="Show all drives grouped by urgency",
+        aliases=["dash"]
+    )
+    dashboard_parser.add_argument(
+        "--show-all",
+        action="store_true",
+        help="Include low-pressure drives (<30%)"
+    )
+    
     # satisfy command
     satisfy_parser = subparsers.add_parser(
         "satisfy",
@@ -2327,6 +2483,8 @@ def main(args: Optional[list[str]] = None) -> int:
     commands = {
         "status": cmd_status,
         "st": cmd_status,
+        "dashboard": cmd_dashboard,
+        "dash": cmd_dashboard,
         "satisfy": cmd_satisfy,
         "sat": cmd_satisfy,
         "bump": cmd_bump,

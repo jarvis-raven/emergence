@@ -150,6 +150,17 @@ class TestCLIArgumentParsing(unittest.TestCase):
         args = parser.parse_args(["help", "satisfy"])
         self.assertEqual(args.topic, "satisfy")
     
+    def test_dashboard_command_parsing(self):
+        """Dashboard command should accept --show-all flag."""
+        parser = cli.create_parser()
+        
+        args = parser.parse_args(["dashboard"])
+        self.assertEqual(args.command, "dashboard")
+        self.assertFalse(args.show_all)
+        
+        args = parser.parse_args(["dashboard", "--show-all"])
+        self.assertTrue(args.show_all)
+    
     def test_command_aliases(self):
         """Test command aliases work correctly."""
         parser = cli.create_parser()
@@ -173,6 +184,10 @@ class TestCLIArgumentParsing(unittest.TestCase):
         # log -> history
         args = parser.parse_args(["history"])
         self.assertEqual(args.command, "history")
+        
+        # dashboard -> dash
+        args = parser.parse_args(["dash"])
+        self.assertEqual(args.command, "dash")
 
 
 class TestCLIExitCodes(unittest.TestCase):
@@ -836,6 +851,251 @@ class TestCLIAutoScaledSatisfaction(unittest.TestCase):
             result = cli.cmd_satisfy(args)
         
         self.assertEqual(result, cli.EXIT_ERROR)
+
+
+class TestDashboardCommand(unittest.TestCase):
+    """Test dashboard command displays drives grouped by pressure level."""
+    
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_dashboard_groups_drives_by_pressure(self, mock_file, mock_runtime_config):
+        """Dashboard should group drives by pressure: triggered (≥100%), elevated (75-100%), available (30-75%)."""
+        # Mock runtime state with drives at different pressure levels
+        runtime_state = {
+            "drives": {
+                "TRIGGERED_HIGH": {"pressure": 25.0, "threshold": 20.0, "status": "active"},  # 125% - triggered
+                "ELEVATED": {"pressure": 18.0, "threshold": 20.0, "status": "active"},  # 90% - elevated
+                "AVAILABLE_HIGH": {"pressure": 14.0, "threshold": 20.0, "status": "active"},  # 70% - available
+                "AVAILABLE_LOW": {"pressure": 8.0, "threshold": 20.0, "status": "active"},  # 40% - available
+                "LOW": {"pressure": 2.0, "threshold": 20.0, "status": "active"},  # 10% - low (not shown by default)
+            },
+            "last_tick": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        config = {
+            "drives": {"manual_mode": False},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        # Mock full state for descriptions and triggered list
+        full_state = {
+            "drives": {
+                "TRIGGERED_HIGH": {"description": "High pressure drive"},
+                "ELEVATED": {"description": "Elevated pressure drive"},
+                "AVAILABLE_HIGH": {"description": "Available high drive"},
+                "AVAILABLE_LOW": {"description": "Available low drive"},
+                "LOW": {"description": "Low pressure drive"},
+            },
+            "triggered_drives": ["TRIGGERED_HIGH"]
+        }
+        
+        mock_runtime_config.return_value = (runtime_state, config, Path("/tmp/drives-state.json"))
+        mock_file.return_value.read.return_value = json.dumps(full_state)
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["dashboard"])
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stdout', captured):
+            result = cli.cmd_dashboard(args)
+        
+        output = captured.getvalue()
+        
+        # Verify groupings are present
+        self.assertIn("🔥 TRIGGERED (≥100%)", output)
+        self.assertIn("⚡ ELEVATED (75-100%)", output)
+        self.assertIn("▫ AVAILABLE (30-75%)", output)
+        
+        # Verify drives appear in correct groups
+        self.assertIn("TRIGGERED_HIGH", output)
+        self.assertIn("ELEVATED", output)
+        self.assertIn("AVAILABLE_HIGH", output)
+        self.assertIn("AVAILABLE_LOW", output)
+        
+        # LOW drive should NOT appear without --show-all (check for the drive name on its own line)
+        # But AVAILABLE_LOW will appear, so we need to check for "LOW " (with space) or "○ LOW"
+        self.assertNotIn("○ LOW (<30%)", output)
+        
+        # Verify suggested actions
+        self.assertIn("Suggested Actions", output)
+        self.assertIn("Address triggered drives", output)
+        
+        self.assertEqual(result, cli.EXIT_SUCCESS)
+    
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_dashboard_shows_low_drives_with_flag(self, mock_file, mock_runtime_config):
+        """Dashboard with --show-all should include low-pressure drives (<30%)."""
+        runtime_state = {
+            "drives": {
+                "LOW1": {"pressure": 2.0, "threshold": 20.0, "status": "active"},  # 10%
+                "LOW2": {"pressure": 4.0, "threshold": 20.0, "status": "active"},  # 20%
+            },
+            "last_tick": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        config = {
+            "drives": {"manual_mode": False},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        full_state = {
+            "drives": {
+                "LOW1": {"description": "Low drive 1"},
+                "LOW2": {"description": "Low drive 2"},
+            },
+            "triggered_drives": []
+        }
+        
+        mock_runtime_config.return_value = (runtime_state, config, Path("/tmp/drives-state.json"))
+        mock_file.return_value.read.return_value = json.dumps(full_state)
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["dashboard", "--show-all"])
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stdout', captured):
+            result = cli.cmd_dashboard(args)
+        
+        output = captured.getvalue()
+        
+        # LOW group should appear with --show-all
+        self.assertIn("○ LOW (<30%)", output)
+        self.assertIn("LOW1", output)
+        self.assertIn("LOW2", output)
+        
+        self.assertEqual(result, cli.EXIT_SUCCESS)
+    
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_dashboard_skips_latent_drives(self, mock_file, mock_runtime_config):
+        """Dashboard should not display latent/consolidated drives."""
+        runtime_state = {
+            "drives": {
+                "ACTIVE": {"pressure": 10.0, "threshold": 20.0, "status": "active"},
+                "LATENT": {"pressure": 5.0, "threshold": 20.0, "status": "latent"},
+            },
+            "last_tick": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        config = {
+            "drives": {"manual_mode": False},
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        full_state = {
+            "drives": {
+                "ACTIVE": {"description": "Active drive"},
+                "LATENT": {"description": "Latent drive"},
+            },
+            "triggered_drives": []
+        }
+        
+        mock_runtime_config.return_value = (runtime_state, config, Path("/tmp/drives-state.json"))
+        mock_file.return_value.read.return_value = json.dumps(full_state)
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["dashboard"])
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stdout', captured):
+            result = cli.cmd_dashboard(args)
+        
+        output = captured.getvalue()
+        
+        # ACTIVE should appear, LATENT should not
+        self.assertIn("ACTIVE", output)
+        self.assertNotIn("LATENT", output)
+        
+        self.assertEqual(result, cli.EXIT_SUCCESS)
+    
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_dashboard_manual_mode_note(self, mock_file, mock_runtime_config):
+        """Dashboard should show manual mode note when enabled."""
+        runtime_state = {
+            "drives": {
+                "TEST": {"pressure": 10.0, "threshold": 20.0, "status": "active"},
+            },
+            "last_tick": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        config = {
+            "drives": {"manual_mode": True},  # Manual mode enabled
+            "paths": {"state": ".", "workspace": "."}
+        }
+        
+        full_state = {
+            "drives": {
+                "TEST": {"description": "Test drive"},
+            },
+            "triggered_drives": []
+        }
+        
+        mock_runtime_config.return_value = (runtime_state, config, Path("/tmp/drives-state.json"))
+        mock_file.return_value.read.return_value = json.dumps(full_state)
+        
+        parser = cli.create_parser()
+        args = parser.parse_args(["dashboard"])
+        
+        from io import StringIO
+        captured = StringIO()
+        with patch('sys.stdout', captured):
+            result = cli.cmd_dashboard(args)
+        
+        output = captured.getvalue()
+        
+        # Manual mode note should appear
+        self.assertIn("Manual mode enabled", output)
+        self.assertIn("won't auto-trigger", output)
+        
+        self.assertEqual(result, cli.EXIT_SUCCESS)
+    
+    @patch('core.drives.cli.get_runtime_state_and_config')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_dashboard_works_in_manual_and_automatic_mode(self, mock_file, mock_runtime_config):
+        """Dashboard should work regardless of manual_mode setting."""
+        runtime_state = {
+            "drives": {
+                "TEST": {"pressure": 25.0, "threshold": 20.0, "status": "active"},
+            },
+            "last_tick": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        full_state = {
+            "drives": {
+                "TEST": {"description": "Test drive"},
+            },
+            "triggered_drives": ["TEST"]
+        }
+        
+        # Test both modes
+        for manual_mode in [True, False]:
+            config = {
+                "drives": {"manual_mode": manual_mode},
+                "paths": {"state": ".", "workspace": "."}
+            }
+            
+            mock_runtime_config.return_value = (runtime_state, config, Path("/tmp/drives-state.json"))
+            mock_file.return_value.read.return_value = json.dumps(full_state)
+            
+            parser = cli.create_parser()
+            args = parser.parse_args(["dashboard"])
+            
+            from io import StringIO
+            captured = StringIO()
+            with patch('sys.stdout', captured):
+                result = cli.cmd_dashboard(args)
+            
+            output = captured.getvalue()
+            
+            # Both modes should display the triggered drive
+            self.assertIn("🔥 TRIGGERED (≥100%)", output)
+            self.assertIn("TEST", output)
+            self.assertEqual(result, cli.EXIT_SUCCESS)
 
 
 if __name__ == "__main__":
