@@ -258,5 +258,46 @@ class TestFindConfig(unittest.TestCase):
         self.assertIsNone(found)
 
 
+class TestManualModeConfig(unittest.TestCase):
+    """Test manual_mode configuration (issue #34)."""
+    
+    def test_default_config_has_manual_mode_false(self):
+        """Default config should have manual_mode: false."""
+        self.assertIn("manual_mode", DEFAULT_CONFIG["drives"])
+        self.assertFalse(DEFAULT_CONFIG["drives"]["manual_mode"])
+    
+    def test_load_config_with_manual_mode_true(self):
+        """Should parse manual_mode: true from config file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            config_content = {
+                "agent": {"name": "Test"},
+                "drives": {"manual_mode": True}
+            }
+            json.dump(config_content, f)
+            temp_path = f.name
+        
+        try:
+            config = load_config(Path(temp_path))
+            self.assertTrue(config["drives"]["manual_mode"])
+        finally:
+            os.unlink(temp_path)
+    
+    def test_load_config_manual_mode_defaults_false(self):
+        """Should default to false when not specified in config."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            config_content = {
+                "agent": {"name": "Test"},
+                "drives": {"tick_interval": 900}  # No manual_mode specified
+            }
+            json.dump(config_content, f)
+            temp_path = f.name
+        
+        try:
+            config = load_config(Path(temp_path))
+            self.assertFalse(config["drives"]["manual_mode"])
+        finally:
+            os.unlink(temp_path)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

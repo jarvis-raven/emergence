@@ -419,7 +419,8 @@ class TestTickCycle(unittest.TestCase):
             },
             "drives": {
                 "tick_interval": 900,
-                "max_pressure_ratio": 1.5
+                "max_pressure_ratio": 1.5,
+                "manual_mode": False  # Default v0.2.x behavior
             }
         }
         self.state_path = Path(self.temp_dir.name) / ".emergence" / "state" / "drives.json"
@@ -456,6 +457,71 @@ class TestTickCycle(unittest.TestCase):
         # Should have triggered CARE
         triggered_names = [t["name"] for t in result["triggered"]]
         self.assertIn("CARE", triggered_names)
+    
+    def test_manual_mode_false_spawns_sessions(self):
+        """With manual_mode: false, should spawn sessions when triggered."""
+        from core.drives.state import save_state
+        
+        # Set manual_mode to false (v0.2.x behavior)
+        self.config["drives"]["manual_mode"] = False
+        
+        # Set pressure above threshold
+        self.state["drives"]["CARE"]["pressure"] = 25.0
+        save_state(self.state_path, self.state)
+        
+        # Mock spawn_session to avoid actual spawning
+        with patch('core.drives.spawn.spawn_session') as mock_spawn:
+            mock_spawn.return_value = True
+            with patch('core.drives.spawn.record_trigger'):
+                result = daemon.run_tick_cycle(self.state, self.config, self.state_path, self.log_path)
+        
+        # Should have detected trigger
+        triggered_names = [t["name"] for t in result["triggered"]]
+        self.assertIn("CARE", triggered_names)
+        
+        # Should have attempted to spawn
+        mock_spawn.assert_called()
+    
+    def test_manual_mode_true_never_spawns(self):
+        """With manual_mode: true, should never spawn sessions."""
+        from core.drives.state import save_state
+        
+        # Set manual_mode to true (v0.3.0+ manual satisfaction)
+        self.config["drives"]["manual_mode"] = True
+        
+        # Set pressure above threshold
+        self.state["drives"]["CARE"]["pressure"] = 25.0
+        save_state(self.state_path, self.state)
+        
+        # Mock spawn_session to ensure it's never called
+        with patch('core.drives.spawn.spawn_session') as mock_spawn:
+            result = daemon.run_tick_cycle(self.state, self.config, self.state_path, self.log_path)
+        
+        # Should have detected trigger
+        triggered_names = [t["name"] for t in result["triggered"]]
+        self.assertIn("CARE", triggered_names)
+        
+        # Should NOT have attempted to spawn
+        mock_spawn.assert_not_called()
+    
+    def test_manual_mode_pressure_still_accumulates(self):
+        """In manual mode, pressure should still accumulate normally."""
+        from core.drives.state import save_state
+        
+        # Set manual_mode to true
+        self.config["drives"]["manual_mode"] = True
+        
+        # Set initial pressure below threshold
+        self.state["drives"]["CARE"]["pressure"] = 10.0
+        save_state(self.state_path, self.state)
+        
+        # Run tick cycle
+        result = daemon.run_tick_cycle(self.state, self.config, self.state_path, self.log_path)
+        
+        # Pressure should have increased
+        self.assertIn("CARE", [u["name"] for u in result["updated"]])
+        updated_care = [u for u in result["updated"] if u["name"] == "CARE"][0]
+        self.assertGreater(updated_care["new"], updated_care["old"])
 
 
 class TestStartStopDaemon(unittest.TestCase):
