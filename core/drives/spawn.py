@@ -134,9 +134,14 @@ def build_session_prompt(
     drive_prompt: str,
     pressure: float,
     threshold: float,
-    config: dict
+    config: dict,
+    valence: str = "appetitive"
 ) -> str:
     """Build the complete session prompt with context and instructions.
+    
+    Adapts prompt style based on drive valence:
+    - Appetitive: "Engage with this drive" (normal approach)
+    - Aversive: "Investigate what's blocking this drive" (reflective)
     
     Args:
         drive_name: Name of the triggering drive
@@ -144,6 +149,7 @@ def build_session_prompt(
         pressure: Current pressure level
         threshold: Drive's threshold level
         config: Configuration dict
+        valence: Drive valence state (appetitive/aversive/neutral)
         
     Returns:
         Full prompt text for the spawned session
@@ -168,11 +174,46 @@ def build_session_prompt(
     # Use the same python that's running this code (handles venv correctly)
     python_path = sys.executable
     
+    # Build prompt based on valence
+    if valence == "aversive":
+        # Aversive state: Focus on investigating blockages
+        approach = f"""⚠️  AVERSIVE STATE DETECTED ⚠️
+
+This drive is in distress. Instead of trying to directly satisfy it, focus on:
+
+1. **Reflect on blockages**: What's preventing satisfaction?
+   - External obstacles (time, resources, environment)
+   - Internal resistance (fear, uncertainty, conflicting drives)
+   - Systemic issues (patterns, habits, environment)
+
+2. **Identify root causes**: Why is this drive thwarted?
+   - Has it been repeatedly triggered without completion?
+   - Is satisfaction genuinely impossible right now?
+   - Are there conflicting drives or constraints?
+
+3. **Explore alternatives**:
+   - Could a different approach satisfy this drive?
+   - Are there partial satisfaction routes available?
+   - Would temporarily lowering the threshold help?
+   - Is this drive pointing at a deeper need?
+
+4. **Document findings**: Record what you discover about the blockage
+   - This helps future sessions understand the pattern
+   - May reveal solutions or necessary environmental changes
+
+The original drive prompt was: "{drive_prompt}"
+
+But right now, investigation matters more than action. Understand the blockage first."""
+    else:
+        # Appetitive/neutral state: Normal engagement
+        approach = drive_prompt
+    
     return f"""AUTONOMOUS SESSION (triggered by {drive_name} drive)
 Pressure: {pressure:.1f}/{threshold}
+Valence: {valence}
 Timestamp: {now.isoformat()}
 
-{drive_prompt}
+{approach}
 
 Record your session to: {session_file}
 
@@ -182,6 +223,7 @@ Use this format:
 drive: {drive_name}
 timestamp: {now.isoformat()}
 pressure: {pressure:.1f}/{threshold}
+valence: {valence}
 trigger: drive
 ---
 
@@ -194,6 +236,13 @@ Full content of your session...
 ## Artifacts
 - List any files created or modified
 - List any external actions (emails sent, posts made, messages sent)
+
+{f'''## Blockage Analysis (Aversive State)
+- What prevents satisfaction?
+- Root causes identified
+- Alternative approaches considered
+- Threshold adjustment needed?
+''' if valence == "aversive" else ''}
 
 IMPORTANT: When your session is complete, signal completion by running:
 ```
@@ -372,7 +421,8 @@ def spawn_session(
     prompt: str,
     config: dict,
     pressure: float,
-    threshold: float
+    threshold: float,
+    valence: str = "appetitive"
 ) -> bool:
     """Spawn an OpenClaw session for a triggered drive.
     
@@ -385,6 +435,7 @@ def spawn_session(
         config: Configuration dict
         pressure: Current pressure level
         threshold: Drive's threshold level
+        valence: Drive valence state (appetitive/aversive/neutral)
         
     Returns:
         True if session spawned successfully (via either method)
@@ -394,7 +445,7 @@ def spawn_session(
         >>> spawn_session("CARE", "Check in with human", config, 25.0, 20.0)
         True  # (if OpenClaw is available)
     """
-    full_prompt = build_session_prompt(drive_name, prompt, pressure, threshold, config)
+    full_prompt = build_session_prompt(drive_name, prompt, pressure, threshold, config, valence)
     
     # Try CLI first (more reliable — handles its own auth)
     session_key = spawn_via_cli(full_prompt, config, drive_name, pressure, threshold)
@@ -623,6 +674,7 @@ def tick_with_spawning(config: dict, state: DriveState) -> DriveState:
         pressure = drive.get("pressure", 0.0)
         threshold = drive.get("threshold", 1.0)
         drive_prompt = drive.get("prompt", f"Your {drive_name} drive triggered.")
+        valence = drive.get("valence", "appetitive")
         
         # Attempt to spawn session
         spawned = spawn_session(
@@ -630,7 +682,8 @@ def tick_with_spawning(config: dict, state: DriveState) -> DriveState:
             prompt=drive_prompt,
             config=config,
             pressure=pressure,
-            threshold=threshold
+            threshold=threshold,
+            valence=valence
         )
         
         if spawned:

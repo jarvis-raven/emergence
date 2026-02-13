@@ -58,8 +58,9 @@ export function DriveCard({
   const enrichedDrive = useMemo(() => enrichDriveWithThresholds(drive), [drive]);
   const { band, bandLabel, bandIcon, thresholds, bandColors: driveBandColors } = enrichedDrive;
 
-  const { name, description, prompt, rate, last_satisfied } = drive;
+  const { name, description, prompt, rate, last_satisfied, valence, thwarting_count } = drive;
   const colors = getDriveColor(name);
+  const isAversive = valence === 'aversive';
 
   const handleSatisfyClick = () => {
     if (drive.percentage === 0) return; // Already satisfied
@@ -111,10 +112,19 @@ export function DriveCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-text">{name}</h3>
-            {drive.isTriggered && (
+            {isAversive && (
+              <span 
+                className="text-red-500 font-bold" 
+                title={`Aversive state (thwarted ${thwarting_count || 0}x)`}
+                aria-label="Aversive state"
+              >
+                ⚠{thwarting_count > 0 ? thwarting_count : ''}
+              </span>
+            )}
+            {drive.isTriggered && !isAversive && (
               <span className="text-warning" title="Triggered" aria-label="Triggered">🔥</span>
             )}
-            {isHighest && !drive.isTriggered && (
+            {isHighest && !drive.isTriggered && !isAversive && (
               <span className="text-success" title="Highest" aria-label="Highest pressure">⚡</span>
             )}
           </div>
@@ -191,6 +201,27 @@ export function DriveCard({
       {expanded && (
         <div className="px-4 pb-4 border-t border-surface pt-4">
           <div className="space-y-3">
+            {/* Aversive state warning */}
+            {isAversive && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500 text-lg">⚠️</span>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-red-400 mb-1">
+                      Aversive State - Drive in Distress
+                    </h4>
+                    <p className="text-xs text-red-300/80 mb-2">
+                      This drive has been thwarted {thwarting_count || 0} time{thwarting_count !== 1 ? 's' : ''}.
+                      Consider investigating blockages instead of forcing satisfaction.
+                    </p>
+                    <div className="text-xs text-red-300/60">
+                      💡 Tip: Aversive drives often need reflection, not action
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Threshold status badge */}
             <div className={`
               inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
@@ -242,6 +273,19 @@ export function DriveCard({
 
             {/* Stats grid */}
             <div className="grid grid-cols-2 gap-4 pt-2">
+              {valence && (
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider text-textMuted mb-1">Valence</h4>
+                  <p className={`text-sm font-medium ${
+                    valence === 'aversive' ? 'text-red-400' : 
+                    valence === 'appetitive' ? 'text-green-400' : 
+                    'text-gray-400'
+                  }`}>
+                    {valence === 'aversive' && '⚠️ '}{valence}
+                  </p>
+                </div>
+              )}
+              
               {rate !== undefined && (
                 <div>
                   <h4 className="text-xs uppercase tracking-wider text-textMuted mb-1">Rate</h4>
@@ -258,26 +302,49 @@ export function DriveCard({
             {/* Satisfy button in expanded view */}
             {!showConfirm && drive.percentage > 0 && (
               <div className="pt-2">
-                <button
-                  onClick={handleSatisfyClick}
-                  disabled={satisfying}
-                  className={`
-                    w-full px-4 py-3 rounded-lg text-sm font-medium
-                    transition-all duration-200
-                    min-h-[44px]
-                    ${satisfying 
-                      ? 'bg-textMuted/20 text-textMuted cursor-wait' 
-                      : 'bg-gradient-to-r text-white hover:opacity-90'
-                    }
-                  `}
-                  style={{
-                    background: !satisfying 
-                      ? `linear-gradient(to right, ${colors.from}, ${colors.to})` 
-                      : undefined
-                  }}
-                >
-                  {satisfying ? 'Satisfying...' : `Satisfy ${name}`}
-                </button>
+                {isAversive ? (
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleSatisfyClick}
+                      disabled={satisfying}
+                      className={`
+                        w-full px-4 py-3 rounded-lg text-sm font-medium
+                        transition-all duration-200
+                        min-h-[44px]
+                        ${satisfying 
+                          ? 'bg-textMuted/20 text-textMuted cursor-wait' 
+                          : 'bg-orange-600 text-white hover:bg-orange-700'
+                        }
+                      `}
+                    >
+                      {satisfying ? 'Investigating...' : `Investigate ${name}`}
+                    </button>
+                    <p className="text-xs text-center text-textMuted">
+                      Aversive drives benefit from investigation over forced satisfaction
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleSatisfyClick}
+                    disabled={satisfying}
+                    className={`
+                      w-full px-4 py-3 rounded-lg text-sm font-medium
+                      transition-all duration-200
+                      min-h-[44px]
+                      ${satisfying 
+                        ? 'bg-textMuted/20 text-textMuted cursor-wait' 
+                        : 'bg-gradient-to-r text-white hover:opacity-90'
+                      }
+                    `}
+                    style={{
+                      background: !satisfying 
+                        ? `linear-gradient(to right, ${colors.from}, ${colors.to})` 
+                        : undefined
+                    }}
+                  >
+                    {satisfying ? 'Satisfying...' : `Satisfy ${name}`}
+                  </button>
+                )}
               </div>
             )}
           </div>
