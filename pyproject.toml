@@ -54,3 +54,4 @@ core = [
     "setup/autostart/templates/*",
     "setup/openclaw_hook/templates/*"
 ]
+"core.drives" = ["defaults.json"]
