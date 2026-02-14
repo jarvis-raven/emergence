@@ -174,94 +174,88 @@ class TestSatisfactionHistory:
     """Test satisfaction history tracking."""
     
     def test_log_satisfaction(self):
-        """Should log satisfaction events to history file."""
+        """Should log satisfaction events to history file (JSONL)."""
         from core.drives.satisfaction import log_satisfaction, get_recent_satisfaction_history, get_history_path
+        import tempfile, os, shutil
+        from unittest.mock import patch
         
-        # Clean up history file
-        history_path = get_history_path()
-        if history_path.exists():
-            history_path.unlink()
+        # Use temp directory for isolation
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            # Log a satisfaction event
+            log_satisfaction(
+                drive_name="TEST_DRIVE",
+                pressure_before=20.0,
+                pressure_after=5.0,
+                band="triggered",
+                depth="auto-deep",
+                ratio=0.75,
+                source="test"
+            )
+            
+            # Verify it was logged
+            history = get_recent_satisfaction_history(drive_name="TEST_DRIVE", limit=1)
+            assert len(history) == 1
+            
+            event = history[0]
+            assert event["drive"] == "TEST_DRIVE"
+            assert event["pressure_before"] == 20.0
+            assert event["pressure_after"] == 5.0
+            assert event["band"] == "triggered"
+            assert event["depth"] == "auto-deep"
+            assert event["ratio"] == 0.75
+            assert event["source"] == "test"
+            assert "timestamp" in event
         
-        # Log a satisfaction event
-        log_satisfaction(
-            drive_name="TEST_DRIVE",
-            pressure_before=20.0,
-            pressure_after=5.0,
-            band="triggered",
-            depth="auto-deep",
-            ratio=0.75,
-            source="test"
-        )
-        
-        # Verify it was logged
-        history = get_recent_satisfaction_history(drive_name="TEST_DRIVE", limit=1)
-        assert len(history) == 1
-        
-        event = history[0]
-        assert event["drive"] == "TEST_DRIVE"
-        assert event["pressure_before"] == 20.0
-        assert event["pressure_after"] == 5.0
-        assert event["band"] == "triggered"
-        assert event["depth"] == "auto-deep"
-        assert event["ratio"] == 0.75
-        assert event["source"] == "test"
-        assert "timestamp" in event
-        
-        # Clean up
-        if history_path.exists():
-            history_path.unlink()
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
     def test_get_recent_history_filtered(self):
-        """Should filter history by drive name."""
-        from core.drives.satisfaction import log_satisfaction, get_recent_satisfaction_history, get_history_path
+        """Should filter history by drive name (JSONL)."""
+        from core.drives.satisfaction import log_satisfaction, get_recent_satisfaction_history
+        import tempfile, shutil
+        from unittest.mock import patch
         
-        # Clean up history file
-        history_path = get_history_path()
-        if history_path.exists():
-            history_path.unlink()
+        # Use temp directory for isolation
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            # Log events for different drives
+            log_satisfaction("DRIVE_A", 10.0, 5.0, "available", "auto-shallow", 0.25, "test")
+            log_satisfaction("DRIVE_B", 20.0, 10.0, "triggered", "auto-deep", 0.75, "test")
+            log_satisfaction("DRIVE_A", 15.0, 7.5, "elevated", "auto-moderate", 0.50, "test")
+            
+            # Filter by drive name
+            history_a = get_recent_satisfaction_history(drive_name="DRIVE_A")
+            assert len(history_a) == 2
+            assert all(e["drive"] == "DRIVE_A" for e in history_a)
+            
+            history_b = get_recent_satisfaction_history(drive_name="DRIVE_B")
+            assert len(history_b) == 1
+            assert history_b[0]["drive"] == "DRIVE_B"
+            
+            # Get all history
+            all_history = get_recent_satisfaction_history()
+            assert len(all_history) == 3
         
-        # Log events for different drives
-        log_satisfaction("DRIVE_A", 10.0, 5.0, "available", "auto-shallow", 0.25, "test")
-        log_satisfaction("DRIVE_B", 20.0, 10.0, "triggered", "auto-deep", 0.75, "test")
-        log_satisfaction("DRIVE_A", 15.0, 7.5, "elevated", "auto-moderate", 0.50, "test")
-        
-        # Filter by drive name
-        history_a = get_recent_satisfaction_history(drive_name="DRIVE_A")
-        assert len(history_a) == 2
-        assert all(e["drive"] == "DRIVE_A" for e in history_a)
-        
-        history_b = get_recent_satisfaction_history(drive_name="DRIVE_B")
-        assert len(history_b) == 1
-        assert history_b[0]["drive"] == "DRIVE_B"
-        
-        # Get all history
-        all_history = get_recent_satisfaction_history()
-        assert len(all_history) == 3
-        
-        # Clean up
-        if history_path.exists():
-            history_path.unlink()
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
     def test_history_limit(self):
-        """Should respect limit parameter."""
-        from core.drives.satisfaction import log_satisfaction, get_recent_satisfaction_history, get_history_path
+        """Should respect limit parameter (JSONL)."""
+        from core.drives.satisfaction import log_satisfaction, get_recent_satisfaction_history
+        import tempfile, shutil
+        from unittest.mock import patch
         
-        # Clean up history file
-        history_path = get_history_path()
-        if history_path.exists():
-            history_path.unlink()
+        # Use temp directory for isolation
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            # Log 10 events
+            for i in range(10):
+                log_satisfaction(f"DRIVE_{i % 3}", 10.0, 5.0, "available", "auto-shallow", 0.25, "test")
+            
+            # Request only 5 most recent
+            history = get_recent_satisfaction_history(limit=5)
+            assert len(history) == 5
         
-        # Log 10 events
-        for i in range(10):
-            log_satisfaction(f"DRIVE_{i % 3}", 10.0, 5.0, "available", "auto-shallow", 0.25, "test")
-        
-        # Request only 5 most recent
-        history = get_recent_satisfaction_history(limit=5)
-        assert len(history) == 5
-        
-        # Clean up
-        if history_path.exists():
-            history_path.unlink()
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

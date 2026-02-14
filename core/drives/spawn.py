@@ -246,9 +246,9 @@ Full content of your session...
 
 IMPORTANT: When your session is complete, signal completion by running:
 ```
-emergence drives satisfy {drive_name}
+emergence drives complete {drive_name}
 ```
-This triggers instant satisfaction of your drive. Without it, satisfaction is delayed.
+This triggers instant satisfaction of your drive. Without it, satisfaction is delayed until timeout.
 """
 
 
@@ -423,7 +423,7 @@ def spawn_session(
     pressure: float,
     threshold: float,
     valence: str = "appetitive"
-) -> bool:
+) -> Optional[str]:
     """Spawn an OpenClaw session for a triggered drive.
     
     Primary method: OpenClaw Gateway API (HTTP)
@@ -438,11 +438,12 @@ def spawn_session(
         valence: Drive valence state (appetitive/aversive/neutral)
         
     Returns:
-        True if session spawned successfully (via either method)
+        Session key if spawned successfully, None otherwise
         
     Examples:
         >>> config = {"drives": {"session_timeout": 900}}
-        >>> spawn_session("CARE", "Check in with human", config, 25.0, 20.0)
+        >>> key = spawn_session("CARE", "Check in with human", config, 25.0, 20.0)
+        >>> key is not None
         True  # (if OpenClaw is available)
     """
     full_prompt = build_session_prompt(drive_name, prompt, pressure, threshold, config, valence)
@@ -450,41 +451,14 @@ def spawn_session(
     # Try CLI first (more reliable — handles its own auth)
     session_key = spawn_via_cli(full_prompt, config, drive_name, pressure, threshold)
     if session_key:
-        _write_spawn_breadcrumb(drive_name, session_key, config)
-        return True
+        return session_key
     
     # Fallback to API
     session_key = spawn_via_api(full_prompt, config, drive_name, pressure, threshold)
     if session_key:
-        _write_spawn_breadcrumb(drive_name, session_key, config)
-        return True
+        return session_key
     
-    return False
-
-
-def _write_spawn_breadcrumb(drive_name: str, session_key: str, config: dict) -> None:
-    """Write a breadcrumb file for a successfully spawned drive session.
-    
-    Called after spawn_session() succeeds. The breadcrumb is picked up
-    by check_completed_sessions() on subsequent ticks.
-    
-    Args:
-        drive_name: Name of the drive that was spawned
-        session_key: Actual session key returned by OpenClaw
-        config: Configuration dict (for timeout)
-    """
-    from .satisfaction import write_breadcrumb
-    import sys
-    
-    timeout = config.get("drives", {}).get("session_timeout", 900)
-    
-    try:
-        breadcrumb_path = write_breadcrumb(drive_name, session_key, timeout)
-        print(f"[DEBUG] Wrote breadcrumb: {breadcrumb_path} (key: {session_key})", file=sys.stderr)
-    except Exception as e:
-        print(f"[ERROR] Failed to write breadcrumb for {drive_name}: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
+    return None
 
 
 def record_trigger(
@@ -492,41 +466,37 @@ def record_trigger(
     drive_name: str,
     pressure: float,
     threshold: float,
-    spawned: bool
+    spawned: bool,
+    session_key: Optional[str] = None,
+    reason: Optional[str] = None
 ) -> None:
-    """Record a trigger event to state.
-    
-    Maintains a rolling log of the last 100 trigger events.
+    """Record a trigger event to trigger-log.jsonl.
     
     Args:
-        state: Current drive state (modified in place)
+        state: Current drive state (for backward compatibility)
         drive_name: Name of the triggered drive
         pressure: Pressure at time of trigger
         threshold: Threshold at time of trigger
         spawned: Whether a session was successfully spawned
+        session_key: OpenClaw session key (if spawned)
+        reason: Optional reason/description
         
     Examples:
-        >>> state = {"trigger_log": []}
-        >>> record_trigger(state, "CARE", 25.0, 20.0, True)
-        >>> len(state["trigger_log"])
-        1
+        >>> state = {}
+        >>> record_trigger(state, "CARE", 25.0, 20.0, True, "agent:main:cron:abc123")
     """
-    entry = {
-        "drive": drive_name,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "pressure": pressure,
-        "threshold": threshold,
-        "session_spawned": spawned,
-    }
+    from .history import log_trigger_event
     
-    if "trigger_log" not in state:
-        state["trigger_log"] = []
-    
-    state["trigger_log"].append(entry)
-    
-    # Keep only last 100 entries
-    if len(state["trigger_log"]) > 100:
-        state["trigger_log"] = state["trigger_log"][-100:]
+    # Use new JSONL-based trigger log
+    log_trigger_event(
+        drive_name=drive_name,
+        pressure=pressure,
+        threshold=threshold,
+        session_spawned=spawned,
+        reason=reason or "",
+        session_key=session_key,
+        session_status="spawned"
+    )
 
 
 def select_drive_to_trigger(state: DriveState, config: dict) -> Optional[str]:
@@ -677,7 +647,7 @@ def tick_with_spawning(config: dict, state: DriveState) -> DriveState:
         valence = drive.get("valence", "appetitive")
         
         # Attempt to spawn session
-        spawned = spawn_session(
+        session_key = spawn_session(
             drive_name=drive_name,
             prompt=drive_prompt,
             config=config,
@@ -686,14 +656,14 @@ def tick_with_spawning(config: dict, state: DriveState) -> DriveState:
             valence=valence
         )
         
-        if spawned:
+        if session_key:
             # Add to triggered list
             if "triggered_drives" not in state:
                 state["triggered_drives"] = []
             state["triggered_drives"].append(drive_name)
             
-            # Record successful trigger
-            record_trigger(state, drive_name, pressure, threshold, True)
+            # Record successful trigger with session key
+            record_trigger(state, drive_name, pressure, threshold, True, session_key=session_key)
             
             # NOTE: Do NOT auto-satisfy here. Satisfaction should only
             # happen after the jarvling completes their session and

@@ -945,6 +945,56 @@ def cmd_satisfy(args) -> int:
     return EXIT_SUCCESS
 
 
+def cmd_complete(args) -> int:
+    """Signal that a drive session has completed (triggers satisfaction)."""
+    from .history import update_session_status
+    
+    if not args.name:
+        print("✗ Usage: drives complete <drive_name> [--session-key KEY] [--status STATUS]", file=sys.stderr)
+        return EXIT_USAGE
+    
+    state, config, state_path = get_state_and_config(args)
+    
+    drive_name = fuzzy_find_drive(args.name, state)
+    if not drive_name:
+        return EXIT_ERROR
+    
+    session_key = getattr(args, 'session_key', None)
+    status = getattr(args, 'status', 'completed')
+    
+    # If no session key provided, find the most recent active session for this drive
+    if not session_key:
+        from .history import get_active_sessions
+        timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
+        active = get_active_sessions(drive_name=drive_name, timeout_seconds=timeout_seconds)
+        
+        if not active:
+            print(f"✗ No active session found for {drive_name}", file=sys.stderr)
+            print(f"  (Use --session-key to specify a session explicitly)", file=sys.stderr)
+            return EXIT_ERROR
+        
+        # Get most recent session
+        active.sort(key=lambda e: e.get("spawned_epoch", 0), reverse=True)
+        session_key = active[0].get("session_key")
+        
+        if not session_key:
+            print(f"✗ Active session found but missing session_key", file=sys.stderr)
+            return EXIT_ERROR
+    
+    # Update session status in trigger log
+    success = update_session_status(session_key, status)
+    
+    if not success:
+        print(f"✗ Failed to update session status (session not found or already completed)", file=sys.stderr)
+        return EXIT_ERROR
+    
+    print(f"✓ Session marked as {status}: {drive_name}")
+    print(f"  Session key: {session_key}")
+    print(f"  Satisfaction will be applied on next daemon tick")
+    
+    return EXIT_SUCCESS
+
+
 def cmd_bump(args) -> int:
     """Bump a drive (increase pressure)."""
     state, config, state_path = get_state_and_config(args)
@@ -1148,15 +1198,15 @@ def cmd_tick(args) -> int:
                 print(f"\n[{datetime.now().strftime('%H:%M')}] 🔥 {name} triggered at {pressure:.1f}/{threshold:.0f}")
                 
                 # Actually spawn the session
-                spawned = spawn_session(name, prompt, config, pressure, threshold)
+                session_key = spawn_session(name, prompt, config, pressure, threshold)
                 
-                if spawned:
-                    print(f"  ✓ Spawned session via OpenClaw")
+                if session_key:
+                    print(f"  ✓ Spawned session via OpenClaw (key: {session_key})")
                 else:
                     print(f"  ✗ Failed to spawn session — will retry next tick")
                 
                 # Record the trigger event
-                record_trigger(state, name, pressure, threshold, spawned)
+                record_trigger(state, name, pressure, threshold, bool(session_key), session_key=session_key, reason="Threshold exceeded")
                 
                 # Add to triggered drives (even if spawn failed — prevents spam)
                 if name not in state.get("triggered_drives", []):
@@ -2004,6 +2054,89 @@ def _print_dashboard_drive(drive: dict, color: str) -> None:
     print(f"{color}  {name:<14} {bar_str:26} — {desc_truncated}{COLOR_RESET}")
 
 
+def cmd_migrate(args) -> int:
+    """Migrate breadcrumb files to trigger-log.jsonl entries."""
+    from .satisfaction import migrate_breadcrumbs_to_trigger_log
+    from .history import migrate_trigger_log
+    from .satisfaction import migrate_satisfaction_events
+    
+    dry_run = getattr(args, 'dry_run', False)
+    
+    if dry_run:
+        print("DRY RUN - no changes will be made")
+        print()
+    
+    state, config, state_path = get_state_and_config(args)
+    
+    # Migrate breadcrumbs
+    print("Checking for breadcrumb files to migrate...")
+    if not dry_run:
+        migrated_breadcrumbs = migrate_breadcrumbs_to_trigger_log()
+        if migrated_breadcrumbs > 0:
+            print(f"✓ Migrated {migrated_breadcrumbs} breadcrumb(s) to trigger-log.jsonl")
+        else:
+            print("  No breadcrumbs found to migrate")
+    else:
+        # Count breadcrumbs without migrating
+        import os
+        from pathlib import Path
+        state_dir = os.environ.get("EMERGENCE_STATE", 
+                                   str(Path.home() / ".openclaw" / "state"))
+        ingest_dir = Path(state_dir) / "sessions_ingest"
+        if ingest_dir.exists():
+            breadcrumbs = [f for f in ingest_dir.glob("*.json") 
+                          if not f.name.startswith(".tmp-") and not f.name.startswith("COMPLETE-")]
+            print(f"  Would migrate {len(breadcrumbs)} breadcrumb(s)")
+        else:
+            print("  No breadcrumbs found to migrate")
+    
+    # Migrate trigger_log from state
+    print()
+    print("Checking for in-state trigger_log to migrate...")
+    if not dry_run:
+        migrated_trigger_log = migrate_trigger_log(state)
+        if migrated_trigger_log > 0:
+            print(f"✓ Migrated {migrated_trigger_log} trigger_log entries to trigger-log.jsonl")
+            # Save state after migration
+            if not save_with_lock(state_path, state):
+                return EXIT_ERROR
+        else:
+            print("  No in-state trigger_log found to migrate")
+    else:
+        trigger_log = state.get("trigger_log", [])
+        if trigger_log:
+            print(f"  Would migrate {len(trigger_log)} trigger_log entries")
+        else:
+            print("  No in-state trigger_log found to migrate")
+    
+    # Migrate satisfaction_events
+    print()
+    print("Checking for satisfaction_events arrays to migrate...")
+    if not dry_run:
+        migrated_events = migrate_satisfaction_events(state)
+        if migrated_events > 0:
+            print(f"✓ Migrated {migrated_events} satisfaction_events to satisfaction_history.jsonl")
+            # Save state after migration
+            if not save_with_lock(state_path, state):
+                return EXIT_ERROR
+        else:
+            print("  No satisfaction_events found to migrate")
+    else:
+        total_events = sum(len(d.get("satisfaction_events", [])) for d in state.get("drives", {}).values())
+        if total_events > 0:
+            print(f"  Would migrate {total_events} satisfaction_events")
+        else:
+            print("  No satisfaction_events found to migrate")
+    
+    print()
+    if dry_run:
+        print("✓ Migration check complete (dry run)")
+    else:
+        print("✓ Migration complete")
+    
+    return EXIT_SUCCESS
+
+
 def cmd_help(args) -> int:
     """Show detailed help for topics."""
     topic = getattr(args, 'topic', None)
@@ -2336,6 +2469,27 @@ Exit codes:
         help="Reason for satisfaction (logged)"
     )
     
+    # complete command - signal session completion
+    complete_parser = subparsers.add_parser(
+        "complete",
+        help="Signal that a drive session has completed (triggers satisfaction)"
+    )
+    complete_parser.add_argument(
+        "name",
+        nargs="?",
+        help="Name of drive to mark complete (fuzzy matched)"
+    )
+    complete_parser.add_argument(
+        "--session-key",
+        help="OpenClaw session key (optional, for precise matching)"
+    )
+    complete_parser.add_argument(
+        "--status",
+        default="completed",
+        choices=["completed", "error", "timeout"],
+        help="Completion status (default: completed)"
+    )
+    
     # bump command
     bump_parser = subparsers.add_parser(
         "bump",
@@ -2539,6 +2693,17 @@ Exit codes:
         help="Name of aspect to add/remove"
     )
 
+    # migrate command
+    migrate_parser = subparsers.add_parser(
+        "migrate",
+        help="Migrate breadcrumbs to trigger-log.jsonl (Phase 3)"
+    )
+    migrate_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be migrated without making changes"
+    )
+    
     # help command
     help_parser = subparsers.add_parser(
         "help",
@@ -2566,6 +2731,7 @@ def main(args: Optional[list[str]] = None) -> int:
         "dash": cmd_dashboard,
         "satisfy": cmd_satisfy,
         "sat": cmd_satisfy,
+        "complete": cmd_complete,
         "bump": cmd_bump,
         "reset": cmd_reset,
         "log": cmd_log,
@@ -2580,6 +2746,7 @@ def main(args: Optional[list[str]] = None) -> int:
         "review": cmd_review,
         "activate": cmd_activate,
         "aspects": cmd_aspects,
+        "migrate": cmd_migrate,
         "help": cmd_help,
     }
     

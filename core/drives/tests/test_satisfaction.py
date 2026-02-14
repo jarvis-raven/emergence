@@ -10,12 +10,8 @@ from unittest.mock import patch
 import pytest
 
 from core.drives.satisfaction import (
-    get_ingest_dir,
-    write_breadcrumb,
     assess_depth,
     check_completed_sessions,
-    _is_session_complete,
-    _check_file_writes,
     calculate_satisfaction_depth,
 )
 
@@ -39,6 +35,7 @@ def temp_workspace(tmp_path):
         yield workspace
 
 
+@pytest.mark.skip(reason="Breadcrumb system removed in Phase 3 - use test_phase3_jsonl_tracking.py instead")
 class TestWriteBreadcrumb:
     def test_creates_json_file(self, temp_ingest_dir):
         with patch.dict(os.environ, {"EMERGENCE_STATE": str(temp_ingest_dir.parent)}):
@@ -69,6 +66,7 @@ class TestWriteBreadcrumb:
         assert len(list(temp_ingest_dir.glob("*.json"))) == 2
 
 
+@pytest.mark.skip(reason="Breadcrumb system removed in Phase 3 - assess_depth now uses trigger log entries")
 class TestAssessDepth:
     def test_timed_out(self):
         bc = {"timed_out": True, "spawned_epoch": 0, "timeout_seconds": 300}
@@ -97,6 +95,7 @@ class TestAssessDepth:
         assert ratio == 0.75
 
 
+@pytest.mark.skip(reason="Breadcrumb system removed in Phase 3 - use test_phase3_jsonl_tracking.py instead")
 class TestIsSessionComplete:
     def test_young_session_unknown_without_breadcrumb(self):
         # Spawned 30 seconds ago, no completion breadcrumb — unknown
@@ -124,6 +123,7 @@ class TestIsSessionComplete:
             assert _is_session_complete("TEST", "agent:main:cron:test-key", 900, time.time() - 5) is True
 
 
+@pytest.mark.skip(reason="Breadcrumb system removed in Phase 3 - file checking no longer used")
 class TestCheckFileWrites:
     def test_recent_file_detected(self, temp_workspace):
         # Create a file in memory dir
@@ -145,6 +145,7 @@ class TestCheckFileWrites:
         assert _check_file_writes(time.time() - 60) is False
 
 
+@pytest.mark.skip(reason="Breadcrumb system removed in Phase 3 - use test_phase3_jsonl_tracking.py instead")
 class TestCheckCompletedSessions:
     def test_empty_ingest_dir(self, temp_ingest_dir):
         state = {"drives": {}, "triggered_drives": []}
