@@ -291,15 +291,20 @@ def satisfy_drive(
     new_valence = calculate_valence(new_pressure, threshold, 0, thresholds)
     drive["valence"] = new_valence
     
-    # Record satisfaction event
-    if "satisfaction_events" not in drive:
-        drive["satisfaction_events"] = []
+    # Log satisfaction to history
+    from .satisfaction import log_satisfaction
+    from .models import get_threshold_label
     
-    now = datetime.now(timezone.utc).isoformat()
-    drive["satisfaction_events"].append(now)
-    
-    # Keep only last 10 events
-    drive["satisfaction_events"] = drive["satisfaction_events"][-10:]
+    band = get_threshold_label(old_pressure, thresholds)
+    log_satisfaction(
+        drive_name=normalized_name,
+        pressure_before=old_pressure,
+        pressure_after=new_pressure,
+        band=band,
+        depth=depth,
+        ratio=reduction,
+        source="manual"
+    )
     
     # Remove from triggered list if significantly reduced
     triggered = state.get("triggered_drives", [])
@@ -465,6 +470,7 @@ def get_drive_status(state: DriveState, drive_name: str, config: Optional[dict] 
         0.0
     """
     from .models import get_drive_thresholds, get_threshold_label
+    from .satisfaction import get_last_satisfaction_time
     
     drives = state.get("drives", {})
     triggered_list = set(state.get("triggered_drives", []))
@@ -504,7 +510,7 @@ def get_drive_status(state: DriveState, drive_name: str, config: Optional[dict] 
         "rate_per_hour": drive.get("rate_per_hour", 0.0),
         "activity_driven": drive.get("activity_driven", False),
         "description": drive.get("description", ""),
-        "last_satisfied": (drive.get("satisfaction_events", []) or [None])[-1],
+        "last_satisfied": get_last_satisfaction_time(normalized_name),
         "valence": drive.get("valence", "appetitive"),
         "thwarting_count": drive.get("thwarting_count", 0),
     }
@@ -568,16 +574,18 @@ def cleanup_stale_triggers(
         List of drive names that were auto-satisfied
         
     Examples:
-        >>> state = {"triggered_drives": ["CARE"], "trigger_log": [...]}
-        >>> # If CARE was triggered 90 minutes ago:
+        >>> state = {"triggered_drives": ["CARE"]}
+        >>> # If CARE was triggered 90 minutes ago in trigger-log.jsonl:
         >>> cleanup_stale_triggers(state, config, max_age_minutes=60)
         ['CARE']
     """
+    from .history import read_trigger_log
+    
     triggered = state.get("triggered_drives", [])
     if not triggered:
         return []
     
-    trigger_log = state.get("trigger_log", [])
+    trigger_log = read_trigger_log()
     now = datetime.now(timezone.utc)
     auto_satisfied = []
     
