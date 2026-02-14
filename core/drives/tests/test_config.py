@@ -9,6 +9,7 @@ import unittest
 import tempfile
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 # Import from the package
 from core.drives.config import (
@@ -254,8 +255,12 @@ class TestFindConfig(unittest.TestCase):
     
     def test_not_found_returns_none(self):
         """Should return None when no config found."""
-        found = find_config(self.subdir)
-        self.assertIsNone(found)
+        # Patch environment to avoid finding workspace config
+        with patch.dict(os.environ, {"OPENCLAW_WORKSPACE": "/nonexistent/workspace"}):
+            # Also patch Path.home to avoid ~/.emergence fallback
+            with patch.object(Path, "home", return_value=Path("/nonexistent")):
+                found = find_config(self.subdir)
+                self.assertIsNone(found)
 
 
 class TestManualModeConfig(unittest.TestCase):
