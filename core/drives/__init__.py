@@ -124,13 +124,10 @@ from .ingest import (
     DRIVE_KEYWORDS,
 )
 
-# Satisfaction system (file-based)
+# Satisfaction system (JSONL-based)
 from .satisfaction import (
-    write_breadcrumb,
-    write_completion,
     check_completed_sessions,
     assess_depth,
-    get_ingest_dir,
 )
 
 # Thwarting detection (issue #41)
@@ -212,10 +209,8 @@ __all__ = [
     "DRIVE_DESCRIPTIONS",
     "DRIVE_KEYWORDS",
     # Satisfaction
-    "write_breadcrumb",
     "check_completed_sessions",
     "assess_depth",
-    "get_ingest_dir",
     # Thwarting
     "is_thwarted",
     "get_thwarting_status",

@@ -135,6 +135,93 @@ def get_last_satisfaction_time(drive_name: str) -> Optional[str]:
     return None
 
 
+def migrate_breadcrumbs_to_trigger_log() -> int:
+    """Migrate existing breadcrumb files to trigger-log.jsonl entries.
+    
+    One-time migration for Phase 3: converts sessions_ingest/*.json files
+    to trigger-log.jsonl entries with session tracking.
+    
+    Returns:
+        Number of breadcrumbs migrated
+    """
+    from .history import add_trigger_event
+    
+    state_dir = os.environ.get("EMERGENCE_STATE", 
+                               str(Path.home() / ".openclaw" / "state"))
+    ingest_dir = Path(state_dir) / "sessions_ingest"
+    
+    if not ingest_dir.exists():
+        return 0
+    
+    migrated = 0
+    
+    try:
+        for bc_path in ingest_dir.glob("*.json"):
+            # Skip temp files and completion markers
+            if bc_path.name.startswith(".tmp-") or bc_path.name.startswith("COMPLETE-"):
+                continue
+            
+            try:
+                breadcrumb = json.loads(bc_path.read_text())
+                
+                # Extract breadcrumb data
+                drive_name = breadcrumb.get("drive", "")
+                session_key = breadcrumb.get("session_key", "")
+                spawned_at = breadcrumb.get("spawned_at", "")
+                spawned_epoch = breadcrumb.get("spawned_epoch", 0)
+                
+                if not drive_name or not session_key:
+                    # Invalid breadcrumb, skip it
+                    continue
+                
+                # Check if there's a matching completion marker
+                session_status = "pending"
+                for cf in ingest_dir.glob(f"COMPLETE-*-{drive_name}.json"):
+                    try:
+                        cdata = json.loads(cf.read_text())
+                        if cdata.get("drive") == drive_name or cdata.get("session_key") == session_key:
+                            session_status = cdata.get("status", "completed")
+                            # Clean up completion marker
+                            cf.unlink()
+                            break
+                    except (json.JSONDecodeError, OSError):
+                        pass
+                
+                # Create trigger log entry (manual to preserve timestamp)
+                from .history import get_trigger_log_path
+                log_path = get_trigger_log_path()
+                
+                event = {
+                    "drive": drive_name,
+                    "pressure": 0.0,  # Unknown from breadcrumb
+                    "threshold": 0.0,  # Unknown from breadcrumb
+                    "timestamp": spawned_at,
+                    "session_spawned": True,
+                    "reason": "Migrated from breadcrumb",
+                    "session_key": session_key,
+                    "session_status": session_status,
+                    "spawned_epoch": spawned_epoch,
+                }
+                
+                # Append to trigger log
+                with log_path.open('a') as f:
+                    f.write(json.dumps(event) + '\n')
+                
+                migrated += 1
+                
+                # Remove breadcrumb file
+                bc_path.unlink()
+                
+            except (json.JSONDecodeError, OSError) as e:
+                # Skip corrupted breadcrumbs
+                continue
+                
+    except OSError:
+        return migrated
+    
+    return migrated
+
+
 def migrate_satisfaction_events(state: dict) -> int:
     """Migrate satisfaction_events arrays to satisfaction_history.jsonl.
     
@@ -341,155 +428,49 @@ def calculate_satisfaction_depth(
     return (band, depth_name, ratio)
 
 
-def get_ingest_dir() -> Path:
-    """Get the sessions_ingest directory path.
-    
-    Returns:
-        Path to sessions_ingest directory
-        
-    Examples:
-        >>> p = get_ingest_dir()
-        >>> p.name
-        'sessions_ingest'
-    """
-    state_dir = os.environ.get("EMERGENCE_STATE", 
-                               str(Path.home() / ".openclaw" / "state"))
-    ingest_dir = Path(state_dir) / "sessions_ingest"
-    ingest_dir.mkdir(parents=True, exist_ok=True)
-    return ingest_dir
-
-
-def write_breadcrumb(
-    drive_name: str,
-    session_key: str,
-    timeout_seconds: int = 300
-) -> Path:
-    """Write a breadcrumb file when a drive session is spawned.
-    
-    Uses atomic write (temp file + rename) to prevent race conditions
-    with the tick scanner.
-    
-    Args:
-        drive_name: Name of the drive (e.g., "CREATIVE")
-        session_key: OpenClaw session key for the spawned session
-        timeout_seconds: Max expected session duration
-        
-    Returns:
-        Path to the written breadcrumb file
-        
-    Examples:
-        >>> p = write_breadcrumb("CREATIVE", "agent:main:cron:abc123", 300)
-        >>> p.suffix
-        '.json'
-        >>> "CREATIVE" in p.name
-        True
-    """
-    ingest_dir = get_ingest_dir()
-    timestamp = int(time.time())
-    filename = f"{timestamp}-{drive_name}.json"
-    filepath = ingest_dir / filename
-    tmp_path = ingest_dir / f".tmp-{filename}"
-    
-    breadcrumb = {
-        "drive": drive_name,
-        "spawned_at": datetime.now(timezone.utc).isoformat(),
-        "spawned_epoch": timestamp,
-        "session_key": session_key,
-        "timeout_seconds": timeout_seconds,
-    }
-    
-    # Atomic write: write to temp, then rename
-    try:
-        tmp_path.write_text(json.dumps(breadcrumb, indent=2))
-        tmp_path.rename(filepath)
-    except OSError:
-        # Fallback: direct write
-        filepath.write_text(json.dumps(breadcrumb, indent=2))
-    
-    return filepath
-
-
-def write_completion(drive_name: str, session_key: Optional[str] = None, status: str = "completed") -> Path:
-    """Write a completion breadcrumb when a drive session finishes.
-    
-    Called by the session itself (via drive prompt instructions) or by
-    the main session when it receives a sub-agent completion announce.
-    
-    Args:
-        drive_name: Name of the drive (e.g., "CREATIVE")
-        session_key: OpenClaw session key (optional - matches on drive name if not provided)
-        status: Completion status ("completed", "error", "timeout")
-        
-    Returns:
-        Path to the written completion file
-        
-    Examples:
-        >>> p = write_completion("CREATIVE")
-        >>> "COMPLETE" in p.name
-        True
-    """
-    ingest_dir = get_ingest_dir()
-    timestamp = int(time.time())
-    filename = f"COMPLETE-{timestamp}-{drive_name}.json"
-    filepath = ingest_dir / filename
-    
-    completion = {
-        "drive": drive_name,
-        "session_key": session_key,
-        "completed_at": datetime.now(timezone.utc).isoformat(),
-        "completed_epoch": timestamp,
-        "status": status,
-    }
-    
-    try:
-        tmp_path = ingest_dir / f".tmp-{filename}"
-        tmp_path.write_text(json.dumps(completion, indent=2))
-        tmp_path.rename(filepath)
-    except OSError:
-        filepath.write_text(json.dumps(completion, indent=2))
-    
-    return filepath
-
-
 def assess_depth(
-    breadcrumb: dict,
+    trigger_entry: dict,
     pressure: float = 0.0,
-    thresholds: Optional[dict] = None
+    thresholds: Optional[dict] = None,
+    timeout_seconds: int = 900
 ) -> Tuple[str, str, float]:
     """Assess satisfaction depth for a completed session using threshold bands.
     
     Combines session quality signals with threshold band to determine satisfaction:
     - Session timed out/errored: reduce by one band level
     - Session completed normally: use band-appropriate depth
-    - Session wrote files: use band-appropriate depth (same as normal)
     
     Args:
-        breadcrumb: Parsed breadcrumb dict with spawn info
+        trigger_entry: Trigger log entry dict with spawn info
         pressure: Current drive pressure
         thresholds: Optional graduated thresholds dict
+        timeout_seconds: Session timeout in seconds
         
     Returns:
         Tuple of (band, depth_name, ratio)
         
     Examples:
-        >>> assess_depth({"spawned_epoch": 0, "timeout_seconds": 300, "timed_out": True}, 15.0)
+        >>> entry = {"spawned_epoch": 0, "session_status": "error"}
+        >>> assess_depth(entry, 15.0)
         ('session-error', 'shallow', 0.25)
     """
     from .models import get_drive_thresholds, get_threshold_label
     
-    # Check if session timed out (age > timeout × 2)
-    timed_out = breadcrumb.get("timed_out", False)
-    spawn_epoch = breadcrumb.get("spawned_epoch", 0)
-    timeout = breadcrumb.get("timeout_seconds", 300)
+    # Check session status
+    status = trigger_entry.get("session_status", "pending")
+    timed_out = status in ["error", "timeout"]
     
-    if not timed_out and spawn_epoch > 0:
-        age = time.time() - spawn_epoch
-        if age > (timeout * 2):
-            timed_out = True
+    # Also check age if status is still pending
+    if not timed_out and status == "pending":
+        spawn_epoch = trigger_entry.get("spawned_epoch", 0)
+        if spawn_epoch > 0:
+            age = time.time() - spawn_epoch
+            if age > (timeout_seconds * 2):
+                timed_out = True
     
     # Get threshold band for current pressure
     if thresholds is None:
-        threshold = breadcrumb.get("threshold", 20.0)
+        threshold = trigger_entry.get("threshold", 20.0)
         drive = {"threshold": threshold}
         thresholds = get_drive_thresholds(drive)
     
@@ -518,117 +499,8 @@ def assess_depth(
     return (band, depth_name, ratio)
 
 
-def _check_file_writes(since_epoch: int) -> bool:
-    """Check if any memory/identity files were modified since the given time.
-    
-    Recursively checks subdirectories of memory/ to catch session logs,
-    daily notes, and other files in nested directories.
-    
-    Args:
-        since_epoch: Unix timestamp to check modifications after
-        
-    Returns:
-        True if relevant files were modified
-        
-    Examples:
-        >>> _check_file_writes(0)  # epoch 0 = everything is newer
-        True
-    """
-    workspace = os.environ.get("EMERGENCE_WORKSPACE",
-                               str(Path.home() / ".openclaw" / "workspace"))
-    workspace = Path(workspace)
-    
-    check_paths = [
-        workspace / "memory",
-        workspace / "ASPIRATIONS.md",
-        workspace / "INTERESTS.md",
-        workspace / "SELF.md",
-    ]
-    
-    def _check_recursive(path: Path) -> bool:
-        """Recursively check a directory tree for modified files."""
-        try:
-            for item in path.iterdir():
-                if item.is_file():
-                    try:
-                        if item.stat().st_mtime > since_epoch:
-                            return True
-                    except OSError:
-                        continue
-                elif item.is_dir():
-                    # Recurse into subdirectories
-                    if _check_recursive(item):
-                        return True
-        except OSError:
-            return False
-        return False
-    
-    for check_path in check_paths:
-        if check_path.is_file():
-            try:
-                if check_path.stat().st_mtime > since_epoch:
-                    return True
-            except OSError:
-                continue
-        elif check_path.is_dir():
-            if _check_recursive(check_path):
-                return True
-    
-    return False
-
-
-def _is_session_complete(drive_name: str, session_key: str, timeout_seconds: int, spawn_epoch: int) -> Optional[bool]:
-    """Check if a session has completed.
-    
-    Uses a breadcrumb-first approach:
-    1. Check for COMPLETE-*.json files matching this drive — instant detection
-    2. Fall back to time-based if no completion breadcrumb found (crash/timeout)
-    
-    Args:
-        drive_name: Name of the drive (used for matching completion breadcrumbs)
-        session_key: OpenClaw session key (optional match)
-        timeout_seconds: Configured timeout for the session
-        spawn_epoch: When the session was spawned
-        
-    Returns:
-        True if complete, False if still running, None if unknown
-        
-    Examples:
-        >>> _is_session_complete("CREATIVE", "key", 300, time.time() - 30)
-        False
-    """
-    # Check for completion breadcrumb first (instant satisfaction)
-    ingest_dir = get_ingest_dir()
-    try:
-        for f in ingest_dir.glob("COMPLETE-*.json"):
-            try:
-                data = json.loads(f.read_text())
-                # Match on drive name (primary) or session_key (secondary)
-                if data.get("drive") == drive_name:
-                    return True
-                if session_key and data.get("session_key") == session_key:
-                    return True
-            except (json.JSONDecodeError, OSError):
-                continue
-    except OSError:
-        pass
-    
-    # Fallback: time-based estimation (handles crashes, forgotten completions)
-    age = time.time() - spawn_epoch
-    
-    # If well past timeout, definitely done (completed or died)
-    if age > timeout_seconds + 60:
-        return True
-    
-    # Too early to tell without a completion breadcrumb
-    if age < timeout_seconds:
-        return None
-    
-    return None  # Between timeout and timeout+60 — still uncertain
-
-
 def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
-    """Scan sessions_ingest/ for completed drive sessions and satisfy them.
+    """Query trigger-log.jsonl for completed drive sessions and satisfy them.
     
     This is the main entry point called by the tick cycle.
     
@@ -646,43 +518,22 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
         True
     """
     from .engine import satisfy_drive
+    from .history import get_active_sessions, update_session_status
     
-    ingest_dir = get_ingest_dir()
+    timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
     satisfied = []
     
-    # Scan for breadcrumb files
-    try:
-        breadcrumb_files = sorted(ingest_dir.glob("*.json"))
-    except OSError:
-        return satisfied
+    # Get all active sessions from trigger log
+    active_sessions = get_active_sessions(timeout_seconds=timeout_seconds)
     
-    for bc_path in breadcrumb_files:
-        # Skip temp files and completion markers (those are read by _is_session_complete)
-        if bc_path.name.startswith(".tmp-") or bc_path.name.startswith("COMPLETE-"):
-            continue
+    for entry in active_sessions:
+        drive_name = entry.get("drive", "")
+        session_key = entry.get("session_key", "")
+        session_status = entry.get("session_status", "pending")
+        spawn_epoch = entry.get("spawned_epoch", 0)
         
-        try:
-            breadcrumb = json.loads(bc_path.read_text())
-        except (json.JSONDecodeError, OSError):
-            # Corrupted breadcrumb — remove it
-            try:
-                bc_path.unlink()
-            except OSError:
-                pass
-            continue
-        
-        drive_name = breadcrumb.get("drive", "")
-        session_key = breadcrumb.get("session_key", "")
-        timeout = breadcrumb.get("timeout_seconds", 300)
-        spawn_epoch = breadcrumb.get("spawned_epoch", 0)
-        
-        # Check if session is complete
-        complete = _is_session_complete(drive_name, session_key, timeout, spawn_epoch)
-        
-        if complete is None:
-            continue  # Can't tell yet, try next tick
-        
-        if complete:
+        # Check if session has completed (status updated by external completion signal)
+        if session_status == "completed":
             # Get drive data for threshold calculation
             drive_data = state.get("drives", {}).get(drive_name, {})
             current_pressure = drive_data.get("pressure", 0.0)
@@ -692,7 +543,7 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
             thresholds = get_drive_thresholds(drive_data, config.get("drives", {}).get("thresholds"))
             
             # Assess satisfaction depth using threshold bands
-            band, depth_name, ratio = assess_depth(breadcrumb, current_pressure, thresholds)
+            band, depth_name, ratio = assess_depth(entry, current_pressure, thresholds, timeout_seconds)
             
             # Calculate new pressure
             pressure_after = max(0.0, current_pressure * (1.0 - ratio))
@@ -713,7 +564,7 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
                     source="session"
                 )
             except (KeyError, ValueError):
-                # Drive doesn't exist — just clean up
+                # Drive doesn't exist — just mark as satisfied
                 satisfied.append(drive_name)
             
             # Remove from triggered list
@@ -722,40 +573,50 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
                 state["triggered_drives"] = [
                     d for d in triggered if d != drive_name
                 ]
-            
-            # Clean up spawn breadcrumb
-            try:
-                bc_path.unlink()
-            except OSError:
-                pass
-            
-            # Clean up matching completion breadcrumb(s)
-            try:
-                for cf in ingest_dir.glob("COMPLETE-*.json"):
-                    try:
-                        cdata = json.loads(cf.read_text())
-                        # Match on drive name (primary) or session_key (secondary)
-                        if cdata.get("drive") == drive_name or cdata.get("session_key") == session_key:
-                            cf.unlink()
-                    except (json.JSONDecodeError, OSError):
-                        pass
-            except OSError:
-                pass
-    
-    # Clean up orphaned completion breadcrumbs (no matching spawn breadcrumb, older than 1 hour)
-    try:
-        for cf in ingest_dir.glob("COMPLETE-*.json"):
-            try:
-                cdata = json.loads(cf.read_text())
-                age = time.time() - cdata.get("completed_epoch", 0)
-                if age > 3600:
-                    cf.unlink()
-            except (json.JSONDecodeError, OSError):
+        
+        # Check for timeout (stale sessions)
+        elif session_status == "pending" and spawn_epoch > 0:
+            age = time.time() - spawn_epoch
+            if age > (timeout_seconds + 60):
+                # Session timed out - mark as error and apply reduced satisfaction
+                update_session_status(session_key, "timeout")
+                
+                # Get drive data
+                drive_data = state.get("drives", {}).get(drive_name, {})
+                current_pressure = drive_data.get("pressure", 0.0)
+                
+                # Get thresholds
+                from .models import get_drive_thresholds
+                thresholds = get_drive_thresholds(drive_data, config.get("drives", {}).get("thresholds"))
+                
+                # Mark entry as timed out for assessment
+                entry["session_status"] = "timeout"
+                band, depth_name, ratio = assess_depth(entry, current_pressure, thresholds, timeout_seconds)
+                
+                # Apply reduced satisfaction (shallow due to timeout)
+                pressure_after = max(0.0, current_pressure * (1.0 - ratio))
+                
                 try:
-                    cf.unlink()
-                except OSError:
-                    pass
-    except OSError:
-        pass
+                    satisfy_drive(state, drive_name, depth=depth_name)
+                    satisfied.append(drive_name)
+                    
+                    log_satisfaction(
+                        drive_name=drive_name,
+                        pressure_before=current_pressure,
+                        pressure_after=pressure_after,
+                        band=band,
+                        depth=depth_name,
+                        ratio=ratio,
+                        source="session-timeout"
+                    )
+                except (KeyError, ValueError):
+                    satisfied.append(drive_name)
+                
+                # Remove from triggered list
+                triggered = state.get("triggered_drives", [])
+                if drive_name in triggered:
+                    state["triggered_drives"] = [
+                        d for d in triggered if d != drive_name
+                    ]
     
     return satisfied

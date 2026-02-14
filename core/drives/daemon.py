@@ -160,9 +160,9 @@ def _check_emergency_spawns(
         try:
             from .spawn import spawn_session, record_trigger
             drive_prompt = drive.get("prompt", f"EMERGENCY: Your {name} drive is critically neglected.")
-            spawned = spawn_session(name, drive_prompt, config, pressure, threshold)
-            if spawned:
-                record_trigger(state, name, pressure, threshold, True)
+            session_key = spawn_session(name, drive_prompt, config, pressure, threshold)
+            if session_key:
+                record_trigger(state, name, pressure, threshold, True, session_key=session_key, reason="Emergency spawn")
                 # Apply crisis-level satisfaction (90% reduction)
                 new_pressure = pressure * 0.10  # 90% reduction
                 drive["pressure"] = new_pressure
@@ -263,10 +263,10 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
                 try:
                     from .spawn import spawn_session
                     drive_prompt = drive.get("prompt", f"Your {name} drive triggered.")
-                    spawned = spawn_session(name, drive_prompt, config, pressure, threshold)
-                    if spawned:
+                    session_key = spawn_session(name, drive_prompt, config, pressure, threshold)
+                    if session_key:
                         from .spawn import record_trigger
-                        record_trigger(state, name, pressure, threshold, True)
+                        record_trigger(state, name, pressure, threshold, True, session_key=session_key, reason="Threshold exceeded")
                         write_log(log_path, f"Drive triggered + spawned: {name} ({pressure:.1f}/{threshold:.1f})", "INFO")
                     else:
                         write_log(log_path, f"Drive triggered but spawn failed: {name}", "WARN")

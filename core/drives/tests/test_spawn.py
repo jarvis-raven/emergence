@@ -6,6 +6,7 @@ All external calls (HTTP, subprocess) are mocked.
 """
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -437,71 +438,124 @@ class TestDriveSelection(unittest.TestCase):
 
 
 class TestTriggerRecording(unittest.TestCase):
-    """Test trigger event recording."""
+    """Test trigger event recording (Phase 3: JSONL-based)."""
     
+    @patch.dict(os.environ, {"EMERGENCE_STATE": "/tmp/test_state"})
     def test_creates_trigger_log(self):
-        """Should create trigger_log if it doesn't exist."""
-        state = {}
+        """Should create trigger-log.jsonl file."""
+        from core.drives.history import get_trigger_log_path
+        import tempfile, shutil
         
-        record_trigger(state, "CARE", 25.0, 20.0, True)
+        # Use temp directory
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            state = {}
+            record_trigger(state, "CARE", 25.0, 20.0, True, session_key="test:123")
+            
+            # Check JSONL file exists
+            log_path = get_trigger_log_path()
+            self.assertTrue(log_path.exists())
         
-        self.assertIn("trigger_log", state)
-        self.assertEqual(len(state["trigger_log"]), 1)
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
+    @patch.dict(os.environ, {"EMERGENCE_STATE": "/tmp/test_state"})
     def test_records_all_fields(self):
-        """Should record all required fields."""
-        state = {"trigger_log": []}
+        """Should record all required fields to JSONL."""
+        from core.drives.history import get_trigger_log_path
+        import tempfile, shutil
         
-        record_trigger(state, "CARE", 25.0, 20.0, True)
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            state = {}
+            record_trigger(state, "CARE", 25.0, 20.0, True, session_key="test:123")
+            
+            log_path = get_trigger_log_path()
+            entry = json.loads(log_path.read_text())
+            
+            self.assertEqual(entry["drive"], "CARE")
+            self.assertEqual(entry["pressure"], 25.0)
+            self.assertEqual(entry["threshold"], 20.0)
+            self.assertEqual(entry["session_spawned"], True)
+            self.assertEqual(entry["session_key"], "test:123")
+            self.assertEqual(entry["session_status"], "spawned")
+            self.assertIn("timestamp", entry)
+            self.assertIn("T", entry["timestamp"])  # ISO format
         
-        entry = state["trigger_log"][0]
-        self.assertEqual(entry["drive"], "CARE")
-        self.assertEqual(entry["pressure"], 25.0)
-        self.assertEqual(entry["threshold"], 20.0)
-        self.assertEqual(entry["session_spawned"], True)
-        self.assertIn("timestamp", entry)
-        self.assertIn("T", entry["timestamp"])  # ISO format
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
+    @patch.dict(os.environ, {"EMERGENCE_STATE": "/tmp/test_state"})
     def test_appends_to_existing_log(self):
-        """Should append to existing trigger_log."""
-        state = {
-            "trigger_log": [
-                {
-                    "drive": "CURIOSITY",
-                    "timestamp": "2026-02-07T10:00:00+00:00",
-                    "pressure": 30.0,
-                    "threshold": 25.0,
-                    "session_spawned": True,
-                }
-            ]
-        }
+        """Should append to existing trigger-log.jsonl."""
+        from core.drives.history import get_trigger_log_path
+        import tempfile, shutil
         
-        record_trigger(state, "CARE", 25.0, 20.0, True)
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            # Write first entry manually
+            log_path = get_trigger_log_path()
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            first_entry = {
+                "drive": "CURIOSITY",
+                "timestamp": "2026-02-07T10:00:00+00:00",
+                "pressure": 30.0,
+                "threshold": 25.0,
+                "session_spawned": True,
+                "session_key": "test:first",
+                "session_status": "spawned",
+            }
+            with log_path.open('w') as f:
+                f.write(json.dumps(first_entry) + '\n')
+            
+            # Add second entry via record_trigger
+            state = {}
+            record_trigger(state, "CARE", 25.0, 20.0, True, session_key="test:second")
+            
+            # Read both entries
+            lines = log_path.read_text().strip().split('\n')
+            self.assertEqual(len(lines), 2)
+            
+            entries = [json.loads(line) for line in lines]
+            self.assertEqual(entries[0]["drive"], "CURIOSITY")
+            self.assertEqual(entries[1]["drive"], "CARE")
         
-        self.assertEqual(len(state["trigger_log"]), 2)
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
-    def test_limits_to_100_entries(self):
-        """Should keep only last 100 entries."""
-        state = {
-            "trigger_log": [
-                {
+    @patch.dict(os.environ, {"EMERGENCE_STATE": "/tmp/test_state"})
+    def test_jsonl_accumulates_entries(self):
+        """JSONL should accumulate entries (no longer limited to 100 in memory)."""
+        from core.drives.history import get_trigger_log_path
+        import tempfile, shutil
+        
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            # Write 5 existing entries
+            log_path = get_trigger_log_path()
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            for i in range(5):
+                entry = {
                     "drive": f"DRIVE{i}",
                     "timestamp": f"2026-02-07T{i:02d}:00:00+00:00",
                     "pressure": float(i),
                     "threshold": 20.0,
                     "session_spawned": True,
+                    "session_key": f"test:{i}",
+                    "session_status": "spawned",
                 }
-                for i in range(100)
-            ]
-        }
+                with log_path.open('a') as f:
+                    f.write(json.dumps(entry) + '\n')
+            
+            # Add new entry
+            state = {}
+            record_trigger(state, "CARE", 25.0, 20.0, True, session_key="test:new")
+            
+            # Verify all 6 entries exist (no limit in JSONL)
+            lines = log_path.read_text().strip().split('\n')
+            self.assertEqual(len(lines), 6)
+            
+            entries = [json.loads(line) for line in lines]
+            self.assertEqual(entries[-1]["drive"], "CARE")
         
-        record_trigger(state, "CARE", 25.0, 20.0, True)
-        
-        self.assertEqual(len(state["trigger_log"]), 100)
-        # First entry should be removed (DRIVE0)
-        self.assertEqual(state["trigger_log"][0]["drive"], "DRIVE1")
-        # Last entry should be the new one
-        self.assertEqual(state["trigger_log"][-1]["drive"], "CARE")
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 class TestSpawnFailureHandling(unittest.TestCase):
@@ -863,20 +917,32 @@ class TestTickWithSpawning(unittest.TestCase):
     @patch("core.drives.spawn.spawn_session")
     @patch("core.drives.engine.tick_all_drives")
     def test_records_trigger_on_success(self, mock_tick, mock_spawn):
-        """Should record trigger event on successful spawn."""
+        """Should record trigger event on successful spawn (Phase 3: JSONL)."""
+        from core.drives.history import get_trigger_log_path, read_trigger_log
+        import tempfile, shutil
+        
         mock_tick.return_value = {}
-        mock_spawn.return_value = True
+        mock_spawn.return_value = "test:session:123"
         
-        config = {"drives": {"cooldown_minutes": 30}}
-        state = create_default_state()
-        state["drives"]["CARE"]["pressure"] = 30.0
-        state["trigger_log"] = []
+        temp_dir = tempfile.mkdtemp()
+        with patch.dict(os.environ, {"EMERGENCE_STATE": temp_dir}):
+            config = {"drives": {"cooldown_minutes": 30}}
+            state = create_default_state()
+            state["drives"]["CARE"]["pressure"] = 30.0
+            
+            tick_with_spawning(config, state)
+            
+            # Check trigger was recorded in JSONL
+            log_path = get_trigger_log_path()
+            self.assertTrue(log_path.exists())
+            
+            # Read and verify entry
+            log = read_trigger_log()
+            self.assertEqual(len(log), 1)
+            self.assertEqual(log[0]["drive"], "CARE")
+            self.assertEqual(log[0]["session_key"], "test:session:123")
         
-        tick_with_spawning(config, state)
-        
-        self.assertEqual(len(state["trigger_log"]), 1)
-        self.assertEqual(state["trigger_log"][0]["drive"], "CARE")
-        self.assertTrue(state["trigger_log"][0]["session_spawned"])
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
     @patch("core.drives.spawn.spawn_session")
     @patch("core.drives.engine.tick_all_drives")
