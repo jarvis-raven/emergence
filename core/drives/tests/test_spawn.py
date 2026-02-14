@@ -675,13 +675,15 @@ class TestSpawnViaCli(unittest.TestCase):
     
     @patch("core.drives.spawn.subprocess.run")
     def test_successful_spawn(self, mock_run):
-        """Should return True on successful CLI call."""
-        mock_run.return_value = Mock(returncode=0)
+        """Should return session key on successful CLI call."""
+        mock_run.return_value = Mock(returncode=0, stdout='{"id": "123"}')
         
         config = {"drives": {"session_timeout": 900}}
         result = spawn_via_cli("test prompt", config, "CARE", 25.0, 20.0)
         
-        self.assertTrue(result)
+        # Function returns session key string on success, not bool
+        self.assertIsNotNone(result)
+        self.assertIn("agent:main:cron:", result)
     
     @patch("core.drives.spawn.subprocess.run")
     def test_failed_spawn(self, mock_run):

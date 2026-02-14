@@ -223,6 +223,7 @@ class TestPlatformDetection(unittest.TestCase):
         self.assertIn("/test/workspace", plist)
         self.assertIn("<?xml version=\"1.0\"", plist)
     
+    @unittest.skipUnless(sys.platform.startswith("linux"), "systemd tests only run on Linux")
     def test_generate_systemd_service_contains_key_values(self):
         """generate_systemd_service should contain expected configuration."""
         config = {
