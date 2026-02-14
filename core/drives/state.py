@@ -50,6 +50,12 @@ RUNTIME_STATE_FIELDS = {
     "session_count_since",
 }
 
+# Deprecated fields that should be removed during migration (Phase 2)
+DEPRECATED_FIELDS = {
+    "satisfaction_events",  # Now in satisfaction_history.jsonl
+    "trigger_log",          # Now in trigger-log.jsonl
+}
+
 
 def split_drive_config_and_state(drive: dict) -> Tuple[dict, dict]:
     """Split a drive dict into config and runtime state.
@@ -64,7 +70,10 @@ def split_drive_config_and_state(drive: dict) -> Tuple[dict, dict]:
     state = {}
     
     for key, value in drive.items():
-        if key in STATIC_CONFIG_FIELDS:
+        if key in DEPRECATED_FIELDS:
+            # Skip deprecated fields (migrated to JSONL in Phase 2)
+            continue
+        elif key in STATIC_CONFIG_FIELDS:
             config[key] = value
         elif key in RUNTIME_STATE_FIELDS:
             state[key] = value
