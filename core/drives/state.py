@@ -364,13 +364,13 @@ def save_state(state_path: Path, state: DriveState, backup: bool = True) -> None
     
     # Build config structure
     config = {
-        "version": state.get("version", "1.1"),
+        "version": "1.1",  # Always use 1.1 for split format
         "drives": config_drives
     }
     
     # Build state structure
     runtime = {
-        "version": state.get("version", "1.1"),
+        "version": "1.1",  # Always use 1.1 for split format
         "last_tick": state.get("last_tick", datetime.now(timezone.utc).isoformat()),
         "drives": state_drives,
         "triggered_drives": state.get("triggered_drives", [])

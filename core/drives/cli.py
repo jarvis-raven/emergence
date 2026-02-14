@@ -101,9 +101,8 @@ def get_state_and_config(args) -> tuple:
 def get_runtime_state_and_config(args) -> tuple:
     """Load lightweight runtime state and config.
     
-    This loads only drives-state.json (pressure, threshold, status)
-    without the full descriptions, prompts, and history from drives.json.
-    Use this for regular status checks to prevent context bloat.
+    After Phase 1 state separation, this loads from BOTH drives.json (config)
+    and drives-state.json (runtime) to get complete drive data including thresholds.
     
     Returns:
         Tuple of (runtime_state, config, runtime_state_path)
@@ -111,15 +110,19 @@ def get_runtime_state_and_config(args) -> tuple:
     config_path = getattr(args, 'config', None)
     config = load_config(Path(config_path) if config_path else None)
     
-    # Get runtime state path (drives-state.json, not drives.json)
-    state_dir = Path(get_state_path(config)).parent
-    runtime_state_path = state_dir / "drives-state.json"
+    # Get full state path (drives.json)
+    full_state_path = Path(get_state_path(config))
     
     # Ensure state directory exists
-    runtime_state_path.parent.mkdir(parents=True, exist_ok=True)
+    full_state_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Load lightweight runtime state
-    runtime_state = load_runtime_state(runtime_state_path)
+    # Load complete state (merges drives.json config + drives-state.json runtime)
+    # This is necessary after Phase 1 because thresholds are in config, not runtime
+    full_state = load_state(full_state_path)
+    
+    # Extract lightweight runtime representation
+    runtime_state = extract_runtime_state(full_state)
+    runtime_state_path = full_state_path.parent / "drives-state.json"
     
     return runtime_state, config, runtime_state_path
 
