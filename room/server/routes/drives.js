@@ -56,11 +56,15 @@ router.get('/', (req, res) => {
   try {
     const config = loadConfig();
     const drivesPath = getStatePath(config, 'drives.json');
+    const stateDir = drivesPath.replace('drives.json', '');
+    const statePath = join(stateDir, 'drives-state.json');
     
-    const data = readJsonFile(drivesPath);
+    // Phase 1: Load both config (drives.json) and runtime (drives-state.json)
+    const configData = readJsonFile(drivesPath);
+    const stateData = readJsonFile(statePath);
     
-    if (!data) {
-      // Return empty state if file doesn't exist
+    if (!configData && !stateData) {
+      // Return empty state if neither file exists
       return res.json({
         version: '1.0',
         last_tick: new Date().toISOString(),
@@ -69,6 +73,28 @@ router.get('/', (req, res) => {
         trigger_log: [],
       });
     }
+    
+    // Merge config + state (state values override config for overlapping fields)
+    const mergedDrives = {};
+    const allDriveNames = new Set([
+      ...Object.keys((configData || {}).drives || {}),
+      ...Object.keys((stateData || {}).drives || {})
+    ]);
+    
+    for (const name of allDriveNames) {
+      const driveConfig = (configData || {}).drives?.[name] || {};
+      const driveState = (stateData || {}).drives?.[name] || {};
+      mergedDrives[name] = { ...driveConfig, ...driveState };
+    }
+    
+    // Build merged data structure
+    const data = {
+      version: (configData || stateData || {}).version || '1.1',
+      last_tick: (stateData || configData || {}).last_tick || new Date().toISOString(),
+      drives: mergedDrives,
+      triggered_drives: (stateData || configData || {}).triggered_drives || [],
+      trigger_log: (configData || {}).trigger_log || [],
+    };
     
     // Enhance drives with aspect counts and graduation candidates
     const enhancedDrives = {};
