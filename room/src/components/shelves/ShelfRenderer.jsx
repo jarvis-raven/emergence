@@ -4,10 +4,12 @@ import GenericShelfView from './GenericShelfView';
 
 // Custom shelves (agent-specific, in custom/ directory)
 import { LibraryShelfView } from './custom/LibraryShelfView';
+import NautilusShelfView from './custom/NautilusShelfView';
 
 const RENDERER_MAP = {
   memory: MemoryShelfView,
   library: LibraryShelfView,
+  nautilus: NautilusShelfView,
 };
 
 function ErrorFallback({ error }) {

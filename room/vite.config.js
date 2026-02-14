@@ -10,7 +10,7 @@ export default defineConfig({
     allowedHosts: ['jarviss-mac-mini.tail869e96.ts.net'],
     proxy: {
       '/api': {
-        target: process.env.API_URL || 'http://localhost:8765',
+        target: process.env.API_URL || 'http://localhost:8801',
         changeOrigin: true,
       },
     },
