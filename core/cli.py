@@ -60,6 +60,11 @@ def main():
         sys.argv = ["emergence-nightly"] + args
         nightly_main()
     
+    elif command == "nautilus":
+        from core.nautilus.nautilus_cli import main as nautilus_main
+        sys.argv = ["emergence-nautilus"] + args
+        nautilus_main()
+    
     elif command == "openclaw-hook":
         from core.setup.openclaw_hook import installer
         
@@ -132,6 +137,7 @@ Commands:
   fl              Alias for first-light
   memory          Memory lifecycle management
   consolidate     Run memory consolidation
+  nautilus        Nautilus memory palace (search, status, maintain)
   nightly         Run nightly build routine
   migrate         Migrate agent between machines (export/import/rewrite-paths)
   openclaw-hook   Install/manage OpenClaw drives integration
@@ -143,6 +149,9 @@ Examples:
   emergence awaken --non-interactive --name Aurora --human Dan
   emergence drives status             # Check drive pressures
   emergence first-light run           # Trigger First Light tick
+  emergence nautilus search "query"   # Search with full nautilus pipeline
+  emergence nautilus status           # Show nautilus system status
+  emergence nautilus maintain         # Run nightly maintenance
   emergence openclaw-hook install     # Install OpenClaw drives hook
   emergence status                    # Show overall status
 
