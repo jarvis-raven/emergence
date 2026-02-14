@@ -125,7 +125,6 @@ def load_core_drives(defaults_path: Optional[Path] = None) -> dict[str, Drive]:
             "prompt": config["prompt"],
             "category": "core",
             "created_by": "system",
-            "satisfaction_events": [],
             "discovered_during": None,
             "activity_driven": config.get("activity_driven", False),
         }

@@ -225,17 +225,24 @@ class TestSatisfaction(unittest.TestCase):
         self.assertIn("CARE", state["triggered_drives"])
     
     def test_satisfaction_event_recorded(self):
-        """Satisfaction should record timestamp."""
-        state = create_default_state()
-        state["drives"]["CARE"]["pressure"] = 20.0
-        state["drives"]["CARE"]["satisfaction_events"] = []
+        """Satisfaction should record timestamp to JSONL."""
+        import tempfile
+        import os
+        from core.drives.satisfaction import get_last_satisfaction_time
         
-        satisfy_drive(state, "CARE", "full")
-        
-        events = state["drives"]["CARE"]["satisfaction_events"]
-        self.assertEqual(len(events), 1)
-        # Should be ISO format timestamp
-        self.assertIn("T", events[0])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.environ["EMERGENCE_STATE"] = tmpdir
+            
+            state = create_default_state()
+            state["drives"]["CARE"]["pressure"] = 20.0
+            
+            satisfy_drive(state, "CARE", "full")
+            
+            # Check that satisfaction was logged
+            last_time = get_last_satisfaction_time("CARE")
+            self.assertIsNotNone(last_time)
+            # Should be ISO format timestamp
+            self.assertIn("T", last_time)
     
     def test_negative_pressure_clamped(self):
         """Satisfaction should never result in negative pressure."""

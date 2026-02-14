@@ -49,7 +49,6 @@ class TestLoadCoreDrives(unittest.TestCase):
         self.assertEqual(care["category"], "core")
         self.assertEqual(care["created_by"], "system")
         self.assertEqual(care["activity_driven"], False)
-        self.assertEqual(care["satisfaction_events"], [])
         self.assertIsNone(care["discovered_during"])
     
     def test_maintenance_default_values(self):

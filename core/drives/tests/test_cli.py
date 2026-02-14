@@ -488,22 +488,34 @@ class TestHistoryModule(unittest.TestCase):
         self.assertIsNone(result)
     
     def test_read_trigger_log(self):
-        """Read trigger log from state."""
-        state = {
-            "trigger_log": [
-                {"drive": "CARE", "timestamp": "2026-02-07T10:00:00Z"},
-                {"drive": "REST", "timestamp": "2026-02-07T08:00:00Z"},
-            ]
-        }
-        log = history.read_trigger_log(state)
-        self.assertEqual(len(log), 2)
+        """Read trigger log from JSONL file."""
+        import tempfile
+        import os
+        import json
+        from pathlib import Path
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.environ["EMERGENCE_STATE"] = tmpdir
+            log_path = Path(tmpdir) / "trigger-log.jsonl"
+            
+            # Write test data to JSONL
+            with log_path.open('w') as f:
+                f.write(json.dumps({"drive": "CARE", "timestamp": "2026-02-07T10:00:00Z"}) + '\n')
+                f.write(json.dumps({"drive": "REST", "timestamp": "2026-02-07T08:00:00Z"}) + '\n')
+            
+            log = history.read_trigger_log()
+            self.assertEqual(len(log), 2)
         self.assertEqual(log[0]["drive"], "CARE")
     
     def test_read_trigger_log_empty(self):
-        """Empty state should return empty list."""
-        state = {}
-        log = history.read_trigger_log(state)
-        self.assertEqual(log, [])
+        """Empty JSONL file should return empty list."""
+        import tempfile
+        import os
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.environ["EMERGENCE_STATE"] = tmpdir
+            log = history.read_trigger_log()
+            self.assertEqual(log, [])
     
     def test_filter_log_entries_by_drive(self):
         """Filter log entries by drive name."""
@@ -528,46 +540,60 @@ class TestHistoryModule(unittest.TestCase):
         self.assertEqual(len(filtered), 2)
     
     def test_add_trigger_event(self):
-        """Add trigger event to state."""
-        state = {"trigger_log": []}
-        history.add_trigger_event(
-            state,
-            drive_name="CARE",
-            pressure=25.0,
-            threshold=20.0,
-            session_spawned=True,
-            reason="Test trigger"
-        )
+        """Add trigger event to JSONL file."""
+        import tempfile
+        import os
+        from pathlib import Path
         
-        self.assertEqual(len(state["trigger_log"]), 1)
-        entry = state["trigger_log"][0]
-        self.assertEqual(entry["drive"], "CARE")
-        self.assertEqual(entry["pressure"], 25.0)
-        self.assertEqual(entry["threshold"], 20.0)
-        self.assertTrue(entry["session_spawned"])
-        self.assertEqual(entry["reason"], "Test trigger")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.environ["EMERGENCE_STATE"] = tmpdir
+            state = {}
+            history.add_trigger_event(
+                state,
+                drive_name="CARE",
+                pressure=25.0,
+                threshold=20.0,
+                session_spawned=True,
+                reason="Test trigger"
+            )
+            
+            # Read from JSONL file
+            log = history.read_trigger_log()
+            self.assertEqual(len(log), 1)
+            entry = log[0]
+            self.assertEqual(entry["drive"], "CARE")
+            self.assertEqual(entry["pressure"], 25.0)
+            self.assertEqual(entry["threshold"], 20.0)
+            self.assertTrue(entry["session_spawned"])
+            self.assertEqual(entry["reason"], "Test trigger")
     
     def test_add_satisfaction_event(self):
-        """Add satisfaction event to state."""
-        state = {
-            "trigger_log": [],
-            "drives": {
-                "CARE": {"threshold": 20.0}
-            }
-        }
-        history.add_satisfaction_event(
-            state,
-            drive_name="CARE",
-            old_pressure=20.0,
-            new_pressure=10.0,
-            depth="moderate"
-        )
+        """Add satisfaction event to JSONL file."""
+        import tempfile
+        import os
         
-        self.assertEqual(len(state["trigger_log"]), 1)
-        entry = state["trigger_log"][0]
-        self.assertEqual(entry["drive"], "CARE")
-        self.assertIn("SATISFIED", entry["reason"])
-        self.assertIn("moderate", entry["reason"])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.environ["EMERGENCE_STATE"] = tmpdir
+            state = {
+                "drives": {
+                    "CARE": {"threshold": 20.0}
+                }
+            }
+            history.add_satisfaction_event(
+                state,
+                drive_name="CARE",
+                old_pressure=20.0,
+                new_pressure=10.0,
+                depth="moderate"
+            )
+            
+            # Read from JSONL file
+            log = history.read_trigger_log()
+            self.assertEqual(len(log), 1)
+            entry = log[0]
+            self.assertEqual(entry["drive"], "CARE")
+            self.assertIn("SATISFIED", entry["reason"])
+            self.assertIn("moderate", entry["reason"])
     
     def test_format_log_entry(self):
         """Format log entry for display."""

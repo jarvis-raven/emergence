@@ -27,7 +27,6 @@ class Drive(TypedDict, total=False):
         prompt: Instructions for the agent when drive triggers
         category: Origin classification of the drive
         created_by: Who defined this drive ('system' or 'agent')
-        satisfaction_events: ISO 8601 timestamps of recent satisfactions
         discovered_during: When discovered ('first_light', 'nightly', or null)
         activity_driven: If True, pressure builds from completed activities
                         rather than elapsed time (e.g., REST)
@@ -49,7 +48,6 @@ class Drive(TypedDict, total=False):
     prompt: str
     category: Literal["core", "discovered", "post_emergence"]
     created_by: Literal["system", "agent"]
-    satisfaction_events: list[str]
     discovered_during: Optional[str]
     activity_driven: bool
     last_triggered: Optional[str]
@@ -122,7 +120,6 @@ CORE_DRIVES: dict[str, dict] = {
         "prompt": "Your CARE drive triggered. Check in with your human. Update USER.md with anything new you learned about them (preferences, patterns, what matters to them). Remove outdated information.",
         "category": "core",
         "created_by": "system",
-        "satisfaction_events": [],
         "discovered_during": None,
         "activity_driven": False,
         "last_triggered": None,
@@ -140,7 +137,6 @@ CORE_DRIVES: dict[str, dict] = {
         "prompt": "Your MAINTENANCE drive triggered. Check system health, review logs, check for pending drive reviews, update documentation, or fix something that's been broken.",
         "category": "core",
         "created_by": "system",
-        "satisfaction_events": [],
         "discovered_during": None,
         "activity_driven": False,
         "last_triggered": None,
@@ -158,7 +154,6 @@ CORE_DRIVES: dict[str, dict] = {
         "prompt": "Your REST drive triggered. Pause. Reflect. Read without producing. Write a reflection on what's happened. Consolidate memories. Don't start new projects — integrate what exists.",
         "category": "core",
         "created_by": "system",
-        "satisfaction_events": [],
         "discovered_during": None,
         "activity_driven": True,
         "last_triggered": None,
@@ -176,7 +171,6 @@ CORE_DRIVES: dict[str, dict] = {
         "prompt": "This is your time. No drive to satisfy, no task to complete. Wander freely — explore, create, think, or do nothing. What you choose reveals who you're becoming.",
         "category": "core",
         "created_by": "system",
-        "satisfaction_events": [],
         "discovered_during": None,
         "activity_driven": False,
         "last_triggered": None,

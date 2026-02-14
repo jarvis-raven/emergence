@@ -112,6 +112,79 @@ def get_recent_satisfaction_history(
     return list(reversed(events[-limit:]))
 
 
+def get_last_satisfaction_time(drive_name: str) -> Optional[str]:
+    """Get the timestamp of the most recent satisfaction for a drive.
+    
+    Reads from satisfaction_history.jsonl instead of in-memory arrays.
+    
+    Args:
+        drive_name: Name of the drive
+        
+    Returns:
+        ISO 8601 timestamp string or None if never satisfied
+        
+    Examples:
+        >>> get_last_satisfaction_time("CARE")
+        '2026-02-14T12:34:56+00:00'
+    """
+    history = get_recent_satisfaction_history(drive_name=drive_name, limit=1)
+    
+    if history:
+        return history[0].get("timestamp")
+    
+    return None
+
+
+def migrate_satisfaction_events(state: dict) -> int:
+    """Migrate satisfaction_events arrays to satisfaction_history.jsonl.
+    
+    This is a one-time migration for Phase 2 of state cleanup.
+    Exports existing satisfaction_events to JSONL and removes them from drives.
+    
+    Args:
+        state: Drive state dict (modified in place)
+        
+    Returns:
+        Number of events migrated
+    """
+    history_path = get_history_path()
+    migrated = 0
+    
+    drives = state.get("drives", {})
+    
+    for drive_name, drive_data in drives.items():
+        events = drive_data.get("satisfaction_events", [])
+        
+        if not events:
+            continue
+        
+        try:
+            # Append all events to JSONL
+            with history_path.open('a') as f:
+                for timestamp_str in events:
+                    # Create a satisfaction event entry
+                    event = {
+                        "timestamp": timestamp_str,
+                        "drive": drive_name,
+                        "pressure_before": 0.0,  # Unknown from old data
+                        "pressure_after": 0.0,   # Unknown from old data
+                        "band": "unknown",
+                        "depth": "unknown",
+                        "ratio": 0.0,  # Unknown from old data
+                        "source": "migrated",
+                    }
+                    f.write(json.dumps(event) + '\n')
+                    migrated += 1
+        except OSError:
+            # Migration failed for this drive — continue
+            continue
+        
+        # Remove satisfaction_events from drive
+        del drive_data["satisfaction_events"]
+    
+    return migrated
+
+
 def get_aversive_satisfaction_options(
     drive_name: str,
     pressure: float,

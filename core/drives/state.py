@@ -43,7 +43,6 @@ STATIC_CONFIG_FIELDS = {
 RUNTIME_STATE_FIELDS = {
     "pressure",
     "status",
-    "satisfaction_events",
     "last_triggered",
     "valence",
     "thwarting_count",
@@ -300,6 +299,9 @@ def load_state(state_path: Path) -> DriveState:
             "triggered_drives": state.get("triggered_drives", [])
         }
         
+        # Phase 2 migration: Move event logs from state to JSONL
+        _run_phase2_migration(result)
+        
         return result
     
     # Fall back to legacy format (everything in drives.json)
@@ -489,6 +491,42 @@ def release_lock(state_path: Path) -> None:
             lock_path.unlink()
     except OSError:
         pass
+
+
+def _run_phase2_migration(state: DriveState) -> None:
+    """Run Phase 2 migration: Move event logs from state to JSONL files.
+    
+    This is a one-time migration that:
+    1. Exports trigger_log to trigger-log.jsonl
+    2. Exports satisfaction_events arrays to satisfaction_history.jsonl
+    3. Removes these fields from state
+    
+    Migration is idempotent - safe to run multiple times.
+    Silent if no migration needed.
+    
+    Args:
+        state: DriveState dict (modified in place if migration needed)
+    """
+    from .history import migrate_trigger_log
+    from .satisfaction import migrate_satisfaction_events
+    
+    # Migrate trigger_log if it exists AND has entries
+    if "trigger_log" in state and state.get("trigger_log"):
+        count = migrate_trigger_log(state)
+        if count > 0:
+            print(f"✓ Migrated {count} trigger log entries to trigger-log.jsonl", file=sys.stderr)
+    
+    # Migrate satisfaction_events from all drives (only if non-empty)
+    drives = state.get("drives", {})
+    has_non_empty_events = any(
+        drive.get("satisfaction_events")  # Check for non-empty list
+        for drive in drives.values()
+    )
+    
+    if has_non_empty_events:
+        count = migrate_satisfaction_events(state)
+        if count > 0:
+            print(f"✓ Migrated {count} satisfaction events to satisfaction_history.jsonl", file=sys.stderr)
 
 
 class StateLock:
