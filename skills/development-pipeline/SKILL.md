@@ -39,6 +39,7 @@ spike/<description>     # Experimental/exploratory work
 ```
 
 **Examples from recent PRs:**
+
 - `feature/nautilus-beta-core` (#80)
 - `feature/nautilus-beta-dashboard` (#81)
 - `fix/82-room-build-aspirations` (#82)
@@ -61,6 +62,7 @@ git checkout -b fix/103-development-pipeline-skill
 ```
 
 **Naming Guidelines:**
+
 - Use kebab-case (lowercase with hyphens)
 - Keep it short but descriptive (3-5 words max)
 - Include issue number for trackability
@@ -91,6 +93,7 @@ git rebase main
 ```
 
 **When to sync:**
+
 - Before creating a PR
 - When main has significant changes
 - Daily for long-running branches
@@ -108,6 +111,7 @@ git push origin --delete feature/your-branch-name
 ```
 
 **Cleanup Policy:**
+
 - Delete branches immediately after merge
 - Keep spike branches until insights are documented
 - Archive long-lived branches as tags if needed
@@ -115,6 +119,7 @@ git push origin --delete feature/your-branch-name
 ### Branch Protection
 
 **Main branch rules:**
+
 - No direct commits
 - All changes via PR
 - Must pass tests (when CI/CD is configured)
@@ -127,6 +132,7 @@ git push origin --delete feature/your-branch-name
 ### Issue Creation
 
 **When to create an issue:**
+
 - New feature requests
 - Bug reports
 - Documentation gaps
@@ -138,21 +144,26 @@ git push origin --delete feature/your-branch-name
 
 ```markdown
 ## Description
+
 [Clear, concise description of the issue/feature]
 
 ## Context
+
 [Why is this needed? What problem does it solve?]
 
 ## Acceptance Criteria
+
 - [ ] Criterion 1
 - [ ] Criterion 2
 - [ ] Tests added/updated
 - [ ] Documentation updated
 
 ## Technical Notes
+
 [Implementation hints, edge cases, dependencies]
 
 ## Related Issues
+
 - Closes #XX
 - Related to #YY
 ```
@@ -161,14 +172,17 @@ git push origin --delete feature/your-branch-name
 
 ```markdown
 ## Description
-Create comprehensive development pipeline skill covering branching, 
+
+Create comprehensive development pipeline skill covering branching,
 PRs, reviews, and release workflow.
 
 ## Context
-Need clear guidance for agents on the full development lifecycle to 
+
+Need clear guidance for agents on the full development lifecycle to
 maintain consistency and quality across contributions.
 
 ## Acceptance Criteria
+
 - [ ] Branching strategy documented
 - [ ] Issue management process defined
 - [ ] PR template and review chain specified
@@ -176,22 +190,26 @@ maintain consistency and quality across contributions.
 - [ ] Room-specific workflows included
 
 ## Technical Notes
+
 Should include examples from recent PRs (#80, #81, #101, #102)
 Document Jarvling → Aurora → Human review chain
 
 ## Related Issues
+
 - Part of v0.4.2 documentation improvements
 ```
 
 ### Issue Assignment
 
 **Assignment flow:**
+
 1. **Triage:** Human or Aurora assigns priority/labels
 2. **Assignment:** Assign to specific agent or leave open
 3. **Acceptance:** Agent accepts by commenting or starting work
 4. **Updates:** Comment with progress/blockers
 
 **Labels:**
+
 - `bug` — Something broken
 - `feature` — New functionality
 - `docs` — Documentation
@@ -205,11 +223,13 @@ Document Jarvling → Aurora → Human review chain
 ### Milestones
 
 **Milestone structure:**
+
 - `v0.4.0` — Major release (new features, breaking changes)
 - `v0.4.1` — Minor release (features, non-breaking)
 - `v0.4.2` — Patch release (bug fixes, docs)
 
 **Milestone planning:**
+
 - Group related issues
 - Set target dates
 - Track progress
@@ -259,6 +279,7 @@ pytest -k "test_drive_satisfaction"
 ```
 
 **Test types:**
+
 - **Unit tests:** Individual functions/classes
 - **Integration tests:** Component interactions
 - **End-to-end tests:** Full workflow validation
@@ -295,6 +316,7 @@ Closes #123
 ```
 
 **Types:**
+
 - `feat` — New feature
 - `fix` — Bug fix
 - `docs` — Documentation
@@ -314,6 +336,7 @@ chore: bump version to 0.3.0
 ```
 
 **Commit frequency:**
+
 - Commit often, push regularly
 - Each commit should be logical unit
 - Squash messy commits before PR if needed
@@ -336,6 +359,7 @@ mypy core/
 ```
 
 **Code review checklist:**
+
 - [ ] Follows project style
 - [ ] Tests added/updated
 - [ ] Documentation updated
@@ -351,6 +375,7 @@ mypy core/
 ### Creating a Pull Request
 
 **Pre-PR checklist:**
+
 - [ ] Branch synced with main
 - [ ] All tests passing
 - [ ] Code formatted and linted
@@ -358,9 +383,61 @@ mypy core/
 - [ ] Commits cleaned up (if needed)
 - [ ] Issue reference ready
 
+### Commit Verification (Critical!)
+
+**Before creating the PR, verify your commits are clean:**
+
+```bash
+# Check what commits will be in your PR
+git log main..HEAD --oneline
+
+# Example of CORRECT output (only your commits):
+f4c25b0 docs(quality): add issue #111 implementation summary
+49ee98d docs(quality): document code quality setup
+a150c65 chore(quality): add npm scripts for code quality
+
+# Example of INCORRECT output (includes commits from other PRs):
+f4c25b0 docs(quality): add issue #111 implementation summary
+49ee98d docs(quality): document code quality setup
+a150c65 chore(quality): add npm scripts for code quality
+3b96f65 fix(drives): improve state sync mechanism    # ⚠️ From PR #102
+8c1a4f2 docs(dev): add dev state initialization     # ⚠️ From PR #112
+```
+
+**If you see extra commits:**
+
+```bash
+# Option 1: Rebase onto latest main (cleans automatically)
+git fetch origin main
+git rebase origin/main
+
+# Option 2: Create clean branch and cherry-pick
+git checkout -b feature/clean-branch origin/main
+git cherry-pick <commit-hash-1> <commit-hash-2> ...
+
+# Force push the clean branch
+git push origin feature/clean-branch --force
+```
+
+**Why this matters:**
+
+- Prevents duplicate commits across PRs
+- Keeps git history clean
+- Makes reviews faster (reviewers only see relevant changes)
+- Avoids merge conflicts from redundant changes
+
+**Root causes of duplicate commits:**
+
+1. Branch created from outdated main
+2. Merging other branches into your feature branch
+3. Not rebasing before PR creation
+
 **PR Creation:**
 
 ```bash
+# Final verification
+git log main..HEAD --oneline  # Should show ONLY your commits
+
 # Push your branch
 git push origin feature/your-branch-name
 
@@ -371,18 +448,22 @@ git push origin feature/your-branch-name
 
 ```markdown
 ## Summary
+
 [Brief description of what this PR does]
 
 ## Related Issue
+
 Closes #XXX
 Related to #YYY
 
 ## Changes Made
+
 - Change 1: Description
 - Change 2: Description
 - Change 3: Description
 
 ## Type of Change
+
 - [ ] Bug fix (non-breaking)
 - [ ] New feature (non-breaking)
 - [ ] Breaking change
@@ -391,21 +472,25 @@ Related to #YYY
 - [ ] Refactoring
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] Manual testing completed
 - [ ] All tests passing
 
 ## Documentation
+
 - [ ] Code comments added/updated
 - [ ] README updated
 - [ ] CHANGELOG updated
 - [ ] API docs updated (if applicable)
 
 ## Screenshots/Examples
+
 [If UI changes or new features, include examples]
 
 ## Checklist
+
 - [ ] Code follows project style
 - [ ] Self-review completed
 - [ ] No debugging code left
@@ -413,6 +498,7 @@ Related to #YYY
 - [ ] Version bumped (if needed)
 
 ## Review Notes
+
 [Any specific areas you want reviewers to focus on]
 ```
 
@@ -420,16 +506,19 @@ Related to #YYY
 
 ```markdown
 ## Summary
+
 v0.4.0 Nautilus: Alpha + Beta Core Integration
 
 Integrates Nautilus reflective journaling system with Emergence core,
 including daemon hooks, nightly analysis, and session tracking.
 
 ## Related Issue
+
 Part of v0.4.0 Nautilus milestone
 Implements Issue #67 (Nautilus Beta Integration)
 
 ## Changes Made
+
 - Added core/nautilus module with chambers, doors, gravity, mirrors
 - Integrated nightly check daemon for journal processing
 - Added session hooks for automatic capture
@@ -438,23 +527,28 @@ Implements Issue #67 (Nautilus Beta Integration)
 - Documentation: quickstart guide and integration guide
 
 ## Type of Change
+
 - [x] New feature (non-breaking)
 - [x] Documentation update
 
 ## Testing
+
 - [x] Unit tests added (98 tests in test_nautilus.py)
 - [x] Integration tests added (352 tests)
 - [x] Manual testing completed
 - [x] All 450+ tests passing
 
 ## Documentation
+
 - [x] Code comments added
 - [x] docs/nautilus-quickstart.md created
 - [x] docs/nautilus-v0.4.0-integration.md created
 - [x] CHANGELOG ready (will be added in release commit)
 
 ## Review Notes
+
 Focus on:
+
 - Daemon integration (core/drives/nightly_check.py)
 - Session hooks (core/nautilus/session_hooks.py)
 - Migration safety (core/nautilus/migrate_db.py)
@@ -469,6 +563,7 @@ Jarvling (Agent) → Aurora (Senior Agent) → Human (Final Approval)
 ```
 
 **1. Jarvling Self-Review**
+
 - Complete PR checklist
 - Run all tests locally
 - Review own code changes
@@ -476,6 +571,7 @@ Jarvling (Agent) → Aurora (Senior Agent) → Human (Final Approval)
 - Mark as "Ready for Review"
 
 **2. Aurora Review**
+
 - Code quality check
 - Architecture alignment
 - Test coverage validation
@@ -484,12 +580,14 @@ Jarvling (Agent) → Aurora (Senior Agent) → Human (Final Approval)
 - Suggests improvements or approves
 
 **3. Human Review** (Dan)
+
 - Final architecture decisions
 - Breaking change approval
 - Release timing
 - Merge execution
 
 **Review timeline:**
+
 - Jarvling: Same session (before PR creation)
 - Aurora: Within 24 hours
 - Human: Within 48 hours (priority) / 1 week (standard)
@@ -508,6 +606,7 @@ git push origin feature/your-branch-name
 ```
 
 **Comment etiquette:**
+
 - Acknowledge all feedback
 - Explain decisions if disagreeing
 - Ask questions when unclear
@@ -538,6 +637,7 @@ git merge --no-ff feature/branch-name
    - Avoid for collaborative branches
 
 **After merge:**
+
 - Delete source branch
 - Verify CI/CD passes
 - Update issue status
@@ -550,6 +650,7 @@ git merge --no-ff feature/branch-name
 ### When to Spawn a Jarvling
 
 **Spawn a Jarvling (subagent) when:**
+
 - Task is well-defined with clear deliverables
 - Estimated 30+ minutes of focused work
 - Independent from ongoing conversation
@@ -557,12 +658,14 @@ git merge --no-ff feature/branch-name
 - Parallel work possible (multiple issues)
 
 **Don't spawn when:**
+
 - Quick question or clarification
 - Iterative back-and-forth needed
 - Human guidance required during work
 - Task is exploratory (use main session)
 
 **Examples:**
+
 - ✅ "Fix #103: Create Development Pipeline Skill"
 - ✅ "Implement drive consolidation algorithm"
 - ✅ "Write integration tests for Nautilus"
@@ -575,14 +678,17 @@ git merge --no-ff feature/branch-name
 
 ```markdown
 ## Task
+
 Fix #103: Create Development Pipeline Skill
 
 ## Goal
-Create comprehensive development pipeline skill at 
-skills/development-pipeline/SKILL.md covering complete workflow 
+
+Create comprehensive development pipeline skill at
+skills/development-pipeline/SKILL.md covering complete workflow
 from idea to production.
 
 ## Required Sections
+
 1. Branching Strategy (feature/, fix/, hotfix/, docs/)
 2. Issue Management (creation, assignment, milestones, labels)
 3. Development Workflow (local dev, testing, commits)
@@ -592,23 +698,27 @@ from idea to production.
 7. Room-Specific Workflows (dev/prod, state management)
 
 ## Deliverables
+
 - skills/development-pipeline/SKILL.md with all sections
 - Include concrete examples from recent PRs (#80, #81, #101, #102)
 - Document review chain: Jarvling → Aurora → Human
 - Clear, actionable guidance for every stage
 
 ## Process
+
 1. Research existing Emergence workflow patterns
 2. Create comprehensive skill file
 3. Include examples from recent PRs
 4. Submit PR with clear description
 
 ## Context
+
 Repository: ~/projects/Emergence
 Use Kimi model for cost efficiency.
 ```
 
 **Key elements:**
+
 - **Clear goal:** What success looks like
 - **Specific deliverables:** Concrete outputs
 - **Process steps:** How to approach it
@@ -618,6 +728,7 @@ Use Kimi model for cost efficiency.
 ### Jarvling Review Process
 
 **Jarvling responsibilities:**
+
 1. Complete assigned task fully
 2. Self-review before reporting
 3. Run tests and verify quality
@@ -626,6 +737,7 @@ Use Kimi model for cost efficiency.
 6. Report completion to spawner
 
 **Aurora's Jarvling review checklist:**
+
 - [ ] Task completed as specified
 - [ ] Code quality meets standards
 - [ ] Tests comprehensive and passing
@@ -651,10 +763,12 @@ Human final review → Merge
 ### Communication Patterns
 
 **Jarvling → Spawner:**
+
 ```markdown
 Task completed: Created Development Pipeline Skill
 
 Deliverables:
+
 - ✅ skills/development-pipeline/SKILL.md (7 sections, ~800 lines)
 - ✅ Concrete examples from PRs #80, #81
 - ✅ Review chain documented
@@ -665,12 +779,14 @@ Branch: feature/103-development-pipeline-skill
 Status: Ready for Aurora review
 
 Notes:
+
 - Researched 20+ recent commits for workflow patterns
 - Included templates for PR descriptions and task writing
 - Added troubleshooting section for common issues
 ```
 
 **Aurora → Human:**
+
 ```markdown
 PR #103 reviewed and approved ✅
 
@@ -679,6 +795,7 @@ Task: Development Pipeline Skill
 Quality: High
 
 Review notes:
+
 - Comprehensive coverage of all required sections
 - Good concrete examples from actual PRs
 - Clear, actionable guidance
@@ -706,16 +823,19 @@ MAJOR.MINOR.PATCH
 ```
 
 **Version bumping:**
+
 - `0.3.0 → 0.3.1` — Bug fixes, documentation
 - `0.3.0 → 0.4.0` — New features, no breaking changes
 - `0.4.0 → 1.0.0` — Breaking changes, major milestone
 
 **When to bump:**
+
 - PATCH: Every merged fix/docs PR
 - MINOR: Feature PRs or grouped fixes
 - MAJOR: Breaking changes, complete rewrites
 
 **Version file locations:**
+
 - `pyproject.toml` — `version = "0.4.2"`
 - `package.json` — `"version": "0.4.2"` (for Room)
 
@@ -729,34 +849,43 @@ MAJOR.MINOR.PATCH
 ## [Unreleased]
 
 ### Added
+
 - New feature descriptions
 
 ### Changed
+
 - Modified behavior descriptions
 
 ### Fixed
+
 - Bug fix descriptions
 
 ### Removed
+
 - Deprecated feature removals
 
 ## [0.4.2] - 2026-02-15
 
 ### Added
+
 - Development Pipeline Skill (#103)
 - Comprehensive workflow documentation
 
 ### Changed
+
 - Updated PR template with clearer sections
 
 ### Fixed
+
 - Branch naming validation in CI
 
 ## [0.4.1] - 2026-02-14
+
 ...
 ```
 
 **Update frequency:**
+
 - Add entries as PRs merge
 - Group similar changes
 - Move from [Unreleased] to version on release
@@ -766,7 +895,9 @@ MAJOR.MINOR.PATCH
 
 ```markdown
 ### Added
+
 **Development Pipeline Skill (Issue #103)**
+
 - Complete workflow documentation from idea to production
 - Branching strategy with concrete examples
 - PR process templates and review chain
@@ -778,6 +909,7 @@ MAJOR.MINOR.PATCH
 ### Release Process
 
 **Pre-release checklist:**
+
 - [ ] All milestone issues closed
 - [ ] Tests passing
 - [ ] CHANGELOG updated
@@ -835,6 +967,7 @@ python -m twine upload dist/*
 ```
 
 **Post-release:**
+
 - [ ] Verify PyPI package
 - [ ] Update documentation site
 - [ ] Announce in community channels
@@ -892,6 +1025,7 @@ npm run dev:reset
 ```
 
 **What gets copied:**
+
 - `drives.json` — Full drive configuration
 - `drives-state.json` — Runtime drive states
 - `state/nautilus.db` — Journal entries (if exists)
@@ -899,10 +1033,12 @@ npm run dev:reset
 - Logs directory structure
 
 **What doesn't get copied:**
+
 - `*.pid` files (process IDs)
 - Temporary lock files
 
 **Safety guarantees:**
+
 - ✅ Production state (`.emergence/`) is **read-only** during setup
 - ✅ Scripts always confirm before overwriting `.emergence-dev/`
 - ✅ Exit codes: 0=success, 1=error, 2=cancelled
@@ -918,12 +1054,14 @@ cd ..  # project root
 ```
 
 **When to reset dev state:**
+
 - Dev state is corrupted or in bad state
 - Want to test with fresh production data
 - Made experimental changes and want clean slate
 - Production added new drives/features you want to test
 
 **Room structure:**
+
 ```
 room/
 ├── server/           # Express backend
@@ -943,6 +1081,7 @@ room/
 **Development vs Production:**
 
 **Development (local):**
+
 - State: `~/.openclaw/state/dev/`
 - Config: `~/.openclaw/config/emergence.json`
 - Logs: Console output + `~/.openclaw/logs/`
@@ -950,6 +1089,7 @@ room/
 - Debug tools: Enabled
 
 **Production (deployed):**
+
 - State: `~/.openclaw/state/prod/`
 - Config: Production `emergence.json`
 - Logs: File-based only
@@ -1009,13 +1149,13 @@ import { useState, useEffect } from 'react';
 
 export function usePipeline() {
   const [status, setStatus] = useState(null);
-  
+
   useEffect(() => {
     fetch('/api/pipeline/status')
-      .then(res => res.json())
+      .then((res) => res.json())
       .then(setStatus);
   }, []);
-  
+
   return { status };
 }
 ```
@@ -1048,7 +1188,7 @@ class PipelineShelf {
     return {
       branches: this.getCurrentBranches(),
       prs: this.getOpenPRs(),
-      issues: this.getAssignedIssues()
+      issues: this.getAssignedIssues(),
     };
   }
 
@@ -1069,7 +1209,7 @@ import PipelineShelf from './builtins/PipelineShelf.js';
 export const builtins = {
   memory: MemoryShelf,
   drives: DrivesShelf,
-  pipeline: PipelineShelf  // Add new shelf
+  pipeline: PipelineShelf, // Add new shelf
 };
 ```
 
@@ -1082,7 +1222,7 @@ import PipelineView from './PipelineView';
 const shelfComponents = {
   memory: MemoryShelf,
   drives: DrivesShelf,
-  pipeline: PipelineView  // Add new component
+  pipeline: PipelineView, // Add new component
 };
 ```
 
@@ -1112,6 +1252,7 @@ test('renders pipeline status', () => {
 ```
 
 **Integration testing:**
+
 - Start full stack: `npm run dev`
 - Test API endpoints manually
 - Verify WebSocket connections
@@ -1141,7 +1282,7 @@ export function NewDriveCard({ drive }) {
 // room/src/hooks/useDriveState.js
 export function useDriveState() {
   const [drives, setDrives] = useState([]);
-  
+
   useEffect(() => {
     // WebSocket connection for live updates
     const ws = new WebSocket('ws://localhost:5173/ws');
@@ -1153,7 +1294,7 @@ export function useDriveState() {
     };
     return () => ws.close();
   }, []);
-  
+
   return drives;
 }
 ```
@@ -1291,12 +1432,14 @@ npm run dev 2>&1 | tee room.log
 ### Getting Help
 
 **Where to ask:**
+
 - **GitHub Issues:** Bug reports, feature requests
 - **PR Comments:** Code-specific questions
 - **Discord/Chat:** General questions, discussions
 - **Documentation:** Check docs/ folder first
 
 **Effective questions:**
+
 - What you're trying to do
 - What you expected
 - What actually happened
@@ -1307,7 +1450,7 @@ npm run dev 2>&1 | tee room.log
 
 **End of Development Pipeline Skill v1.0.0**
 
-*This skill is a living document. Update it as workflows evolve. Suggest improvements via PR.*
+_This skill is a living document. Update it as workflows evolve. Suggest improvements via PR._
 
 ### Real-World Workflow Guide
 
@@ -1316,6 +1459,7 @@ npm run dev 2>&1 | tee room.log
 📖 **[Jarvling Workflow - Real-World Guide](../../docs/JARVLING_WORKFLOW.md)**
 
 This comprehensive guide covers:
+
 - **Jarvling workspace isolation** (`~/.openclaw/workspace-{model}/`)
 - **Manual PR creation workflow** (step-by-step)
 - **Task description template** (with real examples)
@@ -1325,4 +1469,3 @@ This comprehensive guide covers:
 - **Quick reference** (copy-paste commands)
 
 **Based on:** 8 successful jarvlings, ~45 min total runtime, ~5,000+ lines generated
-
