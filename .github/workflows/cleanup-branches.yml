@@ -1,0 +1,253 @@
+name: Branch Cleanup Automation
+
+on:
+  # Run weekly on Sundays at 00:00 UTC
+  schedule:
+    - cron: '0 0 * * 0'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (preview only)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  cleanup-branches:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for all branches
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Fetch all branches
+        run: |
+          git fetch --all --prune
+      
+      - name: Identify merged branches
+        id: identify
+        run: |
+          # Arrays to store branches
+          MERGED_BRANCHES=()
+          PROTECTED_BRANCHES=("main" "master" "develop")
+          PROTECTED_PATTERNS=("spike/" "release/")
+          MERGED_GRACE_DAYS=7
+          
+          # Get current date
+          NOW=$(date +%s)
+          
+          # Function to check if branch is protected
+          is_protected() {
+            local branch="$1"
+            
+            # Check exact matches
+            for protected in "${PROTECTED_BRANCHES[@]}"; do
+              if [[ "$branch" == "$protected" ]]; then
+                return 0
+              fi
+            done
+            
+            # Check pattern matches
+            for pattern in "${PROTECTED_PATTERNS[@]}"; do
+              if [[ "$branch" == $pattern* ]]; then
+                return 0
+              fi
+            done
+            
+            return 1
+          }
+          
+          # Check if branch has open PRs
+          has_open_pr() {
+            local branch="$1"
+            gh pr list --head "$branch" --state open --json number --jq length | grep -q "^0$" && return 1 || return 0
+          }
+          
+          # Find merged remote branches
+          echo "Finding merged branches..."
+          BASE_BRANCH="main"
+          if ! git show-ref --verify --quiet "refs/heads/main"; then
+            BASE_BRANCH="master"
+          fi
+          
+          while IFS= read -r branch; do
+            # Extract branch name
+            branch=$(echo "$branch" | sed 's|origin/||' | xargs)
+            
+            if [[ -z "$branch" ]]; then
+              continue
+            fi
+            
+            # Skip protected branches
+            if is_protected "$branch"; then
+              echo "Skipping protected: $branch"
+              continue
+            fi
+            
+            # Skip branches with open PRs
+            if has_open_pr "$branch" 2>/dev/null; then
+              echo "Skipping (has open PR): $branch"
+              continue
+            fi
+            
+            # Check if merged
+            if git branch -r --merged "origin/$BASE_BRANCH" | grep -q "origin/$branch"; then
+              # Check merge date
+              COMMIT_DATE=$(git log -1 --format=%ct "origin/$branch" 2>/dev/null || echo "0")
+              DAYS_OLD=$(( (NOW - COMMIT_DATE) / 86400 ))
+              
+              if [[ $DAYS_OLD -ge $MERGED_GRACE_DAYS ]]; then
+                echo "Found merged branch: $branch (${DAYS_OLD}d old)"
+                MERGED_BRANCHES+=("$branch")
+              fi
+            fi
+          done < <(git branch -r | grep -v "HEAD" | grep "origin/")
+          
+          # Save to output
+          if [[ ${#MERGED_BRANCHES[@]} -eq 0 ]]; then
+            echo "branches=" >> $GITHUB_OUTPUT
+            echo "count=0" >> $GITHUB_OUTPUT
+            echo "has_branches=false" >> $GITHUB_OUTPUT
+          else
+            # Convert array to JSON
+            BRANCHES_JSON=$(printf '%s\n' "${MERGED_BRANCHES[@]}" | jq -R . | jq -s .)
+            echo "branches=$BRANCHES_JSON" >> $GITHUB_OUTPUT
+            echo "count=${#MERGED_BRANCHES[@]}" >> $GITHUB_OUTPUT
+            echo "has_branches=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
+      - name: Delete merged branches
+        if: steps.identify.outputs.has_branches == 'true' && !inputs.dry_run
+        id: delete
+        run: |
+          BRANCHES='${{ steps.identify.outputs.branches }}'
+          DELETED=()
+          FAILED=()
+          
+          echo "$BRANCHES" | jq -r '.[]' | while read -r branch; do
+            if [[ -z "$branch" ]]; then
+              continue
+            fi
+            
+            echo "Deleting branch: $branch"
+            if git push origin --delete "$branch" 2>/dev/null; then
+              DELETED+=("$branch")
+              echo "✓ Deleted: $branch"
+            else
+              FAILED+=("$branch")
+              echo "✗ Failed: $branch"
+            fi
+          done
+          
+          # Save summary
+          echo "deleted_count=${#DELETED[@]}" >> $GITHUB_OUTPUT
+          echo "failed_count=${#FAILED[@]}" >> $GITHUB_OUTPUT
+      
+      - name: Generate summary
+        if: steps.identify.outputs.has_branches == 'true'
+        run: |
+          BRANCHES='${{ steps.identify.outputs.branches }}'
+          COUNT='${{ steps.identify.outputs.count }}'
+          DRY_RUN="${{ inputs.dry_run }}"
+          
+          echo "# Branch Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "**Mode:** Dry Run (Preview Only)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Found **$COUNT** merged branches that would be deleted:" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Mode:** Active Cleanup" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Deleted **$COUNT** merged branches:" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "$BRANCHES" | jq -r '.[]' | while read -r branch; do
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "- \`$branch\` (would be deleted)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ✓ \`$branch\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Protected branches:** main, master, develop, spike/*, release/*" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Grace period:** 7 days after merge" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Create issue comment (if applicable)
+        if: steps.identify.outputs.has_branches == 'true' && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branches = JSON.parse('${{ steps.identify.outputs.branches }}');
+            const count = ${{ steps.identify.outputs.count }};
+            const dryRun = ${{ inputs.dry_run || false }};
+            
+            const body = `## 🧹 Weekly Branch Cleanup Report
+            
+            ${dryRun ? '**Mode:** Dry Run (Preview Only)' : '**Mode:** Active Cleanup'}
+            
+            ${dryRun ? `Found **${count}** merged branches that would be deleted:` : `Deleted **${count}** merged branches:`}
+            
+            ${branches.map(b => `- ${dryRun ? '' : '✓ '}\`${b}\``).join('\n')}
+            
+            ---
+            
+            **Protected branches:** main, master, develop, spike/*, release/*
+            
+            **Grace period:** 7 days after merge
+            
+            _This is an automated report from the [Branch Cleanup workflow](${context.payload.repository.html_url}/actions/workflows/cleanup-branches.yml)._`;
+            
+            // Try to find an existing cleanup issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['maintenance', 'automated']
+            });
+            
+            const cleanupIssue = issues.data.find(i => i.title.includes('Branch Cleanup'));
+            
+            if (cleanupIssue) {
+              // Comment on existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: cleanupIssue.number,
+                body: body
+              });
+            }
+      
+      - name: No branches to clean
+        if: steps.identify.outputs.has_branches == 'false'
+        run: |
+          echo "# Branch Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✓ **No merged branches found** that are ready for deletion." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All branches are either:" >> $GITHUB_STEP_SUMMARY
+          echo "- Protected (main, spike/*, etc.)" >> $GITHUB_STEP_SUMMARY
+          echo "- Have open PRs" >> $GITHUB_STEP_SUMMARY
+          echo "- Recently merged (< 7 days)" >> $GITHUB_STEP_SUMMARY
