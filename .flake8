@@ -1,0 +1,48 @@
+[flake8]
+# Flake8 configuration for Python linting
+# Aligned with Black formatter and CONTRIBUTING.md standards
+
+# Match Black's line length
+max-line-length = 100
+
+# Ignore rules that conflict with Black
+extend-ignore = 
+    # E203: whitespace before ':' (Black formats this)
+    E203,
+    # W503: line break before binary operator (Black preference)
+    W503,
+    # E501: line too long (handled by Black)
+    E501
+
+# Exclude common directories
+exclude =
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .venv,
+    venv,
+    env,
+    build,
+    dist,
+    *.egg-info,
+    .emergence,
+    room/node_modules
+
+# Maximum complexity for functions
+max-complexity = 10
+
+# Show source code for each error
+show-source = True
+
+# Count errors
+count = True
+
+# Statistics at the end
+statistics = True
+
+# Per-file ignores
+per-file-ignores =
+    # Allow unused imports in __init__.py files
+    __init__.py:F401
+    # Allow star imports in test files
+    test_*.py:F401,F403
