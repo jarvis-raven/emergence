@@ -6,6 +6,7 @@ dist/
 
 # Local state and config — never commit these
 .emergence/
+.emergence-dev/
 emergence.yaml
 
 # OS

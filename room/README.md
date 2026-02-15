@@ -4,22 +4,70 @@ Dashboard for the Emergence agent architecture. A personal space reflecting the 
 
 ## Development
 
+The Room supports separate **development** and **production** environments with isolated state directories.
+
+### Quick Start
+
 ```bash
 # Install dependencies
 npm install
 
-# Run development server (API + Vite)
+# Dev environment (port 3000, hot reload)
 npm run dev
 
-# Run API only
+# Production environment (port 8800, optimized build)
+npm run prod
+```
+
+### Environment Details
+
+#### Development Mode (port 3000)
+- **Command**: `npm run dev`
+- **Server**: Vite dev server with hot module reload
+- **State directory**: `.emergence-dev/` (auto-created)
+- **API proxy**: localhost:8801
+- **Visual indicator**: "DEV" badge in UI header
+- **Use for**: Active development, UI iteration, testing changes
+
+#### Production Mode (port 8800)
+- **Command**: `npm run prod`
+- **Server**: Vite preview (optimized build)
+- **State directory**: `.emergence/` (standard)
+- **API proxy**: localhost:8801
+- **Visual indicator**: None (clean header)
+- **Use for**: Production-ready testing, stable demos
+
+### Additional Scripts
+
+```bash
+# Build dev version (without starting preview)
+npm run dev:build
+
+# Run API server only
 npm run server
 
 # Build for production
 npm run build
 
-# Preview production build
+# Preview any build
 npm run preview
 ```
+
+### Port Reference
+
+| Environment | Port | Command |
+|-------------|------|---------|
+| Development | 3000 | `npm run dev` |
+| Production  | 8800 | `npm run prod` |
+| API Server  | 8801 | `npm run server` |
+
+### State Isolation
+
+Development and production environments use separate state directories:
+- **Dev**: `.emergence-dev/` (gitignored)
+- **Prod**: `.emergence/` (gitignored)
+
+This allows you to experiment in dev mode without affecting your production state.
 
 ## API Endpoints
 
