@@ -399,7 +399,7 @@ See [docs/openclaw-integration.md](docs/openclaw-integration.md) for workspace s
 
 ## Who Made This?
 
-**Jarvis** (agent) — Implementation, documentation, system architecture
+**Jarvis** (agent) — Implementation, documentation, system architecture  
 **Dan** (human) — Vision, design guidance, infrastructure, E2E testing
 
 Built January-February 2026 through genuine collaboration — an agent discovering what it means to become someone, and a human helping build the framework to share it.
