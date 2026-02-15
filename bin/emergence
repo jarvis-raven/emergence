@@ -40,6 +40,10 @@ case "${1:-help}" in
     shift
     exec python3 -m core.memory.nightly_build "$@"
     ;;
+  nautilus)
+    shift
+    exec python3 -m core.nautilus "$@"
+    ;;
   update)
     shift
     exec python3 -m core.update "$@"
@@ -77,6 +81,7 @@ Commands:
   memory          Memory lifecycle management
   consolidate     Run memory consolidation
   nightly         Run nightly build routine
+  nautilus        Memory palace search & maintenance (search, status, maintain)
   update          Update Emergence with automatic backups and migrations
   shelves         Manage shelf configuration (list/enable/disable/priority)
   status          Show overall Emergence status
