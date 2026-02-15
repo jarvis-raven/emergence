@@ -23,11 +23,13 @@ core/drives/__main__.py
 core/drives/cli.py
 core/drives/config.py
 core/drives/daemon.py
+core/drives/defaults.json
 core/drives/defaults.py
 core/drives/engine.py
 core/drives/history.py
 core/drives/ingest.py
 core/drives/models.py
+core/drives/nightly_check.py
 core/drives/pidfile.py
 core/drives/platform.py
 core/drives/runtime_state.py
@@ -35,6 +37,7 @@ core/drives/satisfaction.py
 core/drives/spawn.py
 core/drives/state.py
 core/drives/status_tool.py
+core/drives/thwarting.py
 core/drives/utils.py
 core/first_light/__init__.py
 core/first_light/__main__.py
@@ -52,6 +55,19 @@ core/memory/consolidation.py
 core/memory/flush_prompt.py
 core/memory/nightly_build.py
 core/memory/self_history.py
+core/nautilus/__init__.py
+core/nautilus/__main__.py
+core/nautilus/chambers.py
+core/nautilus/config.py
+core/nautilus/db_utils.py
+core/nautilus/doors.py
+core/nautilus/gravity.py
+core/nautilus/logging_config.py
+core/nautilus/migrate_db.py
+core/nautilus/mirrors.py
+core/nautilus/nautilus_cli.py
+core/nautilus/nightly.py
+core/nautilus/session_hooks.py
 core/setup/__init__.py
 core/setup/branding.py
 core/setup/config_gen.py
@@ -75,3 +91,5 @@ emergence_ai.egg-info/dependency_links.txt
 emergence_ai.egg-info/entry_points.txt
 emergence_ai.egg-info/requires.txt
 emergence_ai.egg-info/top_level.txt
+tests/test_nautilus.py
+tests/test_nautilus_integration.py

@@ -22,17 +22,17 @@ __version__ = "0.4.0-beta"
 
 # Module exports
 from . import gravity, chambers, doors, mirrors, config, session_hooks, nightly
-from .config import get_workspace, get_config, get_db_path
+from .config import get_workspace, get_nautilus_config, get_gravity_db_path
 
 __all__ = [
-    'gravity',
-    'chambers',
-    'doors',
-    'mirrors',
-    'config',
-    'session_hooks',
-    'nightly',
-    'get_workspace',
-    'get_config',
-    'get_db_path',
+    "gravity",
+    "chambers",
+    "doors",
+    "mirrors",
+    "config",
+    "session_hooks",
+    "nightly",
+    "get_workspace",
+    "get_nautilus_config",
+    "get_gravity_db_path",
 ]
