@@ -2,7 +2,7 @@
 
 **Version:** v0.4.0  
 **Codename:** Nautilus  
-**Target System:** Aurora (Ubuntu Pi)  
+**Target System:** Aurora (Ubuntu Desktop, GT1030, 16GB RAM)  
 **Date:** February 2026  
 **Deployment Owner:** Aurora
 
@@ -25,7 +25,7 @@ This deployment enables Aurora to have dramatically improved memory retrieval co
 
 ### System Requirements
 
-- **OS:** Ubuntu 20.04+ (tested on Ubuntu Pi)
+- **OS:** Ubuntu 20.04+ (Aurora: Desktop with GT1030 GPU, 16GB RAM)
 - **Python:** 3.9+ (check with `python3 --version`)
 - **Git:** Installed and configured
 - **OpenClaw:** v0.1.0+ (for memory infrastructure)
@@ -527,15 +527,17 @@ emergence nautilus status | grep total_chunks
 
 ## OS-Specific Notes
 
-### Ubuntu Pi vs Mac Mini
+### Ubuntu Desktop vs Mac Mini
 
-| Aspect     | Ubuntu Pi (Aurora) | Mac Mini (Jarvis) |
-| ---------- | ------------------ | ----------------- |
-| **Python** | `python3`          | `python3`         |
-| **PATH**   | `~/.bashrc`        | `~/.zshrc`        |
-| **Home**   | `/home/aurora/`    | `/Users/jarvis/`  |
-| **SQLite** | Built-in (usually) | Built-in          |
-| **Cron**   | `crontab -e`       | `crontab -e`      |
+| Aspect       | Ubuntu Desktop (Aurora)      | Mac Mini (Jarvis) |
+| ------------ | ---------------------------- | ----------------- |
+| **Hardware** | GT1030 GPU, 16GB RAM         | M-series, 16GB+   |
+| **Python**   | `python3`                    | `python3`         |
+| **PATH**     | `~/.bashrc`                  | `~/.zshrc`        |
+| **Home**     | `/home/aurora/`              | `/Users/jarvis/`  |
+| **SQLite**   | Built-in (usually)           | Built-in          |
+| **Cron**     | `crontab -e`                 | `crontab -e`      |
+| **GPU**      | NVIDIA GT1030 (CUDA-capable) | Integrated        |
 
 ### Ubuntu-Specific Tips
 
