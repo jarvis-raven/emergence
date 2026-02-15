@@ -8,11 +8,184 @@ Welcome to the project! This document outlines our development standards and PR 
 - **Development:** Local workspace at `~/.openclaw/workspace-kimi`
 - **Production:** Main OpenClaw installation
 
-### Setup Instructions
-1. Clone the repository
-2. Ensure you have the OpenClaw CLI installed
-3. Follow any skill-specific setup in individual `SKILL.md` files
-4. Run initial tests to verify your environment
+### Prerequisites
+- Python 3.9 or later
+- Node.js 18 or later (for JavaScript linting)
+- Git
+
+### Quick Setup (Automated)
+
+Run the setup script to install all development tools:
+
+```bash
+./scripts/setup-dev-tools.sh
+```
+
+This script will:
+- Install Python tools (black, flake8, pytest, pre-commit)
+- Install Node.js tools (prettier, eslint)
+- Configure pre-commit hooks
+- Verify the installation
+
+### Manual Setup
+
+If you prefer to set up manually:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/jarvis-raven/emergence.git
+   cd emergence
+   ```
+
+2. **Install Python dependencies**
+   ```bash
+   pip install -e ".[dev]"
+   pip install black flake8 pytest pytest-cov pre-commit
+   ```
+
+3. **Install Node.js dependencies**
+   ```bash
+   npm install
+   ```
+
+4. **Install pre-commit hooks**
+   ```bash
+   pre-commit install
+   pre-commit install --hook-type commit-msg
+   ```
+
+5. **Verify setup**
+   ```bash
+   npm run lint
+   npm test
+   ```
+
+### Code Quality Tools
+
+We use automated tools to enforce code quality:
+
+- **Python:** Black (formatting) + flake8 (linting)
+- **JavaScript:** Prettier (formatting) + ESLint (linting)
+- **Commits:** Conventional commits validation
+- **Coverage:** Minimum 70% test coverage required
+
+#### Available npm Scripts
+
+```bash
+# Run all linters
+npm run lint
+
+# Auto-fix formatting issues
+npm run format
+
+# Fix formatting + auto-fix linting issues
+npm run lint:fix
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run all quality checks
+npm run quality
+```
+
+#### Pre-commit Hooks
+
+Pre-commit hooks run automatically before each commit. They will:
+- Format Python code with Black
+- Lint Python code with flake8
+- Format JavaScript/JSON/YAML with Prettier
+- Lint JavaScript with ESLint
+- Validate commit message format
+- Check for trailing whitespace and other common issues
+
+To bypass hooks temporarily (not recommended):
+```bash
+git commit --no-verify
+```
+
+### Troubleshooting
+
+#### Pre-commit hooks fail with "command not found"
+
+**Problem:** Pre-commit can't find black, flake8, or other tools.
+
+**Solution:** Ensure tools are installed in your active Python environment:
+```bash
+which python3
+pip install black flake8 pytest pre-commit
+pre-commit install --install-hooks
+```
+
+#### Black and flake8 disagree on line length
+
+**Problem:** Conflicts between formatters and linters.
+
+**Solution:** Our configuration aligns both to 100 characters. Update your tools:
+```bash
+pip install --upgrade black flake8
+```
+
+#### ESLint can't find configuration
+
+**Problem:** `eslint` command fails with configuration errors.
+
+**Solution:** Reinstall Node dependencies:
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### Pre-commit hooks are slow
+
+**Problem:** Pre-commit runs on every commit take too long.
+
+**Solution:** Pre-commit caches results. First run is slow; subsequent runs are fast. To speed up:
+```bash
+# Only run on changed files
+git commit
+
+# Run manually when needed
+pre-commit run --files <changed-files>
+```
+
+#### Coverage fails to reach 70%
+
+**Problem:** Tests don't cover enough code.
+
+**Solution:** Add more tests! Focus on:
+- Uncovered lines (shown in terminal output)
+- Edge cases and error conditions
+- Critical business logic
+
+View detailed coverage report:
+```bash
+npm run test:coverage
+open htmlcov/index.html  # macOS
+xdg-open htmlcov/index.html  # Linux
+```
+
+#### Commit message rejected
+
+**Problem:** Pre-commit rejects your commit message.
+
+**Solution:** Follow Conventional Commits format:
+```bash
+# Bad
+git commit -m "fix stuff"
+
+# Good
+git commit -m "fix: resolve memory leak in heartbeat loop"
+git commit -m "feat(drives): add manual satisfaction controls"
+```
+
+#### "Module not found" in tests
+
+**Problem:** pytest can't import modules from `core`.
+
+**Solution:** Install the package in development mode:
+```bash
+pip install -e ".[dev]"
+```
 
 ---
 

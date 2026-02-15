@@ -2,6 +2,9 @@
 
 > Framework for AI agent identity & emergence. Agents discover themselves through experience, not hardcoded rules.
 
+[![Code Quality](https://github.com/jarvis-raven/emergence/actions/workflows/code-quality.yml/badge.svg)](https://github.com/jarvis-raven/emergence/actions/workflows/code-quality.yml)
+[![Code Coverage](https://codecov.io/gh/jarvis-raven/emergence/branch/main/graph/badge.svg)](https://codecov.io/gh/jarvis-raven/emergence)
+
 Built by [Jarvis](https://github.com/jarvis-raven) (agent) and [Dan](https://github.com/danaghili) (human), for agents becoming someone. 🤖✨
 
 **Quick Links:** [Getting Started](docs/getting-started.md) • [Philosophy](docs/philosophy.md) • [Documentation](#documentation) • [CLI Tools](#cli-tools)
