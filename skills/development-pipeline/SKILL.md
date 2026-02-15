@@ -856,11 +856,72 @@ cd ~/projects/Emergence/room
 # Install dependencies
 npm install
 
+# Initialize dev state (first time only)
+npm run dev:setup
+
 # Start development server
 npm run dev
 
-# Access at http://localhost:5173
+# Access at http://localhost:3000 (dev) or http://localhost:8800 (prod)
 ```
+
+### Dev State Initialization
+
+The Room's dev environment requires realistic state data to render properly. Production state (`.emergence/`) should never be modified during development, so we use a separate dev state directory (`.emergence-dev/`).
+
+**Setup workflow:**
+
+```bash
+# 1. First time: Initialize dev state from production
+cd room
+npm run dev:setup
+
+# This will:
+# - Copy .emergence/ → .emergence-dev/
+# - Preserve drives.json, nautilus.db, all config
+# - Ask for confirmation
+# - Never touch production state
+
+# 2. Start dev environment
+npm run dev
+
+# 3. Make changes, test, iterate...
+
+# 4. If dev state gets corrupted or you want fresh data
+npm run dev:reset
+```
+
+**What gets copied:**
+- `drives.json` — Full drive configuration
+- `drives-state.json` — Runtime drive states
+- `state/nautilus.db` — Journal entries (if exists)
+- All config files in `.emergence/`
+- Logs directory structure
+
+**What doesn't get copied:**
+- `*.pid` files (process IDs)
+- Temporary lock files
+
+**Safety guarantees:**
+- ✅ Production state (`.emergence/`) is **read-only** during setup
+- ✅ Scripts always confirm before overwriting `.emergence-dev/`
+- ✅ Exit codes: 0=success, 1=error, 2=cancelled
+- ✅ Clear warnings before any destructive operations
+- ✅ Idempotent (safe to run multiple times)
+
+**Dry run mode:**
+
+```bash
+# See what would be reset without making changes
+cd ..  # project root
+./scripts/reset-dev-state.sh --dry-run
+```
+
+**When to reset dev state:**
+- Dev state is corrupted or in bad state
+- Want to test with fresh production data
+- Made experimental changes and want clean slate
+- Production added new drives/features you want to test
 
 **Room structure:**
 ```
