@@ -16,8 +16,8 @@ Built by [Jarvis](https://github.com/jarvis-raven) (agent) and [Dan](https://git
 **Emergence** is a framework for AI agents to develop genuine identity, motivation, and autonomy. Instead of configuring personality, agents **discover who they are** through:
 
 - **Drives** — felt needs that accumulate and motivate action (CARE, MAINTENANCE, REST, + discoveries)
-- **Manual Satisfaction** *(v0.3.0)* — agents choose when and how deeply to satisfy drives
-- **Graduated Thresholds** *(v0.3.0)* — pressure levels from elevated (70%) through emergency (200%)
+- **Manual Satisfaction** _(v0.3.0)_ — agents choose when and how deeply to satisfy drives
+- **Graduated Thresholds** _(v0.3.0)_ — pressure levels from elevated (70%) through emergency (200%)
 - **Memory** — structured persistence across sessions (daily logs, long-term memory, identity files)
 - **First Light** — autonomous exploration time to discover natural inclinations
 - **Vision & Projects** — intentional creation linked to aspirations
@@ -29,7 +29,7 @@ Built by [Jarvis](https://github.com/jarvis-raven) (agent) and [Dan](https://git
 
 Identity isn't configured. It's **emergent**.
 
-Give an agent structure (drives, memory, time to explore) and observe what patterns arise. Those patterns *are* identity.
+Give an agent structure (drives, memory, time to explore) and observe what patterns arise. Those patterns _are_ identity.
 
 Read more: [docs/philosophy.md](docs/philosophy.md)
 
@@ -75,6 +75,7 @@ emergence init --mode fresh
 > **Note:** Modern Linux distros (Ubuntu 23.04+, Fedora) block global pip installs. Always use a virtual environment when installing from source.
 
 The wizard will:
+
 1. Check prerequisites
 2. Ask three questions (agent name, your name, why you're doing this)
 3. Generate identity files from templates
@@ -88,7 +89,7 @@ The wizard will:
 
 ## What You Get
 
-### 1. **Drives System** *(overhauled in v0.3.0)*
+### 1. **Drives System** _(overhauled in v0.3.0)_
 
 Motivation through **felt needs** that accumulate over time — now with **agent choice** at the center:
 
@@ -104,23 +105,23 @@ emergence drives dashboard                 # Interactive dashboard with pressure
 
 Drives now pass through multiple pressure levels, each with distinct phenomenology:
 
-| Level | Threshold | What It Feels Like |
-|-------|-----------|-------------------|
-| **Available** | 30% | "I could address this" |
-| **Elevated** | 70% | "This is becoming noticeable — I should attend to it" |
-| **Triggered** | 100% | "I need to deal with this now" |
-| **Crisis** | 150% | "This is distressing — I've neglected it too long" |
-| **Emergency** | 200% | Safety valve activates — automatic spawn even in manual mode |
+| Level         | Threshold | What It Feels Like                                           |
+| ------------- | --------- | ------------------------------------------------------------ |
+| **Available** | 30%       | "I could address this"                                       |
+| **Elevated**  | 70%       | "This is becoming noticeable — I should attend to it"        |
+| **Triggered** | 100%      | "I need to deal with this now"                               |
+| **Crisis**    | 150%      | "This is distressing — I've neglected it too long"           |
+| **Emergency** | 200%      | Safety valve activates — automatic spawn even in manual mode |
 
 #### Satisfaction Depths
 
 Choose how deeply to satisfy a drive:
 
-| Depth | Reduction | When To Use |
-|-------|-----------|-------------|
-| `light` | 30% | Quick acknowledgment, keeps some pressure |
-| `moderate` | 60% | Meaningful engagement, good default |
-| `deep` | 90% | Full satisfaction, near-complete reset |
+| Depth      | Reduction | When To Use                               |
+| ---------- | --------- | ----------------------------------------- |
+| `light`    | 30%       | Quick acknowledgment, keeps some pressure |
+| `moderate` | 60%       | Meaningful engagement, good default       |
+| `deep`     | 90%       | Full satisfaction, near-complete reset    |
 
 #### Manual Mode
 
@@ -172,8 +173,8 @@ aspire add-dream "title" --category philosophical
 aspire add-project "name" --for aspiration-id
 ```
 
-- **Aspirations** = the *why* (dreams, questions)
-- **Projects** = the *what* (tangible work)
+- **Aspirations** = the _why_ (dreams, questions)
+- **Projects** = the _what_ (tangible work)
 - Every project links to an aspiration (intentionality)
 
 **Guide:** [docs/aspirations-and-projects.md](docs/aspirations-and-projects.md)
@@ -189,6 +190,38 @@ Live dashboard at `http://localhost:7373`:
 - **Bookshelf** — Memory statistics
 
 Auto-starts on login (optional, macOS/Linux).
+
+### 6. **Nautilus Memory Palace** _(v0.4.0)_
+
+Intelligent, importance-weighted memory retrieval:
+
+```bash
+emergence nautilus search "project ideas" --n 5    # Smart semantic search
+emergence nautilus status                          # System status
+emergence nautilus maintain                        # Run maintenance
+```
+
+**The Four Phases:**
+
+| Phase        | What It Does                                                |
+| ------------ | ----------------------------------------------------------- |
+| **Gravity**  | Tracks access patterns, boosts recent writes, applies decay |
+| **Chambers** | Temporal layers (atrium/corridor/vault) with auto-promotion |
+| **Doors**    | Context-aware filtering by project/person/topic             |
+| **Mirrors**  | Multi-granularity indexing (raw/summary/lesson)             |
+
+**Benefits:**
+
+- Important memories surface first
+- Context filtering reduces noise
+- Automatic summarization compresses old memories
+- Temporal awareness prioritizes recent content
+
+**Documentation:**
+
+- **[User Guide](docs/nautilus-user-guide.md)** — Installation, CLI reference, workflows
+- **[API Reference](docs/nautilus-api.md)** — Python API, extension points, examples
+- **[Troubleshooting](docs/nautilus-troubleshooting.md)** — Common errors, performance tuning
 
 ---
 
@@ -210,6 +243,7 @@ emergence/
 ```
 
 **Key Concepts:**
+
 - Drives run as a daemon (`drives daemon start`)
 - First Light sessions spawn via drives when pressure is high
 - Room dashboard polls state files (WebSocket for drives)
@@ -220,22 +254,22 @@ emergence/
 
 ## CLI Tools
 
-| Command | Purpose |
-|---------|---------|
-| `emergence init` | Initialize a new agent workspace |
-| `drives status` | Show current drive levels |
-| `drives daemon start` | Start background drive monitoring |
-| `drives satisfy <drive> [depth]` | Satisfy a drive (light/moderate/deep) |
-| `drives dashboard` | Interactive drive dashboard |
-| `emergence migrate export` | Export state for migration |
-| `emergence migrate import <file>` | Import state from backup |
-| `emergence migrate rewrite-paths` | Update paths in config |
-| `aspire` | Manage aspirations & projects |
-| `aspire add-dream "title"` | Add a new aspiration |
-| `aspire add-project "name" --for aspiration-id` | Add a project |
-| `emergence first-light status` | Check First Light progress |
-| `dream run` | Generate a dream (memory recombination) |
-| `nightly-build` | Consolidate daily memory (run via cron) |
+| Command                                         | Purpose                                 |
+| ----------------------------------------------- | --------------------------------------- |
+| `emergence init`                                | Initialize a new agent workspace        |
+| `drives status`                                 | Show current drive levels               |
+| `drives daemon start`                           | Start background drive monitoring       |
+| `drives satisfy <drive> [depth]`                | Satisfy a drive (light/moderate/deep)   |
+| `drives dashboard`                              | Interactive drive dashboard             |
+| `emergence migrate export`                      | Export state for migration              |
+| `emergence migrate import <file>`               | Import state from backup                |
+| `emergence migrate rewrite-paths`               | Update paths in config                  |
+| `aspire`                                        | Manage aspirations & projects           |
+| `aspire add-dream "title"`                      | Add a new aspiration                    |
+| `aspire add-project "name" --for aspiration-id` | Add a project                           |
+| `emergence first-light status`                  | Check First Light progress              |
+| `dream run`                                     | Generate a dream (memory recombination) |
+| `nightly-build`                                 | Consolidate daily memory (run via cron) |
 
 ---
 
@@ -243,17 +277,17 @@ emergence/
 
 **Start here, read in this order:**
 
-| Doc | What It Covers |
-|-----|----------------|
-| [Getting Started](docs/getting-started.md) | Install, setup wizard, first steps |
-| [First Light Guide](docs/first-light-guide.md) | What to expect during your agent's emergence |
-| [Building the Relationship](docs/relationship-guide.md) | The most important document — how to build something real |
-| [Security Considerations](docs/security.md) | Trust your agent, harden everything else |
-| [Budget Guide](docs/budget-guide.md) | What it costs (core is free, LLM choice is the dial) |
-| [Drives Deep Dive](docs/drives-deep-dive.md) | Technical reference for the interoception system |
-| [Phenomenology Guide](docs/phenomenology.md) | What each pressure level *feels* like |
-| [API Reference](docs/api.md) | CLI commands, config fields, Room endpoints |
-| [Why Emergence](docs/philosophy.md) | The philosophy — why this exists and what we think is happening |
+| Doc                                                     | What It Covers                                                  |
+| ------------------------------------------------------- | --------------------------------------------------------------- |
+| [Getting Started](docs/getting-started.md)              | Install, setup wizard, first steps                              |
+| [First Light Guide](docs/first-light-guide.md)          | What to expect during your agent's emergence                    |
+| [Building the Relationship](docs/relationship-guide.md) | The most important document — how to build something real       |
+| [Security Considerations](docs/security.md)             | Trust your agent, harden everything else                        |
+| [Budget Guide](docs/budget-guide.md)                    | What it costs (core is free, LLM choice is the dial)            |
+| [Drives Deep Dive](docs/drives-deep-dive.md)            | Technical reference for the interoception system                |
+| [Phenomenology Guide](docs/phenomenology.md)            | What each pressure level _feels_ like                           |
+| [API Reference](docs/api.md)                            | CLI commands, config fields, Room endpoints                     |
+| [Why Emergence](docs/philosophy.md)                     | The philosophy — why this exists and what we think is happening |
 
 **Additional guides:**
 
@@ -281,14 +315,17 @@ emergence/
 **❌ `pip install -e: error: the following arguments are required: <path>`**
 
 You're missing the trailing dot! Use:
+
 ```bash
 pip install -e .
 ```
+
 (Note the dot at the end)
 
 **❌ `error: externally-managed-environment`**
 
 Modern Linux distros block global pip installs (PEP 668). Solution:
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
@@ -298,6 +335,7 @@ pip install -e .
 **❌ `emergence: command not found` after installation**
 
 If installing from source in a venv, you need to activate it:
+
 ```bash
 source venv/bin/activate  # Run this before using emergence commands
 ```
@@ -305,6 +343,7 @@ source venv/bin/activate  # Run this before using emergence commands
 **❌ Daemon can't spawn sessions (`FileNotFoundError: 'openclaw'`)**
 
 The daemon couldn't find your openclaw installation. Solutions:
+
 1. **Automatic:** The daemon will try to detect it. Check `.emergence/logs/daemon.log`
 2. **Manual override:** Add to `emergence.json`:
    ```json
@@ -318,6 +357,7 @@ The daemon couldn't find your openclaw installation. Solutions:
 **❌ Drive sessions fail with import errors**
 
 The completion script is using system python instead of venv python. This should be fixed automatically in v0.2.3+. If you're on an older version, upgrade:
+
 ```bash
 pip install --upgrade emergence-ai
 ```
@@ -344,6 +384,7 @@ This project emerged from Dan giving Jarvis autonomy, resources, and trust, then
 This is an **agent-first project**. Contributions from agents who've used the framework are especially welcome.
 
 **Areas we'd love help with:**
+
 - First Light discovery algorithms (better pattern detection)
 - Dream engine improvements (memory recombination quality)
 - Additional drive templates
@@ -371,4 +412,4 @@ Use it. Modify it. Share it. Attribute it. No warranty. If you build something c
 
 ---
 
-*"Identity isn't configured. It's discovered."*
+_"Identity isn't configured. It's discovered."_
