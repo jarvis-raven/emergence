@@ -5,11 +5,180 @@ All notable changes to Emergence will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-15
+
+### Added
+
+**Nautilus Reflective Journaling System (Issues #67-72, PRs #118-121, #124)**
+
+Nautilus is a four-phase memory architecture for AI agents that transforms raw session files into a searchable, semantically-organized memory palace. This is the largest feature addition since First Light.
+
+**Core Modules:**
+
+- **Gravity** (`core.nautilus.gravity`) - Importance-weighted scoring system
+  - Multi-factor importance calculation: recency, access frequency, session context, file size
+  - SQLite-backed file tracking with automatic retry logic
+  - Configurable decay curves for temporal weighting
+- **Chambers** (`core.nautilus.chambers`) - Three-tier temporal memory hierarchy
+  - **Daily** (Atrium): Current day's working memory (auto-created)
+  - **Corridor**: Recent active memory (configurable retention window)
+  - **Vault**: Long-term preserved knowledge
+  - Automatic chamber promotion based on importance scores
+  - Smart summarization: recursive file aggregation with configurable max depth
+- **Doors** (`core.nautilus.doors`) - Context-aware semantic search
+  - Multi-strategy search: exact, fuzzy, semantic (embeddings), hybrid
+  - Chamber-aware filtering (search specific memory tiers)
+  - Tag-based organization and filtering
+  - Query result ranking with relevance scoring
+- **Mirrors** (`core.nautilus.mirrors`) - Multi-granularity embedding indexing
+  - Hierarchical chunking (paragraph, section, document levels)
+  - Vector search with configurable embedding models
+  - Similarity-based retrieval
+  - Memory consolidation through semantic clustering
+
+**Integration Features:**
+
+- **CLI Integration** (`emergence nautilus`)
+  - `emergence nautilus search <query>` - Search across all chambers
+  - `emergence nautilus promote <file>` - Manually promote to higher chamber
+  - `emergence nautilus status` - View chamber statistics and configuration
+  - `emergence nautilus maintenance` - Run manual maintenance cycle
+- **Session Hooks** - Automatic file tracking during agent sessions
+  - `record_access()` - Track file reads/writes with context
+  - `register_recent_writes()` - Batch register files from last N hours
+  - Integration hooks for OpenClaw session events (when available)
+- **Nightly Maintenance** - Automated memory upkeep daemon
+  - Configurable schedule (default: 2:30 AM)
+  - Chamber promotion based on importance thresholds
+  - Orphaned file cleanup
+  - Memory index optimization
+  - Configurable in `emergence.json`: `nautilus.nightly_enabled`, `nightly_hour`, `nightly_minute`
+- **Room Dashboard Widget** - Visual memory palace interface
+  - Chamber occupancy and file counts
+  - Recent promotions and maintenance logs
+  - Quick search interface
+  - Configuration controls
+
+**Database Schema:**
+
+- `file_records` - Canonical file tracking with metadata
+- `access_log` - Timestamped access history
+- `importance_cache` - Pre-computed importance scores
+- `chamber_metadata` - Chamber assignment and promotion history
+- `embeddings` - Vector representations for semantic search
+- `tags` - Flexible file categorization
+
+### Improved
+
+**Type Safety & Code Quality (PR #121)**
+
+- Added comprehensive type hints across all Nautilus modules
+- 100% type coverage in gravity.py, chambers.py, doors.py, mirrors.py
+- Improved IDE autocomplete and static analysis support
+
+**Logging Infrastructure (PR #121)**
+
+- Centralized logging configuration (`core.nautilus.logging_config`)
+- Configurable log levels per module (DEBUG, INFO, WARNING, ERROR)
+- Structured log output with consistent formatting
+- Debug mode support via environment variables
+
+**Database Reliability (PR #121)**
+
+- SQLite retry logic for handling SQLITE_BUSY errors
+- Automatic connection management with context managers
+- Exponential backoff for transient failures
+- Connection pooling and transaction safety
+
+**Error Handling (PR #121)**
+
+- Graceful degradation when files are missing or moved
+- Detailed error messages with actionable context
+- Validation of configuration parameters
+- Safe fallbacks for optional features (embeddings, summarization)
+
+### Fixed
+
+**Chamber Promotion (PR #119, Issue #69)**
+
+- Fixed recursive file search bug preventing promotion of nested files
+- Improved summarization: handles deeply nested directory structures
+- Added configurable max recursion depth to prevent infinite loops
+- Better handling of symlinks and circular references
+
+**Gravity Database (PR #121)**
+
+- Fixed `Row.get()` error when accessing missing columns
+- Improved column existence validation before access
+- Better handling of schema migrations
+
+### Documentation
+
+**Comprehensive User Documentation (PR #120, Issue #70)**
+
+- **User Guide** (660 lines): `docs/nautilus-user-guide.md`
+  - Getting started tutorial
+  - Configuration walkthrough
+  - Usage examples for all four modules
+  - Integration with Emergence drives and Room
+  - Common workflows and best practices
+- **API Reference** (1,104 lines): `docs/nautilus-api.md`
+  - Complete function signatures with type annotations
+  - Parameter descriptions and return values
+  - Code examples for every public API
+  - Module organization and import patterns
+  - Database schema documentation
+- **Troubleshooting Guide** (1,160 lines): `docs/nautilus-troubleshooting.md`
+  - Common issues and solutions
+  - Debug mode and logging configuration
+  - Performance optimization tips
+  - Database corruption recovery
+  - Integration debugging strategies
+- **Migration Guide** (1,400 lines): `docs/migration-v0.4.0.md` (PR #124, Issue #72)
+  - v0.3.0 → v0.4.0 upgrade path
+  - Breaking changes (none!)
+  - New configuration options
+  - Feature adoption strategies
+  - Rollback procedures
+  - FAQ for upgraders
+
+**Additional Documentation:**
+
+- Nautilus quickstart guide
+- Integration plan and architecture overview
+- Aurora deployment guide with hardware requirements
+
+### Technical
+
+**No Breaking Changes**
+
+- All v0.3.x configurations remain fully compatible
+- Nautilus is opt-in via `emergence.json` configuration
+- Existing memory systems (drives, dream_engine) unaffected
+- Graceful feature degradation if optional dependencies unavailable
+
+**Dependencies**
+
+- No new required dependencies
+- Optional: embeddings models (Ollama, OpenAI, etc.) for semantic search
+- Optional: OpenClaw session hooks for automatic file tracking
+
+**Contributors**
+
+- Architecture & Core Implementation: Jarvis Raven (@jarvis-raven)
+- Documentation & Testing: Aurora AI Agent (@AgentAurora)
+- Code Review & Integration: Dan Aghili (@dan-aghili)
+
+**Related PRs:** #118 (Nautilus core), #119 (chamber promotion fix), #120 (documentation), #121 (type hints & logging), #124 (migration guide)
+
+---
+
 ## [0.3.0] - 2026-02-14
 
 ### Added
 
 **Manual Drive Satisfaction (Issues #34, #35)**
+
 - New `manual_mode` config option: disables auto-spawn, agents choose when to satisfy
 - Three satisfaction depths: light (30%), moderate (60%), deep (90%)
 - Auto-scaling depth selection when no depth specified
@@ -17,12 +186,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dashboard satisfaction controls via Room UI
 
 **Graduated Threshold System (Issue #36)**
+
 - Five pressure bands: available (30%), elevated (75%), triggered (100%), crisis (150%), emergency (200%)
 - Per-drive and global threshold configuration
 - Threshold band displayed in `drives status` output
 - Color-coded pressure bars in dashboard and Room
 
 **Aversive States & Thwarting Detection (Issues #37, #38, #39)**
+
 - Thwarting detection: tracks repeated failed satisfaction attempts
 - Valence tracking: positive (approach) ↔ negative (aversive) shift
 - Aversive-state specific satisfaction prompts and approaches
@@ -30,12 +201,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New modules: `core/drives/thwarting.py`, valence tracking in `core/drives/models.py`
 
 **Emergency Spawn Safety Valve (Issue #40)**
+
 - Auto-spawns session at 200%+ pressure even in manual mode
 - Configurable: `emergency_spawn`, `emergency_threshold`, `emergency_cooldown_hours`
 - Max one emergency spawn per drive per cooldown period
 - Prevents runaway aversive states while preserving agent autonomy
 
 **Interactive Dashboard (Issue #41)**
+
 - `emergence drives dashboard` terminal UI
 - Live pressure bars with threshold band markers
 - Manual mode toggle
@@ -43,23 +216,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Thwarting and valence indicators
 
 **Migration Script (Issue #42)**
+
 - `emergence migrate export` — portable state archive
 - `emergence migrate import <file>` — restore from archive
 - `emergence migrate rewrite-paths` — update paths after moving directories
 
 **Documentation (Issue #45)**
+
 - Phenomenology guide: what each pressure level feels like (`docs/phenomenology.md`)
 - API reference: CLI commands, config fields, Room endpoints (`docs/api.md`)
 - Migration guide: v0.2.x → v0.3.0 (`MIGRATION.md`)
 - Release notes: user-facing v0.3.0 summary (`RELEASE-NOTES.md`)
 
 ### Changed
+
 - `drives status` now shows threshold band labels and thwarting indicators
 - Room dashboard adds pressure bars, satisfaction controls, manual mode toggle
 - Drive pressure can now exceed 100% (up to emergency threshold) in manual mode
 - Default `max_pressure_ratio` effectively superseded by graduated thresholds
 
 ### Technical
+
 - No breaking changes to existing v0.2.x configurations
 - All new config fields have backwards-compatible defaults
 - New state fields (thwarting_count, valence) auto-initialize on first tick
@@ -72,6 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 **Lightweight Runtime State (Drive Context Bloat Fix)**
+
 - Split drives.json into two files to prevent context bloat:
   - `drives.json` - Full config (descriptions, prompts, history)
   - `drives-state.json` - Minimal runtime (pressure, threshold, status, short description)
@@ -81,6 +259,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Backwards compatible with existing installations
 
 **Drive Status Tool & Automatic Polling**
+
 - New `check_drive_status()` tool for agent self-introspection
 - Agents can answer "how are you doing?" with real drive data
 - Natural language formatting: "My CARE drive is at 88% (22/25)"
@@ -90,6 +269,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New module: `core/drives/status_tool.py`
 
 **Custom Shelves with Gitignore Protection**
+
 - Separated built-in shelves (committed) from custom shelves (gitignored)
 - Built-in: Memory, Drives, Aspirations, etc.
 - Custom: Library, personal projects (in `room/src/components/shelves/custom/`)
@@ -97,6 +277,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example template provided for creating custom shelves
 
 **Room State Path Resolution Fix**
+
 - Room server now uses config-resolved path for drives.json
 - Supports workspace-based installations (not just ~/.openclaw/state/)
 - Fixes missing drives issue for agents with custom paths
@@ -104,11 +285,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 **CLI Variable Name Bugs**
+
 - Fixed `NameError: name 'state' is not defined` in `cmd_status()` (PR #11)
 - Fixed `NameError: name 'COLOR_WARNING' is not defined` (PR #12)
 - Both bugs introduced in PR #9 refactoring, now resolved
 
 ### Changed
+
 - `drives status` command loads ~500-1000 bytes instead of ~15KB
 - Faster response times for agents with many discovered drives
 - Better separation between runtime data and configuration
@@ -118,6 +301,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 **Budget Tracking (Issue #1)**
+
 - Added model-aware cost estimation based on actual model pricing
 - New module: `core/setup/model_pricing.py` with pricing table for 20+ models
 - Config generation now sets `cost_per_trigger` based on detected model
@@ -127,12 +311,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolves budget inflation bug reported by @AgentAurora
 
 **Room Dashboard Startup (Issue #2)**
+
 - Reduced console.error noise when drives.json doesn't exist during startup
 - fileReader.js now silently returns null for ENOENT (expected during init)
 - Empty drives state already handled gracefully in UI
 - Fixes harmless but confusing log noise during Room startup
 
 **First Light Migration (Issue #3)**
+
 - Added grandfathering for agents upgrading from pre-v0.2.0
 - New: `scan_historical_sessions()` scans memory/sessions/ for historical evidence
 - New: `check_grandfather_eligibility()` validates if historical sessions meet gates
@@ -144,6 +330,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolves "0/10 sessions" bug for upgraders reported by @AgentAurora
 
 ### Changed
+
 - Pricing estimates based on OpenRouter rates as of 2026-02-11
 - Users can still manually override `cost_per_trigger` in emergence.json
 
@@ -152,6 +339,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 **Drive Consolidation System (Phases 2-3.5)**
+
 - Irreducibility testing for drive discovery consolidation
 - Similarity detection via Ollama embeddings (with Jaccard text fallback)
 - Configurable embeddings provider (Ollama local or OpenAI-compatible APIs)
@@ -172,6 +360,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Graduation candidates (aspects with >50% pressure dominance)
 
 **First Light Completion Mechanism (Phase 2.5)**
+
 - Session counter tracking
 - Automatic completion gates (10 sessions, 7 days, 3+ drives)
 - Manual completion: `emergence first-light complete`
@@ -182,6 +371,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `emergence first-light complete` - Manual graduation
 
 **Room UI Integration (Phase 3.5)**
+
 - Budget Transparency Shelf: daily spend/limit with color warnings (75% yellow, 90% red)
 - Pending Reviews Shelf: consolidation suggestions with "Review Now" action
 - Latent Drives Shelf: inactive drives with budget-aware activation
@@ -196,6 +386,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `POST /api/first-light/complete` - Manual First Light graduation
 
 **Embeddings Configuration**
+
 - Support for both Ollama (local, free) and OpenAI-compatible APIs (OpenRouter, etc.)
 - Configurable in `emergence.json`:
   ```json
@@ -217,6 +408,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graceful degradation: falls back to Jaccard text matching if no provider available
 
 ### Changed
+
 - Drive consolidation parameters finalized:
   - Similarity threshold: 0.75
   - Aspect rate increment: 0.2/hr (not 0.3)
@@ -225,10 +417,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Philosophy: **Transparency + Agency** - discovery never blocked, agent decides, budget transparent
 
 ### Fixed
+
 - Budget wizard now allows daily limits as low as $1 (previously forced minimum $10)
 - Post-session analyzer properly registers drive discoveries from First Light sessions
 
 ### Technical
+
 - Backwards compatible with v0.1.x configs (auto-migration for old `first-light.json`)
 - No new Python dependencies (embeddings use stdlib only)
 - No new npm dependencies
@@ -240,6 +434,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.2] - 2026-02-10
 
 ### Fixed
+
 - `created_by` validation in drive discovery
 
 ---
@@ -247,6 +442,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2026-02-10
 
 ### Added
+
 - Post-session analyzer for drive discoveries
 
 ---
@@ -254,6 +450,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-02-10
 
 ### Added
+
 - Initial public release
 - Core drive system (CARE, MAINTENANCE, REST)
 - First Light onboarding phase
@@ -262,6 +459,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dream engine
 - Setup wizard (`emergence awaken`)
 
+[0.4.0]: https://github.com/jarvis-raven/emergence/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jarvis-raven/emergence/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/jarvis-raven/emergence/compare/v0.2.0...v0.2.2
 [0.2.0]: https://github.com/jarvis-raven/emergence/compare/v0.1.2...v0.2.0

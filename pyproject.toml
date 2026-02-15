@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "emergence-ai"
-version = "0.3.0"
+version = "0.4.0"
 description = "AI Agent Selfhood Toolkit — Internal drives, memory, and consciousness infrastructure"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -46,7 +46,7 @@ Documentation = "https://github.com/jarvis-raven/emergence#readme"
 emergence = "core.cli:main"
 
 [tool.setuptools]
-packages = ["core", "core.drives", "core.memory", "core.dream_engine", "core.first_light", "core.setup", "core.setup.autostart", "core.setup.openclaw_hook", "core.aspirations"]
+packages = ["core", "core.drives", "core.memory", "core.dream_engine", "core.first_light", "core.setup", "core.setup.autostart", "core.setup.openclaw_hook", "core.aspirations", "core.nautilus"]
 
 [tool.setuptools.package-data]
 core = [
