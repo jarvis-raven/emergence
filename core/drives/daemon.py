@@ -20,6 +20,13 @@ from .defaults import ensure_core_drives
 from .satisfaction import check_completed_sessions
 from .runtime_state import extract_runtime_state, save_runtime_state
 
+# Nautilus integration (optional)
+try:
+    from ..nautilus.nightly import run_nightly_maintenance, should_run_maintenance, log_maintenance_result
+    NAUTILUS_AVAILABLE = True
+except ImportError:
+    NAUTILUS_AVAILABLE = False
+
 
 # Global flag for shutdown signal handling
 _shutdown_requested = False
@@ -300,6 +307,42 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
             save_runtime_state(runtime_path, runtime_state)
         except Exception as e:
             write_log(log_path, f"Runtime state write error: {e}", "WARN")
+    
+    # Check for nightly maintenance (outside state lock)
+    if NAUTILUS_AVAILABLE:
+        try:
+            from .nightly_check import load_nightly_state, should_run_nautilus_nightly, mark_nautilus_run
+            
+            nightly_state = load_nightly_state(config)
+            should_run, reason = should_run_nautilus_nightly(config, nightly_state)
+            
+            if should_run:
+                write_log(log_path, f"Starting Nautilus nightly maintenance: {reason}", "INFO")
+                
+                try:
+                    maint_result = run_nightly_maintenance(
+                        register_recent=True,
+                        recent_hours=24,
+                        verbose=False
+                    )
+                    
+                    # Log result
+                    log_maintenance_result(maint_result, log_path)
+                    
+                    # Mark as completed
+                    mark_nautilus_run(config, nightly_state)
+                    
+                    summary = maint_result.get("summary", {})
+                    write_log(log_path, f"Nautilus maintenance completed: {summary}", "INFO")
+                    
+                    result["nautilus_maintenance"] = summary
+                    
+                except Exception as e:
+                    write_log(log_path, f"Nautilus maintenance error: {e}", "ERROR")
+                    result.setdefault("errors", []).append(f"Nautilus maintenance failed: {e}")
+        
+        except Exception as e:
+            write_log(log_path, f"Nightly check error: {e}", "WARN")
     
     return result
 
