@@ -4,6 +4,7 @@
 
 import { ShelfRegistry } from './ShelfRegistry.js';
 import { MemoryShelf } from './builtins/MemoryShelf.js';
+import { NautilusShelf } from './builtins/NautilusShelf.js';
 import AspirationsShelf from './builtins/AspirationsShelf.js';
 import { BudgetTransparencyShelf } from './builtins/BudgetTransparencyShelf.js';
 import { PendingReviewsShelf } from './builtins/PendingReviewsShelf.js';
@@ -29,6 +30,7 @@ export async function initializeShelves(config) {
   registry.registerBuiltin(PendingReviewsShelf);
   registry.registerBuiltin(LatentDrivesShelf);
   registry.registerBuiltin(MemoryShelf);
+  registry.registerBuiltin(NautilusShelf);
   registry.registerBuiltin(AspirationsShelf);
   
   // Discover custom shelves from filesystem

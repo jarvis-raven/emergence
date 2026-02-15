@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import MemoryShelfView from './MemoryShelfView';
 import GenericShelfView from './GenericShelfView';
 
-// Custom shelves (agent-specific, in custom/ directory) should be dynamically
-// imported or use GenericShelfView since they're gitignored and won't exist
-// in fresh clones. For now, they'll fall back to GenericShelfView.
+// Custom shelves (agent-specific, in custom/ directory)
+import NautilusShelfView from './custom/NautilusShelfView';
 
 const RENDERER_MAP = {
   memory: MemoryShelfView,
+  nautilus: NautilusShelfView,
 };
 
 function ErrorFallback({ error }) {

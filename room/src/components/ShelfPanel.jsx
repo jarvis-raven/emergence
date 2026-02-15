@@ -30,6 +30,7 @@ const BUILTIN_PANELS = {
 const DEFAULT_TABS = [
   { id: 'mirror',        icon: '🪞', label: 'Mirror' },
   { id: 'shelf:memory',  icon: '🧠', label: 'Memory' },
+  { id: 'shelf:nautilus', icon: '🐚', label: 'Nautilus' },
   { id: 'journal',       icon: '📓', label: 'Journal' },
   { id: 'aspirations',   icon: '✨', label: 'Aspirations' },
   { id: 'projects',      icon: '🚀', label: 'Projects' },
