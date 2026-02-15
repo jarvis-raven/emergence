@@ -322,3 +322,127 @@ class TestCalculateSatisfactionDepth:
         band, depth, reduction = calculate_satisfaction_depth(30.0, 20.0)
         assert depth == 'auto-full'
         assert reduction == 0.90
+
+
+class TestDriveStateSyncOnSatisfaction:
+    """Tests for Issue #84: drives satisfy must sync drives-state.json"""
+    
+    def test_satisfy_syncs_drives_state_json(self, tmp_path):
+        """Verify that drives-state.json is updated when a drive is satisfied"""
+        from core.drives.state import save_state, load_state, load_drive_state
+        from core.drives.engine import satisfy_drive
+        from core.drives.models import create_default_state
+        
+        # Set up state paths
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        drives_json_path = state_dir / "drives.json"
+        drives_state_json_path = state_dir / "drives-state.json"
+        
+        # Create initial state with a drive that has high pressure
+        state = create_default_state()
+        state["drives"]["CREATIVE"] = {
+            "name": "CREATIVE",
+            "description": "Test drive",
+            "pressure": 25.0,
+            "threshold": 20.0,
+            "rate_per_hour": 2.0,
+            "status": "triggered",
+        }
+        state["triggered_drives"] = ["CREATIVE"]
+        
+        # Save initial state
+        save_state(drives_json_path, state)
+        
+        # Verify initial state was saved to both files
+        assert drives_json_path.exists()
+        assert drives_state_json_path.exists()
+        
+        # Load drives-state.json and verify initial pressure
+        runtime_state_before = load_drive_state(drives_state_json_path)
+        assert runtime_state_before["drives"]["CREATIVE"]["pressure"] == 25.0
+        assert runtime_state_before["drives"]["CREATIVE"]["status"] == "triggered"
+        assert "CREATIVE" in runtime_state_before.get("triggered_drives", [])
+        
+        # Satisfy the drive (50% reduction for moderate depth)
+        satisfy_drive(state, "CREATIVE", "moderate")
+        
+        # Save state (this should update both drives.json and drives-state.json)
+        save_state(drives_json_path, state)
+        
+        # Reload drives-state.json and verify it was updated
+        runtime_state_after = load_drive_state(drives_state_json_path)
+        
+        # Verify pressure was reduced (25.0 * 0.5 = 12.5)
+        assert runtime_state_after["drives"]["CREATIVE"]["pressure"] == 12.5
+        
+        # Verify drive was removed from triggered list (since reduction >= 50%)
+        assert "CREATIVE" not in runtime_state_after.get("triggered_drives", [])
+        
+        # Note: The status field is preserved from the original state during save_state.
+        # The key fix for #84 is that pressure and triggered_drives are synced correctly.
+    
+    def test_satisfy_preserves_other_drive_state(self, tmp_path):
+        """Verify that satisfying one drive doesn't affect others in drives-state.json"""
+        from core.drives.state import save_state, load_drive_state
+        from core.drives.engine import satisfy_drive
+        from core.drives.models import create_default_state
+        
+        # Set up state paths
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        drives_json_path = state_dir / "drives.json"
+        drives_state_json_path = state_dir / "drives-state.json"
+        
+        # Create state with multiple drives
+        state = create_default_state()
+        state["drives"]["CREATIVE"] = {
+            "name": "CREATIVE",
+            "pressure": 25.0,
+            "threshold": 20.0,
+            "rate_per_hour": 2.0,
+        }
+        state["drives"]["CARE"] = {
+            "name": "CARE",
+            "pressure": 15.0,
+            "threshold": 20.0,
+            "rate_per_hour": 1.5,
+        }
+        
+        # Save initial state
+        save_state(drives_json_path, state)
+        
+        # Satisfy only CREATIVE
+        satisfy_drive(state, "CREATIVE", "deep")
+        save_state(drives_json_path, state)
+        
+        # Reload and verify CARE was not affected
+        runtime_state = load_drive_state(drives_state_json_path)
+        assert runtime_state["drives"]["CARE"]["pressure"] == 15.0
+        assert runtime_state["drives"]["CREATIVE"]["pressure"] == 6.25  # 25.0 * 0.25
+    
+    def test_satisfy_with_zero_pressure_threshold(self, tmp_path):
+        """Edge case: satisfy a drive that's already at zero or has unusual values"""
+        from core.drives.state import save_state, load_drive_state
+        from core.drives.engine import satisfy_drive
+        from core.drives.models import create_default_state
+        
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        drives_json_path = state_dir / "drives.json"
+        drives_state_json_path = state_dir / "drives-state.json"
+        
+        state = create_default_state()
+        state["drives"]["TEST"] = {
+            "name": "TEST",
+            "pressure": 0.0,
+            "threshold": 20.0,
+            "rate_per_hour": 1.0,
+        }
+        
+        save_state(drives_json_path, state)
+        satisfy_drive(state, "TEST", "moderate")
+        save_state(drives_json_path, state)
+        
+        runtime_state = load_drive_state(drives_state_json_path)
+        assert runtime_state["drives"]["TEST"]["pressure"] == 0.0
