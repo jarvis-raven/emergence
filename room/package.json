@@ -5,7 +5,9 @@
   "type": "module",
   "description": "The Room — Dashboard for Emergence agent architecture",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"vite\"",
+    "dev": "vite --port 3000 --mode development",
+    "prod": "vite build --mode production && vite preview --port 8800",
+    "dev:build": "vite build --mode development",
     "server": "node server/index.js",
     "build": "vite build",
     "start": "concurrently \"npm run server\" \"vite preview --port 3000 --host\"",

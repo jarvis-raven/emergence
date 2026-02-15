@@ -63,6 +63,11 @@ function Header({ agentName, loading, error, onRetry, activePanel, onPanelChange
           <h1 className="text-base font-semibold text-text">
             {agentName}&apos;s Room
           </h1>
+          {import.meta.env.DEV && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded border border-amber-500/30">
+              DEV
+            </span>
+          )}
           <span className="text-xs text-textMuted hidden sm:inline">
             {error 
               ? 'Connection interrupted' 
