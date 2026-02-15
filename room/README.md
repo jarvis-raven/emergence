@@ -69,6 +69,107 @@ Development and production environments use separate state directories:
 
 This allows you to experiment in dev mode without affecting your production state.
 
+### Dev State Initialization
+
+The dev environment needs realistic state data to function properly (drives, nautilus, library, etc.). Use these commands to manage dev state:
+
+#### First Time Setup
+
+```bash
+# Initialize dev environment with production state
+cd room
+npm run dev:setup
+```
+
+This will:
+- Copy `.emergence/` → `.emergence-dev/`
+- Preserve all state files (drives, nautilus.db, config)
+- Ask for confirmation before any changes
+- **Never modify production state**
+
+**Output:**
+```
+📋 Copying production state to dev environment...
+⚠️  This will create .emergence-dev/ from .emergence/
+✅ Production state will remain unchanged
+Continue? [y/N] y
+✅ Dev state initialized! Run 'npm run dev' to start.
+```
+
+#### Reset Dev State
+
+To reset dev environment to match current production:
+
+```bash
+cd room
+npm run dev:reset
+```
+
+This will:
+- Delete `.emergence-dev/`
+- Re-copy fresh from `.emergence/`
+- Confirm before deleting
+
+**When to use:**
+- Your dev state is corrupted or in a bad state
+- You want to test with fresh production data
+- You've made experimental changes and want to start over
+
+**Dry run:**
+```bash
+# See what would be reset without making changes
+../scripts/reset-dev-state.sh --dry-run
+```
+
+### Troubleshooting Dev Environment
+
+#### "Production state not found"
+**Problem:** `.emergence/` doesn't exist yet.
+
+**Solution:** Run Emergence in production mode first:
+```bash
+# From project root
+cd core
+python -m emergence.main
+# Let it create initial state, then Ctrl+C
+```
+
+#### Dev state out of sync
+**Problem:** Dev state is old or missing new fields.
+
+**Solution:**
+```bash
+cd room
+npm run dev:reset
+```
+
+#### Both environments affecting each other
+**Problem:** Changes in dev appear in prod or vice versa.
+
+**Solution:** Verify correct state directories:
+```bash
+# Dev should show .emergence-dev
+grep -r "emergence-dev" room/vite.config.js
+
+# If not, rebuild
+npm run dev:build
+```
+
+#### Nautilus/Library not rendering
+**Problem:** Dev state is empty or missing critical files.
+
+**Solution:**
+```bash
+# Ensure production state has data
+ls -la ../.emergence/state/
+
+# Reset dev state
+npm run dev:reset
+
+# Restart dev server
+npm run dev
+```
+
 ## API Endpoints
 
 | Method | Path | Description |

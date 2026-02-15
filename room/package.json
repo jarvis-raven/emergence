@@ -8,6 +8,8 @@
     "dev": "vite --port 3000 --mode development",
     "prod": "vite build --mode production && vite preview --port 8800",
     "dev:build": "vite build --mode development",
+    "dev:setup": "../scripts/setup-dev-state.sh",
+    "dev:reset": "../scripts/reset-dev-state.sh",
     "server": "node server/index.js",
     "build": "vite build",
     "start": "concurrently \"npm run server\" \"vite preview --port 3000 --host\"",
