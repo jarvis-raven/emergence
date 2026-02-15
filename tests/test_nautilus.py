@@ -10,7 +10,7 @@ from pathlib import Path
 # Add core to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "core"))
 
-from nautilus import gravity, chambers, doors, mirrors, config
+from nautilus import gravity, chambers, doors, mirrors, config  # noqa: E402
 
 
 def test_config_get_workspace():
@@ -23,7 +23,7 @@ def test_config_get_workspace():
 
 def test_config_get_config():
     """Test configuration loading."""
-    cfg = config.get_config()
+    cfg = config.get_nautilus_config()
     assert "enabled" in cfg
     assert "gravity_db" in cfg
     assert "chamber_thresholds" in cfg
@@ -32,7 +32,7 @@ def test_config_get_config():
 
 def test_config_get_db_path():
     """Test database path resolution."""
-    db_path = config.get_db_path()
+    db_path = config.get_gravity_db_path()
     assert db_path is not None
     assert isinstance(db_path, Path)
     # Path should be absolute and end with gravity.db
@@ -55,12 +55,23 @@ def test_gravity_compute_effective_mass():
     """Test gravity scoring computation."""
     # Create a mock row
     import sqlite3
+
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
-    conn.execute("CREATE TABLE test (access_count, reference_count, explicit_importance, last_written_at, last_accessed_at)")
-    conn.execute("INSERT INTO test VALUES (5, 2, 1.0, '2026-02-14T20:00:00+00:00', '2026-02-14T19:00:00+00:00')")
+    conn.execute(
+        """CREATE TABLE test (
+            path, access_count, reference_count, explicit_importance,
+            last_written_at, last_accessed_at
+        )"""
+    )
+    conn.execute(
+        """INSERT INTO test VALUES (
+            'test/file.md', 5, 2, 1.0,
+            '2026-02-14T20:00:00+00:00', '2026-02-14T19:00:00+00:00'
+        )"""
+    )
     row = conn.execute("SELECT * FROM test").fetchone()
-    
+
     mass = gravity.compute_effective_mass(row)
     assert mass > 0
     assert mass <= 100.0  # Should not exceed mass cap
