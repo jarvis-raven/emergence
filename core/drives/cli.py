@@ -892,25 +892,9 @@ def cmd_satisfy(args) -> int:
             print(f"✗ {e}", file=sys.stderr)
             return EXIT_ERROR
     
-    # Save state
+    # Save state (saves both drives.json and drives-state.json)
     if not save_with_lock(state_path, state):
         return EXIT_ERROR
-
-    # !!! FIX: Update and save runtime state as well !!!
-    # Reload runtime state to ensure consistency, then update it
-    # Use the same args so config and state path resolution is consistent
-    runtime_state, _config_dummy, runtime_state_path = get_runtime_state_and_config(args)
-    
-    # Update attributes in runtime_state specific to satisfaction
-    if drive_name in runtime_state.get("drives", {}):
-        new_pressure_val = state["drives"][drive_name].get("pressure", 0.0)
-        runtime_state["drives"][drive_name]["pressure"] = new_pressure_val
-        runtime_state["drives"][drive_name]["status"] = "idle" if new_pressure_val <= 0 else "building"
-        if drive_name in runtime_state.get("triggered", []):
-            runtime_state["triggered"] = [d for d in runtime_state["triggered"] if d != drive_name]
-    
-    save_runtime_state(runtime_state_path, runtime_state)
-    # !!! END FIX !!!
     
     new_pressure = result["new_pressure"]
     reduction = result["reduction_ratio"]
