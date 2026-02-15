@@ -1308,3 +1308,21 @@ npm run dev 2>&1 | tee room.log
 **End of Development Pipeline Skill v1.0.0**
 
 *This skill is a living document. Update it as workflows evolve. Suggest improvements via PR.*
+
+### Real-World Workflow Guide
+
+**For detailed, hands-on instructions** based on actual v0.4.2 experience, see:
+
+📖 **[Jarvling Workflow - Real-World Guide](../../docs/JARVLING_WORKFLOW.md)**
+
+This comprehensive guide covers:
+- **Jarvling workspace isolation** (`~/.openclaw/workspace-{model}/`)
+- **Manual PR creation workflow** (step-by-step)
+- **Task description template** (with real examples)
+- **Wave-based spawning** (parallel jarvlings)
+- **Success metrics** (8/8 completions, 100% rate)
+- **Troubleshooting** (common issues and solutions)
+- **Quick reference** (copy-paste commands)
+
+**Based on:** 8 successful jarvlings, ~45 min total runtime, ~5,000+ lines generated
+
