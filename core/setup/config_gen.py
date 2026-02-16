@@ -248,8 +248,7 @@ def generate_default_config(
                 "threshold": 25,
                 "rate_per_hour": 2,
                 "description": (
-                    "Connection to human partner — "
-                    "checking in, remembering what matters"
+                    "Connection to human partner — " "checking in, remembering what matters"
                 ),
             },
             "MAINTENANCE": {
@@ -638,7 +637,10 @@ def _generate_commented_json(config: dict) -> str:
         f'    "name": {json.dumps(agent.get("name", "Aurora"))},  // What you call your agent'
     )
     lines.append(
-        f'    "human_name": {json.dumps(agent.get("human_name", "Human"))},  // Your name (for the agent to use)'
+        (
+            f'    "human_name": {json.dumps(agent.get("human_name", "Human"))},'
+            "  // Your name (for the agent to use)"
+        )
     )
     lines.append(
         f'    "model": {json.dumps(agent.get("model", DEFAULT_MODEL))}  // LLM provider/model'
@@ -664,10 +666,16 @@ def _generate_commented_json(config: dict) -> str:
         f'    "port": {room.get("port", 7373)},  // HTTP port for the Room dashboard (0 = disabled)'
     )
     lines.append(
-        f'    "https": {json.dumps(room.get("https", False))},  // Enable HTTPS (requires cert setup)'
+        (
+            f'    "https": {json.dumps(room.get("https", False))},'
+            "  // Enable HTTPS (requires cert setup)"
+        )
     )
     lines.append(
-        f'    "host": {json.dumps(room.get("host", "127.0.0.1"))}  // Bind address (127.0.0.1 = local only)'
+        (
+            f'    "host": {json.dumps(room.get("host", "127.0.0.1"))}'
+            "  // Bind address (127.0.0.1 = local only)"
+        )
     )
     lines.append("  },")
     lines.append("")
@@ -710,7 +718,10 @@ def _generate_commented_json(config: dict) -> str:
     lines.append(f'    "sessions_per_day": {fl.get("sessions_per_day", 3)},')
     lines.append(f'    "session_size": {json.dumps(fl.get("session_size", "medium"))},')
     lines.append(
-        f'    "session_duration_minutes": {fl.get("session_duration_minutes", 15)},  // Duration of each session'
+        (
+            f'    "session_duration_minutes": {fl.get("session_duration_minutes", 15)},'
+            "  // Duration of each session"
+        )
     )
     fl_model = fl.get("model")
     lines.append(f'    "model": {json.dumps(fl_model)}  // null = use agent.model')
@@ -1315,7 +1326,10 @@ def interactive_config_wizard(
     if prefilled_name:
         if HAS_RICH_BRANDING:
             console.print(
-                f"  [white]Agent name:[/] [soft_violet]{prefilled_name}[/] [dim_gray](from earlier)[/]"
+                (
+                    f"  [white]Agent name:[/] [soft_violet]{prefilled_name}[/]"
+                    " [dim_gray](from earlier)[/]"
+                )
             )
         else:
             print(f"  Agent name: {prefilled_name} (from earlier)")
@@ -1327,7 +1341,10 @@ def interactive_config_wizard(
     if prefilled_human_name:
         if HAS_RICH_BRANDING:
             console.print(
-                f"  [white]Your name:[/] [soft_violet]{prefilled_human_name}[/] [dim_gray](from earlier)[/]"
+                (
+                    f"  [white]Your name:[/] [soft_violet]{prefilled_human_name}[/]"
+                    " [dim_gray](from earlier)[/]"
+                )
             )
         else:
             print(f"  Your name: {prefilled_human_name} (from earlier)")
@@ -1345,23 +1362,41 @@ def interactive_config_wizard(
         console.print("\n[white]Select a model to power your agent:[/]\n")
         if openclaw_model:
             console.print(
-                f"  [aurora_mint]0.[/] [white]Use OpenClaw default[/] [dim_gray]({openclaw_model})[/]"
+                (
+                    f"  [aurora_mint]0.[/] [white]Use OpenClaw default[/]"
+                    f" [dim_gray]({openclaw_model})[/]"
+                )
             )
         else:
             console.print(
-                "  [aurora_mint]0.[/] [white]Use OpenClaw default[/] [dim_gray](not detected — will use sonnet)[/]"
+                (
+                    "  [aurora_mint]0.[/] [white]Use OpenClaw default[/]"
+                    " [dim_gray](not detected — will use sonnet)[/]"
+                )
             )
         console.print(
-            "  [aurora_mint]1.[/] [white]anthropic/claude-sonnet-4-20250514[/]  [dim_gray](balanced, recommended)[/]"
+            (
+                "  [aurora_mint]1.[/] [white]anthropic/claude-sonnet-4-20250514[/]"
+                "  [dim_gray](balanced, recommended)[/]"
+            )
         )
         console.print(
-            "  [aurora_mint]2.[/] [white]anthropic/claude-haiku-4-20250514[/]   [dim_gray](faster, lower cost)[/]"
+            (
+                "  [aurora_mint]2.[/] [white]anthropic/claude-haiku-4-20250514[/]"
+                "   [dim_gray](faster, lower cost)[/]"
+            )
         )
         console.print(
-            "  [aurora_mint]3.[/] [white]openai/gpt-4o[/]                       [dim_gray](excellent capabilities)[/]"
+            (
+                "  [aurora_mint]3.[/] [white]openai/gpt-4o[/]"
+                "                       [dim_gray](excellent capabilities)[/]"
+            )
         )
         console.print(
-            "  [aurora_mint]4.[/] [white]ollama/llama3.2[/]                     [dim_gray](local, no API costs)[/]"
+            (
+                "  [aurora_mint]4.[/] [white]ollama/llama3.2[/]"
+                "                     [dim_gray](local, no API costs)[/]"
+            )
         )
         console.print("  [aurora_mint]5.[/] [white]Custom[/] [dim_gray](type your own)[/]")
     else:
@@ -1581,13 +1616,22 @@ def interactive_config_wizard(
         console.print()
         console.print("[white]Session size:[/]")
         console.print(
-            "  [aurora_mint][1][/] [white]Small[/]  [dim_gray]— 1-2 agents per session (minimal, good for low-resource devices)[/]"
+            (
+                "  [aurora_mint][1][/] [white]Small[/]  [dim_gray]—"
+                " 1-2 agents per session (minimal, good for low-resource devices)[/]"
+            )
         )
         console.print(
-            "  [aurora_mint][2][/] [white]Medium[/] [dim_gray]— 3-5 agents per session (recommended)[/]"
+            (
+                "  [aurora_mint][2][/] [white]Medium[/]"
+                " [dim_gray]— 3-5 agents per session (recommended)[/]"
+            )
         )
         console.print(
-            "  [aurora_mint][3][/] [white]Large[/]  [dim_gray]— 6-10 agents per session (thorough but costly)[/]"
+            (
+                "  [aurora_mint][3][/] [white]Large[/]  [dim_gray]—"
+                " 6-10 agents per session (thorough but costly)[/]"
+            )
         )
         console.print()
     else:
@@ -1625,7 +1669,10 @@ def interactive_config_wizard(
     if HAS_RICH_BRANDING:
         console.print("\n[white]💰  COST ESTIMATE[/]")
         console.print(
-            f"   [dim_gray]Sessions: {sessions_per_day}/day, {session_size} size (~${cost_per_session[session_size]:.2f}/session)[/]"
+            (
+                f"   [dim_gray]Sessions: {sessions_per_day}/day, {session_size} size"
+                f" (~${cost_per_session[session_size]:.2f}/session)[/]"
+            )
         )
         console.print(f"   [white]Estimated daily cost:[/] [aurora_mint]~${daily_cost:.2f}[/]")
         console.print(f"   [white]Estimated weekly cost:[/] [aurora_mint]~${weekly_cost:.2f}[/]")
@@ -1635,7 +1682,10 @@ def interactive_config_wizard(
     else:
         print("💰  COST ESTIMATE")
         print(
-            f"   Sessions: {sessions_per_day}/day, {session_size} size (~{cost_per_session[session_size]:.2f}/session)"
+            (
+                f"   Sessions: {sessions_per_day}/day, {session_size} size"
+                f" (~{cost_per_session[session_size]:.2f}/session)"
+            )
         )
         print(f"   Estimated daily cost: ~${daily_cost:.2f}")
         print(f"   Estimated weekly cost: ~${weekly_cost:.2f}")
@@ -1693,24 +1743,37 @@ def interactive_config_wizard(
     if HAS_RICH_BRANDING:
         console.print()
         console.print("[dim_gray]With these settings:[/]")
+        max_sessions = int(
+            config["drives"]["budget"]["daily_limit_usd"]
+            / config["drives"]["budget"]["session_cost_estimate"]
+        )
+        console.print(f"  [dim_gray]• Max ~{max_sessions} sessions/day[/]")
         console.print(
-            f"  [dim_gray]• Max ~{int(config['drives']['budget']['daily_limit_usd'] / config['drives']['budget']['session_cost_estimate'])} sessions/day[/]"
+            (
+                f"  [dim_gray]• Core drives: every"
+                f" {config['drives']['intervals']['core_min_hours']}+ hours[/]"
+            )
         )
         console.print(
-            f"  [dim_gray]• Core drives: every {config['drives']['intervals']['core_min_hours']}+ hours[/]"
-        )
-        console.print(
-            f"  [dim_gray]• Discovered drives: every {config['drives']['intervals']['discovered_min_hours']}+ hours[/]"
+            (
+                f"  [dim_gray]• Discovered drives: every"
+                f" {config['drives']['intervals']['discovered_min_hours']}+ hours[/]"
+            )
         )
     else:
         print()
         print("With these settings:")
-        print(
-            f"  • Max ~{int(config['drives']['budget']['daily_limit_usd'] / config['drives']['budget']['session_cost_estimate'])} sessions/day"
+        max_sessions = int(
+            config["drives"]["budget"]["daily_limit_usd"]
+            / config["drives"]["budget"]["session_cost_estimate"]
         )
+        print(f"  • Max ~{max_sessions} sessions/day")
         print(f"  • Core drives: every {config['drives']['intervals']['core_min_hours']}+ hours")
         print(
-            f"  • Discovered drives: every {config['drives']['intervals']['discovered_min_hours']}+ hours"
+            (
+                f"  • Discovered drives: every"
+                f" {config['drives']['intervals']['discovered_min_hours']}+ hours"
+            )
         )
     print()
 
@@ -1731,22 +1794,37 @@ def interactive_config_wizard(
             f"\n  [white]First Light:[/] [aurora_mint]{config['first_light']['frequency']}[/]"
         )
         console.print(
-            f"    [white]Sessions/day:[/] [aurora_mint]{config['first_light']['sessions_per_day']}[/]"
+            (
+                "    [white]Sessions/day:[/] "
+                f"[aurora_mint]{config['first_light']['sessions_per_day']}[/]"
+            )
         )
         console.print(
             f"    [white]Session size:[/] [aurora_mint]{config['first_light']['session_size']}[/]"
         )
         console.print(
-            f"    [white]Duration:[/] [aurora_mint]{config['first_light'].get('session_duration_minutes', 15)} min[/]"
+            (
+                "    [white]Duration:[/] "
+                f"[aurora_mint]{config['first_light'].get('session_duration_minutes', 15)} min[/]"
+            )
         )
         console.print(
-            f"\n  [white]Drive Budget:[/] [aurora_mint]${config['drives']['budget']['daily_limit_usd']}/day[/]"
+            (
+                "\n  [white]Drive Budget:[/] "
+                f"[aurora_mint]${config['drives']['budget']['daily_limit_usd']}/day[/]"
+            )
         )
         console.print(
-            f"    [white]Core interval:[/] [aurora_mint]{config['drives']['intervals']['core_min_hours']}h[/]"
+            (
+                "    [white]Core interval:[/] "
+                f"[aurora_mint]{config['drives']['intervals']['core_min_hours']}h[/]"
+            )
         )
         console.print(
-            f"    [white]Discovered interval:[/] [aurora_mint]{config['drives']['intervals']['discovered_min_hours']}h[/]"
+            (
+                "    [white]Discovered interval:[/] "
+                f"[aurora_mint]{config['drives']['intervals']['discovered_min_hours']}h[/]"
+            )
         )
     else:
         print(f"\n  Agent Name: {config['agent']['name']}")

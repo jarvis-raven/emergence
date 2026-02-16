@@ -458,11 +458,13 @@ def _spawn_sessions(config: dict, state: dict, size: int, dry_run: bool) -> tupl
         if schedule_exploration_session(config, state, session_num):
             spawned += 1
             state["sessions_scheduled"] += 1
-            state["sessions"].append({
-                "session_number": session_num,
-                "scheduled_at": datetime.now(timezone.utc).isoformat(),
-                "status": "scheduled",
-            })
+            state["sessions"].append(
+                {
+                    "session_number": session_num,
+                    "scheduled_at": datetime.now(timezone.utc).isoformat(),
+                    "status": "scheduled",
+                }
+            )
         else:
             failed += 1
             break  # Stop trying if one fails
@@ -642,9 +644,7 @@ def _resolve_config_path(config_path: Optional[Path]) -> Optional[Path]:
         return Path(env_config)
 
     # Check workspace directory
-    workspace = os.environ.get(
-        "OPENCLAW_WORKSPACE", str(Path.home() / ".openclaw" / "workspace")
-    )
+    workspace = os.environ.get("OPENCLAW_WORKSPACE", str(Path.home() / ".openclaw" / "workspace"))
     workspace_config = Path(workspace) / "emergence.json"
     if workspace_config.exists():
         return workspace_config
