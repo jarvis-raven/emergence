@@ -132,25 +132,21 @@ def llm_summarize(text: str, mode: str = "corridor") -> str:
         Summarized text, or error message if failed.
     """
     if mode == "corridor":
-        prompt = f"""Summarize the following daily memory log into a concise narrative (2-4 paragraphs).
-Preserve: key decisions, people involved, problems solved, lessons learned, and any action items.
-Drop: routine checks, heartbeat logs, false positive alerts, minor tool output.
-
----
-{text[:8000]}
----
-
-Concise narrative summary:"""
+        prompt = (
+            "Summarize the following daily memory log into a concise narrative "
+            "(2-4 paragraphs).\nPreserve: key decisions, people involved, problems "
+            "solved, lessons learned, and any action items.\nDrop: routine checks, "
+            "heartbeat logs, false positive alerts, minor tool output.\n\n---\n"
+            f"{text[:8000]}\n---\n\nConcise narrative summary:"
+        )
     else:  # vault
-        prompt = f"""Distill the following corridor summary into core lessons and patterns (bullet points).
-Extract only: permanent knowledge, reusable patterns, critical decisions, relationship notes, and system architecture insights.
-Be ruthless — only keep what future-you absolutely needs.
-
----
-{text[:6000]}
----
-
-Distilled lessons:"""
+        prompt = (
+            "Distill the following corridor summary into core lessons and patterns "
+            "(bullet points).\nExtract only: permanent knowledge, reusable patterns, "
+            "critical decisions, relationship notes, and system architecture insights.\n"
+            "Be ruthless — only keep what future-you absolutely needs.\n\n---\n"
+            f"{text[:6000]}\n---\n\nDistilled lessons:"
+        )
 
     logger.info(f"Summarizing text ({len(text)} chars) in {mode} mode")
 
@@ -194,13 +190,295 @@ Distilled lessons:"""
         return "[Summarization failed: timeout]"
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse Ollama response: {e}")
-        return f"[Summarization failed: invalid JSON response]"
+        return "[Summarization failed: invalid JSON response]"
     except FileNotFoundError:
         logger.error("curl command not found")
         return "[Summarization failed: curl not found]"
     except Exception as e:
         logger.error(f"Unexpected error during summarization: {e}")
         return f"[Summarization failed: {e}]"
+
+
+# === Helper Functions for Promotion ===
+
+
+def _find_promotion_candidates(
+    memory_dir: Path, workspace: Path, corridors_dir: Path
+) -> List[Dict[str, Any]]:
+    """
+    Find memory files that are candidates for promotion to corridor.
+
+    Args:
+        memory_dir: Directory containing daily memory files
+        workspace: Workspace root path
+        corridors_dir: Corridors output directory
+
+    Returns:
+        List of candidate dictionaries with file info.
+    """
+    candidates = []
+    for md_file in sorted(memory_dir.glob("2*.md")):  # Date-prefixed files
+        try:
+            rel_path = str(md_file.relative_to(workspace))
+        except ValueError:
+            rel_path = str(md_file)
+
+        age_days = file_age_days(rel_path)
+
+        if age_days > ATRIUM_MAX_AGE_HOURS / 24:
+            # Check if already promoted
+            summary_name = f"corridor-{md_file.stem}.md"
+            summary_path = corridors_dir / summary_name
+
+            if not summary_path.exists():
+                try:
+                    summary_rel = str(summary_path.relative_to(workspace))
+                except ValueError:
+                    summary_rel = str(summary_path)
+
+                candidates.append(
+                    {
+                        "path": rel_path,
+                        "full_path": str(md_file),
+                        "age_days": round(age_days, 1),
+                        "summary_path": str(summary_path),
+                        "summary_rel": summary_rel,
+                    }
+                )
+    return candidates
+
+
+def _promote_single_file(candidate: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Promote a single file from atrium to corridor.
+
+    Args:
+        candidate: Candidate dictionary with file paths
+
+    Returns:
+        Result dictionary if successful, None otherwise.
+    """
+    c = candidate
+
+    # Read the source file
+    try:
+        content = Path(c["full_path"]).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning(f"Skip {c['path']}: could not read file: {e}")
+        print(f"  Skip {c['path']}: {e}", file=sys.stderr)
+        return None
+
+    if len(content.strip()) < 100:
+        logger.debug(f"Skip {c['path']}: too short ({len(content)} chars)")
+        return None
+
+    print(f"  Summarizing {c['path']} ({c['age_days']}d old)...", file=sys.stderr)
+
+    # Summarize via LLM
+    summary = llm_summarize(content, mode="corridor")
+
+    if not summary or summary.startswith("[Summarization failed"):
+        logger.warning(f"Summarization failed for {c['path']}: {summary}")
+        return None
+
+    # Write corridor summary
+    header = f"# Corridor Summary: {Path(c['path']).stem}\n\n"
+    header += f"*Promoted from atrium on {datetime.now().strftime('%Y-%m-%d')}. "
+    header += f"Original: `{c['path']}` ({len(content)} chars)*\n\n---\n\n"
+
+    try:
+        Path(c["summary_path"]).write_text(header + summary, encoding="utf-8")
+        logger.info(f"Promoted {c['path']} → {c['summary_rel']}")
+    except (OSError, UnicodeEncodeError) as e:
+        logger.error(f"Failed to write summary for {c['path']}: {e}")
+        return None
+
+    # Update gravity database
+    try:
+        db = get_db()
+        db.execute(
+            """
+            UPDATE gravity SET chamber = 'corridor', promoted_at = ?
+            WHERE path = ?
+        """,
+            (now_iso(), c["path"]),
+        )
+
+        # Add corridor summary to gravity
+        db.execute(
+            """
+            INSERT OR REPLACE INTO gravity
+            (path, line_start, line_end, chamber, last_written_at, source_chunk)
+            VALUES (?, 0, 0, 'corridor', ?, ?)
+        """,
+            (c["summary_rel"], now_iso(), c["path"]),
+        )
+
+        commit_with_retry(db)
+        db.close()
+    except sqlite3.Error as e:
+        logger.error(f"Database error promoting {c['path']}: {e}")
+        return None
+
+    return {
+        "source": c["path"],
+        "summary": c["summary_rel"],
+        "original_size": len(content),
+        "summary_size": len(summary),
+    }
+
+
+# === Helper Functions for Crystallization ===
+
+
+def _check_crystallization_candidate(
+    md_file: Path, workspace: Path, memory_dir: Path, vault_dir: Path
+) -> Optional[Dict[str, Any]]:
+    """
+    Check if a corridor file is a candidate for crystallization.
+
+    Args:
+        md_file: Path to corridor markdown file
+        workspace: Workspace root path
+        memory_dir: Memory directory for age checking
+        vault_dir: Vault output directory
+
+    Returns:
+        Candidate dictionary if valid, None otherwise.
+    """
+    try:
+        rel_path = str(md_file.relative_to(workspace))
+    except ValueError:
+        rel_path = str(md_file)
+
+    # Extract date from filename
+    match = re.search(r"(\d{4}-\d{2}-\d{2})", md_file.stem)
+    if not match:
+        return None
+
+    # Check age of original file
+    original_path = memory_dir / f"{match.group(1)}.md"
+    if not original_path.exists():
+        return None
+
+    age = file_age_days(f"memory/{match.group(1)}.md")
+    if age <= CORRIDOR_MAX_AGE_DAYS:
+        return None
+
+    vault_name = f"vault-{match.group(1)}.md"
+    vault_path = vault_dir / vault_name
+
+    if vault_path.exists():
+        return None
+
+    try:
+        vault_rel = str(vault_path.relative_to(workspace))
+    except ValueError:
+        vault_rel = str(vault_path)
+
+    return {
+        "path": rel_path,
+        "full_path": str(md_file),
+        "age_days": round(age, 1),
+        "vault_path": str(vault_path),
+        "vault_rel": vault_rel,
+    }
+
+
+def _find_crystallization_candidates(
+    corridors_dir: Path, workspace: Path, memory_dir: Path, vault_dir: Path
+) -> List[Dict[str, Any]]:
+    """
+    Find corridor summaries that are candidates for crystallization to vault.
+
+    Args:
+        corridors_dir: Directory containing corridor summaries
+        workspace: Workspace root path
+        memory_dir: Memory directory for age checking
+        vault_dir: Vault output directory
+
+    Returns:
+        List of candidate dictionaries with file info.
+    """
+    if not corridors_dir.exists():
+        return []
+
+    candidates = []
+    for md_file in sorted(corridors_dir.glob("corridor-*.md")):
+        candidate = _check_crystallization_candidate(md_file, workspace, memory_dir, vault_dir)
+        if candidate:
+            candidates.append(candidate)
+
+    return candidates
+
+
+def _crystallize_single_file(candidate: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Crystallize a single corridor summary to vault.
+
+    Args:
+        candidate: Candidate dictionary with file paths
+
+    Returns:
+        Result dictionary if successful, None otherwise.
+    """
+    c = candidate
+
+    try:
+        content = Path(c["full_path"]).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning(f"Skip {c['path']}: could not read file: {e}")
+        return None
+
+    if len(content.strip()) < 50:
+        logger.debug(f"Skip {c['path']}: too short ({len(content)} chars)")
+        return None
+
+    print(f"  Crystallizing {c['path']} ({c['age_days']}d old)...", file=sys.stderr)
+
+    lessons = llm_summarize(content, mode="vault")
+
+    if not lessons or lessons.startswith("[Summarization failed"):
+        logger.warning(f"Crystallization failed for {c['path']}: {lessons}")
+        return None
+
+    header = f"# Vault Lessons: {Path(c['path']).stem}\n\n"
+    header += f"*Crystallized on {datetime.now().strftime('%Y-%m-%d')}. "
+    header += f"Source: `{c['path']}`*\n\n---\n\n"
+
+    try:
+        Path(c["vault_path"]).write_text(header + lessons, encoding="utf-8")
+        logger.info(f"Crystallized {c['path']} → {c['vault_rel']}")
+    except (OSError, UnicodeEncodeError) as e:
+        logger.error(f"Failed to write vault for {c['path']}: {e}")
+        return None
+
+    try:
+        db = get_db()
+        db.execute(
+            """
+            UPDATE gravity SET chamber = 'vault', promoted_at = ?
+            WHERE path = ?
+        """,
+            (now_iso(), c["path"]),
+        )
+
+        db.execute(
+            """
+            INSERT OR REPLACE INTO gravity
+            (path, line_start, line_end, chamber, last_written_at, source_chunk)
+            VALUES (?, 0, 0, 'vault', ?, ?)
+        """,
+            (c["vault_rel"], now_iso(), c["path"]),
+        )
+
+        commit_with_retry(db)
+        db.close()
+    except sqlite3.Error as e:
+        logger.error(f"Database error crystallizing {c['path']}: {e}")
+        return None
+
+    return {"source": c["path"], "vault": c["vault_rel"], "lessons_size": len(lessons)}
 
 
 # === Commands ===
@@ -288,45 +566,17 @@ def cmd_promote(args: List[str]) -> Dict[str, Any]:
         corridors_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         logger.error(f"Could not create corridors directory: {e}")
-        print(json.dumps({"error": f"Could not create corridors dir: {e}"}), file=sys.stderr)
+        print(
+            json.dumps({"error": f"Could not create corridors dir: {e}"}),
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     workspace = config.get_workspace()
     memory_dir = config.get_memory_dir()
 
-    # Find daily memory files older than 48h
-    candidates = []
-
     logger.info(f"Searching for promotion candidates in {memory_dir}")
-
-    for md_file in sorted(memory_dir.glob("2*.md")):  # Date-prefixed files
-        try:
-            rel_path = str(md_file.relative_to(workspace))
-        except ValueError:
-            rel_path = str(md_file)
-
-        age_days = file_age_days(rel_path)
-
-        if age_days > ATRIUM_MAX_AGE_HOURS / 24:
-            # Check if already promoted
-            summary_name = f"corridor-{md_file.stem}.md"
-            summary_path = corridors_dir / summary_name
-
-            if not summary_path.exists():
-                try:
-                    summary_rel = str(summary_path.relative_to(workspace))
-                except ValueError:
-                    summary_rel = str(summary_path)
-
-                candidates.append(
-                    {
-                        "path": rel_path,
-                        "full_path": str(md_file),
-                        "age_days": round(age_days, 1),
-                        "summary_path": str(summary_path),
-                        "summary_rel": summary_rel,
-                    }
-                )
+    candidates = _find_promotion_candidates(memory_dir, workspace, corridors_dir)
 
     if dry_run:
         result = {
@@ -340,73 +590,9 @@ def cmd_promote(args: List[str]) -> Dict[str, Any]:
 
     promoted = []
     for c in candidates:
-        # Read the source file
-        try:
-            content = Path(c["full_path"]).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as e:
-            logger.warning(f"Skip {c['path']}: could not read file: {e}")
-            print(f"  Skip {c['path']}: {e}", file=sys.stderr)
-            continue
-
-        if len(content.strip()) < 100:
-            logger.debug(f"Skip {c['path']}: too short ({len(content)} chars)")
-            continue  # Skip near-empty files
-
-        print(f"  Summarizing {c['path']} ({c['age_days']}d old)...", file=sys.stderr)
-
-        # Summarize via LLM
-        summary = llm_summarize(content, mode="corridor")
-
-        if summary and not summary.startswith("[Summarization failed"):
-            # Write corridor summary
-            header = f"# Corridor Summary: {Path(c['path']).stem}\n\n"
-            header += f"*Promoted from atrium on {datetime.now().strftime('%Y-%m-%d')}. "
-            header += f"Original: `{c['path']}` ({len(content)} chars)*\n\n---\n\n"
-
-            try:
-                Path(c["summary_path"]).write_text(header + summary, encoding="utf-8")
-                logger.info(f"Promoted {c['path']} → {c['summary_rel']}")
-            except (OSError, UnicodeEncodeError) as e:
-                logger.error(f"Failed to write summary for {c['path']}: {e}")
-                continue
-
-            # Update gravity database
-            try:
-                db = get_db()
-                db.execute(
-                    """
-                    UPDATE gravity SET chamber = 'corridor', promoted_at = ?
-                    WHERE path = ?
-                """,
-                    (now_iso(), c["path"]),
-                )
-
-                # Add corridor summary to gravity
-                db.execute(
-                    """
-                    INSERT OR REPLACE INTO gravity
-                    (path, line_start, line_end, chamber, last_written_at, source_chunk)
-                    VALUES (?, 0, 0, 'corridor', ?, ?)
-                """,
-                    (c["summary_rel"], now_iso(), c["path"]),
-                )
-
-                commit_with_retry(db)
-                db.close()
-            except sqlite3.Error as e:
-                logger.error(f"Database error promoting {c['path']}: {e}")
-                continue
-
-            promoted.append(
-                {
-                    "source": c["path"],
-                    "summary": c["summary_rel"],
-                    "original_size": len(content),
-                    "summary_size": len(summary),
-                }
-            )
-        else:
-            logger.warning(f"Summarization failed for {c['path']}: {summary}")
+        result = _promote_single_file(c)
+        if result:
+            promoted.append(result)
 
     result = {"promoted": len(promoted), "details": promoted, "timestamp": now_iso()}
 
@@ -432,51 +618,18 @@ def cmd_crystallize(args: List[str]) -> Dict[str, Any]:
         vault_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         logger.error(f"Could not create vaults directory: {e}")
-        print(json.dumps({"error": f"Could not create vaults dir: {e}"}), file=sys.stderr)
+        print(
+            json.dumps({"error": f"Could not create vaults dir: {e}"}),
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     corridors_dir = config.get_corridors_dir()
     workspace = config.get_workspace()
     memory_dir = config.get_memory_dir()
 
-    # Find corridor summaries older than 7 days
-    candidates = []
-
     logger.info(f"Searching for crystallization candidates in {corridors_dir}")
-
-    if corridors_dir.exists():
-        for md_file in sorted(corridors_dir.glob("corridor-*.md")):
-            try:
-                rel_path = str(md_file.relative_to(workspace))
-            except ValueError:
-                rel_path = str(md_file)
-
-            # Extract date from filename
-            match = re.search(r"(\d{4}-\d{2}-\d{2})", md_file.stem)
-            if match:
-                # Check age of original file
-                original_path = memory_dir / f"{match.group(1)}.md"
-                if original_path.exists():
-                    age = file_age_days(f"memory/{match.group(1)}.md")
-                    if age > CORRIDOR_MAX_AGE_DAYS:
-                        vault_name = f"vault-{match.group(1)}.md"
-                        vault_path = vault_dir / vault_name
-
-                        if not vault_path.exists():
-                            try:
-                                vault_rel = str(vault_path.relative_to(workspace))
-                            except ValueError:
-                                vault_rel = str(vault_path)
-
-                            candidates.append(
-                                {
-                                    "path": rel_path,
-                                    "full_path": str(md_file),
-                                    "age_days": round(age, 1),
-                                    "vault_path": str(vault_path),
-                                    "vault_rel": vault_rel,
-                                }
-                            )
+    candidates = _find_crystallization_candidates(corridors_dir, workspace, memory_dir, vault_dir)
 
     if dry_run:
         result = {
@@ -490,64 +643,15 @@ def cmd_crystallize(args: List[str]) -> Dict[str, Any]:
 
     crystallized = []
     for c in candidates:
-        try:
-            content = Path(c["full_path"]).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as e:
-            logger.warning(f"Skip {c['path']}: could not read file: {e}")
-            continue
+        result = _crystallize_single_file(c)
+        if result:
+            crystallized.append(result)
 
-        if len(content.strip()) < 50:
-            logger.debug(f"Skip {c['path']}: too short ({len(content)} chars)")
-            continue
-
-        print(f"  Crystallizing {c['path']} ({c['age_days']}d old)...", file=sys.stderr)
-
-        lessons = llm_summarize(content, mode="vault")
-
-        if lessons and not lessons.startswith("[Summarization failed"):
-            header = f"# Vault Lessons: {Path(c['path']).stem}\n\n"
-            header += f"*Crystallized on {datetime.now().strftime('%Y-%m-%d')}. "
-            header += f"Source: `{c['path']}`*\n\n---\n\n"
-
-            try:
-                Path(c["vault_path"]).write_text(header + lessons, encoding="utf-8")
-                logger.info(f"Crystallized {c['path']} → {c['vault_rel']}")
-            except (OSError, UnicodeEncodeError) as e:
-                logger.error(f"Failed to write vault for {c['path']}: {e}")
-                continue
-
-            try:
-                db = get_db()
-                db.execute(
-                    """
-                    UPDATE gravity SET chamber = 'vault', promoted_at = ?
-                    WHERE path = ?
-                """,
-                    (now_iso(), c["path"]),
-                )
-
-                db.execute(
-                    """
-                    INSERT OR REPLACE INTO gravity
-                    (path, line_start, line_end, chamber, last_written_at, source_chunk)
-                    VALUES (?, 0, 0, 'vault', ?, ?)
-                """,
-                    (c["vault_rel"], now_iso(), c["path"]),
-                )
-
-                commit_with_retry(db)
-                db.close()
-            except sqlite3.Error as e:
-                logger.error(f"Database error crystallizing {c['path']}: {e}")
-                continue
-
-            crystallized.append(
-                {"source": c["path"], "vault": c["vault_rel"], "lessons_size": len(lessons)}
-            )
-        else:
-            logger.warning(f"Crystallization failed for {c['path']}: {lessons}")
-
-    result = {"crystallized": len(crystallized), "details": crystallized, "timestamp": now_iso()}
+    result = {
+        "crystallized": len(crystallized),
+        "details": crystallized,
+        "timestamp": now_iso(),
+    }
 
     logger.info(f"Crystallized {len(crystallized)} files to vault")
     print(json.dumps(result, indent=2))
@@ -614,7 +718,7 @@ def cmd_status(args: List[str]) -> Dict[str, Any]:
         }
 
         logger.info(
-            f"Chamber status: {total} tracked, {corridor_count} corridors, {vault_count} vaults"
+            f"Chamber status: {total} tracked, {corridor_count} corridors, " f"{vault_count} vaults"
         )
         print(json.dumps(result, indent=2, default=str))
         return result
@@ -638,7 +742,7 @@ COMMANDS = {
 def main() -> None:
     """Main entry point for chambers command."""
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        print(f"Usage: python -m core.nautilus chambers <command> [args]")
+        print("Usage: python -m core.nautilus chambers <command> [args]")
         print(f"Commands: {', '.join(COMMANDS.keys())}")
         sys.exit(1)
 
@@ -653,6 +757,7 @@ def main() -> None:
 if __name__ == "__main__":
     # Configure logging if running as main
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     main()
