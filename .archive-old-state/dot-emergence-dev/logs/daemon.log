@@ -1,0 +1,376 @@
+[2026-02-12T10:21:33Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T10:21:36Z] [INFO] Drive triggered + spawned: MAINTENANCE (37.5/25.0)
+[2026-02-12T10:21:38Z] [INFO] Drive triggered + spawned: CARE (25.6/20.0)
+[2026-02-12T10:21:38Z] [INFO] Tick complete: 2 updated, 2 triggered
+[2026-02-12T10:21:45Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T10:21:45Z] [INFO] Daemon stopped
+[2026-02-12T10:21:45Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T10:21:59Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T10:21:59Z] [INFO] Daemon stopped
+[2026-02-12T13:25:56Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T13:26:26Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T13:28:25Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T13:28:25Z] [INFO] Daemon stopped
+[2026-02-12T13:28:26Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T13:28:26Z] [INFO] Drive satisfied: READING
+[2026-02-12T13:39:22Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T13:39:22Z] [INFO] Daemon stopped
+[2026-02-12T13:39:22Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T13:39:26Z] [INFO] Drive triggered + spawned: EMBODIMENT (40.2/40.0)
+[2026-02-12T13:39:26Z] [INFO] Tick complete: 3 updated, 1 triggered
+[2026-02-12T13:43:27Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T13:43:27Z] [INFO] Daemon stopped
+[2026-02-12T13:44:04Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T13:44:09Z] [INFO] Drive triggered + spawned: READING (45.0/30.0)
+[2026-02-12T13:44:10Z] [INFO] Drive triggered + spawned: SOCIAL (24.0/18.0)
+[2026-02-12T13:44:12Z] [INFO] Drive triggered + spawned: CREATIVE (23.0/20.0)
+[2026-02-12T13:44:14Z] [INFO] Drive triggered + spawned: PLAY (27.1/25.0)
+[2026-02-12T13:44:15Z] [INFO] Drive triggered + spawned: LEARNING (32.3/30.0)
+[2026-02-12T13:44:17Z] [INFO] Drive triggered + spawned: CURIOSITY (26.0/25.0)
+[2026-02-12T13:44:23Z] [INFO] Drive triggered + spawned: EMBODIMENT (40.2/40.0)
+[2026-02-12T13:44:23Z] [INFO] Drive satisfied: EMBODIMENT
+[2026-02-12T13:44:23Z] [INFO] Tick complete: 8 updated, 7 triggered
+[2026-02-12T13:57:29Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T13:57:29Z] [INFO] Drive satisfied: READING
+[2026-02-12T13:57:29Z] [INFO] Drive satisfied: SOCIAL
+[2026-02-12T13:57:29Z] [INFO] Drive satisfied: CREATIVE
+[2026-02-12T13:57:29Z] [INFO] Drive satisfied: PLAY
+[2026-02-12T13:57:29Z] [INFO] Drive satisfied: LEARNING
+[2026-02-12T13:57:29Z] [INFO] Drive satisfied: CURIOSITY
+[2026-02-12T13:57:29Z] [INFO] Drive satisfied: EMBODIMENT
+[2026-02-12T13:57:29Z] [INFO] Tick complete: updated MAINTENANCE, CARE, EMBODIMENT
+[2026-02-12T13:59:23Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T14:00:46Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T14:00:46Z] [INFO] Daemon stopped
+[2026-02-12T14:00:46Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T14:00:46Z] [INFO] Daemon stopped
+[2026-02-12T14:00:47Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T14:00:47Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T14:10:04Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T14:10:04Z] [INFO] Daemon stopped
+[2026-02-12T14:10:04Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T14:10:04Z] [WARN] Runtime state write error: extract_runtime_state() takes 1 positional argument but 2 were given
+[2026-02-12T14:10:04Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T14:10:39Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T14:10:39Z] [INFO] Daemon stopped
+[2026-02-12T14:10:40Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T14:10:40Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T14:25:41Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T14:40:41Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T14:55:41Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T15:10:42Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T15:25:42Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T15:40:42Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T15:55:47Z] [INFO] Drive triggered + spawned: CARE (20.3/20.0)
+[2026-02-12T15:55:47Z] [INFO] Tick complete: 9 updated, 1 triggered
+[2026-02-12T16:10:52Z] [INFO] Drive triggered + spawned: READING (32.3/30.0)
+[2026-02-12T16:10:52Z] [INFO] Tick complete: 8 updated, 1 triggered
+[2026-02-12T16:25:52Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T16:40:52Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T16:55:52Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T17:10:53Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T17:25:53Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T17:40:59Z] [INFO] Drive triggered + spawned: CREATIVE (20.2/20.0)
+[2026-02-12T17:40:59Z] [INFO] Tick complete: 7 updated, 1 triggered
+[2026-02-12T17:56:03Z] [INFO] Drive triggered + spawned: CURIOSITY (25.8/25.0)
+[2026-02-12T17:56:03Z] [INFO] Tick complete: 6 updated, 1 triggered
+[2026-02-12T18:11:03Z] [INFO] Tick complete: updated SOCIAL, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T18:26:03Z] [INFO] Tick complete: updated SOCIAL, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T18:41:03Z] [INFO] Tick complete: updated SOCIAL, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T18:55:26Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T18:55:26Z] [INFO] Daemon stopped
+[2026-02-12T18:55:27Z] [INFO] Detected openclaw: /Users/jarvis/.nvm/versions/node/v24.13.0/bin/openclaw
+[2026-02-12T18:55:27Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T18:55:27Z] [INFO] Drive satisfied: TEST_DRIVE
+[2026-02-12T18:55:27Z] [INFO] Tick complete: updated SOCIAL, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T18:56:17Z] [INFO] Drive triggered + spawned: CURIOSITY (25.8/25.0)
+[2026-02-12T19:00:47Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T19:00:47Z] [INFO] Daemon stopped
+[2026-02-12T19:00:47Z] [INFO] Detected openclaw: /Users/jarvis/.nvm/versions/node/v24.13.0/bin/openclaw
+[2026-02-12T19:00:47Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T19:00:47Z] [INFO] Drive satisfied: CURIOSITY
+[2026-02-12T19:00:47Z] [INFO] Tick complete: updated SOCIAL, MAINTENANCE, PLAY, LEARNING, EMBODIMENT
+[2026-02-12T19:01:09Z] [INFO] Drive triggered + spawned: READING (32.3/30.0)
+[2026-02-12T19:01:12Z] [INFO] Drive triggered + spawned: CARE (20.3/20.0)
+[2026-02-12T19:01:14Z] [INFO] Drive triggered + spawned: CREATIVE (20.2/20.0)
+[2026-02-12T19:02:09Z] [INFO] Drive satisfied: READING
+[2026-02-12T19:15:47Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, MAINTENANCE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T19:30:48Z] [INFO] Drive satisfied: CARE
+[2026-02-12T19:30:48Z] [INFO] Drive satisfied: CREATIVE
+[2026-02-12T19:30:48Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, MAINTENANCE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T19:45:48Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T20:00:49Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T20:15:49Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T20:30:54Z] [INFO] Drive triggered + spawned: READING (30.9/30.0)
+[2026-02-12T20:30:56Z] [INFO] Drive triggered + spawned: MAINTENANCE (40.3/40.0)
+[2026-02-12T20:30:56Z] [INFO] Tick complete: 9 updated, 2 triggered
+[2026-02-12T20:36:57Z] [INFO] Daemon shutting down gracefully
+[2026-02-12T20:36:57Z] [INFO] Daemon stopped
+[2026-02-12T20:36:57Z] [INFO] Detected openclaw: /Users/jarvis/.nvm/versions/node/v24.13.0/bin/openclaw
+[2026-02-12T20:36:57Z] [INFO] Daemon started (tick interval: 900s)
+[2026-02-12T20:37:01Z] [INFO] Drive triggered + spawned: SOCIAL (18.2/18.0)
+[2026-02-12T20:37:01Z] [INFO] Drive satisfied: READING
+[2026-02-12T20:37:01Z] [INFO] Drive satisfied: MAINTENANCE
+[2026-02-12T20:37:01Z] [INFO] Tick complete: 7 updated, 1 triggered
+[2026-02-12T20:52:02Z] [INFO] Drive satisfied: SOCIAL
+[2026-02-12T20:52:02Z] [INFO] Tick complete: updated CURIOSITY, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T21:07:02Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T21:22:02Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T21:37:03Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T21:52:03Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T22:07:04Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T22:22:04Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T22:37:05Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T22:52:05Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T23:07:05Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T23:22:06Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T23:37:06Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-12T23:52:06Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T00:07:07Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T00:22:07Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T00:37:08Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T00:52:08Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T01:07:08Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T01:22:09Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T01:37:09Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T01:52:09Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T02:07:09Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T02:22:10Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T02:37:10Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T02:52:11Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T03:07:11Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T03:22:11Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T03:37:12Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T03:52:12Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T04:07:12Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T04:22:13Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T04:37:13Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T04:52:13Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T05:07:14Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T05:22:14Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T05:37:14Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T05:52:14Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T06:07:15Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING
+[2026-02-13T06:22:15Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT
+[2026-02-13T06:37:15Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT
+[2026-02-13T06:52:15Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, WANDER
+[2026-02-13T07:07:15Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, WANDER
+[2026-02-13T07:22:16Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, WANDER
+[2026-02-13T07:37:16Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING, WANDER
+[2026-02-13T07:52:16Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING, WANDER
+[2026-02-13T08:07:17Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING, WANDER
+[2026-02-13T08:22:17Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING, WANDER
+[2026-02-13T08:37:17Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, PLAY, LEARNING, EMBODIMENT, READING, WANDER
+[2026-02-13T08:52:18Z] [INFO] Tick complete: updated CURIOSITY, SOCIAL, CREATIVE, MAINTENANCE, CARE, LEARNING, EMBODIMENT, READING, WANDER
+[2026-02-13T09:07:18Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T09:22:18Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T09:37:19Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T09:52:19Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T10:07:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T10:22:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T10:37:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T10:52:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T11:07:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T11:22:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T11:37:21Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T11:52:21Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T12:07:21Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T12:22:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T12:37:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T12:52:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T13:07:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T13:22:23Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T13:37:23Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T13:52:24Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T14:07:24Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T14:22:24Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T14:37:25Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T14:52:25Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T15:07:25Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T15:22:25Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T15:37:26Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T15:52:26Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T16:07:27Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T16:22:27Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T16:37:27Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T16:52:28Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T17:07:28Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T17:22:28Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T17:37:29Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T17:52:29Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T18:07:29Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T18:22:30Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T18:37:30Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T18:52:31Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T19:07:31Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T19:22:32Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T19:37:32Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T19:52:33Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T20:07:33Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T20:22:33Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T20:37:34Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T20:52:34Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T21:07:35Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T21:22:35Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T21:37:36Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T21:52:36Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T22:07:36Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T22:22:37Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T22:37:37Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T22:52:37Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T23:07:38Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T23:22:38Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T23:37:39Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-13T23:52:39Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T00:07:39Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T00:22:40Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T00:37:41Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T00:52:41Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T01:07:41Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T01:22:41Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T01:37:41Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T01:52:42Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T02:07:42Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T02:22:42Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T02:37:42Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T02:52:43Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T03:07:43Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T03:22:43Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T03:37:43Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T03:52:43Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T04:07:44Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T04:22:45Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T04:37:45Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T04:52:45Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T05:07:45Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T05:22:45Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T05:37:46Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T05:52:46Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T06:07:46Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T06:22:46Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T06:37:46Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T06:52:47Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T07:07:47Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T07:22:47Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T07:37:48Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T07:52:48Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T08:07:48Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T08:22:48Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T08:37:48Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T08:52:48Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T09:07:49Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T09:22:49Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T09:37:49Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T09:52:49Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T10:07:49Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T10:22:49Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T10:37:50Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T10:52:50Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T11:07:50Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T11:22:51Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T11:37:51Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T11:52:51Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T12:07:52Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T12:22:52Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T12:37:52Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T12:52:52Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T13:07:53Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T13:22:53Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T13:37:54Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T13:52:54Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T14:07:54Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T14:22:54Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T14:37:55Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T14:52:55Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T15:07:55Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T15:22:55Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T15:37:56Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T15:52:56Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T16:07:56Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T16:22:56Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T16:37:57Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T16:52:57Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T17:07:58Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T17:22:58Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T17:37:58Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T17:52:58Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T18:07:58Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T18:22:59Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T18:37:59Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T18:53:00Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T19:08:00Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T19:23:00Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T19:38:01Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T19:53:01Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T20:08:01Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T20:23:02Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T20:38:02Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T20:53:03Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T21:08:03Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T21:23:03Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T21:38:04Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T21:53:05Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T22:08:05Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T22:23:05Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T22:38:06Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T22:53:06Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T23:08:06Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T23:23:07Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T23:38:07Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-14T23:53:07Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T00:08:08Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T00:23:08Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T00:38:09Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T00:53:09Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T01:08:09Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T01:23:09Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T01:38:09Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T01:53:10Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T02:08:10Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T02:23:10Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T02:38:11Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T02:53:11Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T03:08:11Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T03:23:12Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T03:38:12Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T03:53:12Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T04:08:13Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T04:23:13Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T04:38:13Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T04:53:14Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T05:08:14Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T05:23:14Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T05:38:14Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T05:53:14Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T06:08:14Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T06:23:15Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T06:38:15Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T06:53:15Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T07:08:15Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T07:23:15Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T07:38:16Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T07:53:16Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T08:08:17Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T08:23:17Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T08:38:17Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T08:53:17Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T09:08:18Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T09:23:18Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T09:38:19Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T09:53:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T10:08:20Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T10:23:21Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T10:38:21Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T10:53:21Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T11:08:21Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T11:23:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T11:38:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T11:53:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T12:08:22Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T12:23:23Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T12:38:23Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T12:53:23Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T13:08:24Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T13:23:24Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T13:38:24Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'
+[2026-02-15T13:53:24Z] [ERROR] Tick cycle error: [Errno 2] No such file or directory: '/Users/jarvis/.openclaw/workspace/projects/emergence/core/drives/defaults.json'

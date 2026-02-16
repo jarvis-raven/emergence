@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "last_tick": "2026-02-09T18:39:19.699459+00:00",
+  "drives": {
+    "CARE": {
+      "pressure": 0.0,
+      "satisfaction_events": []
+    },
+    "MAINTENANCE": {
+      "pressure": 0.0,
+      "satisfaction_events": []
+    },
+    "REST": {
+      "pressure": 0.0,
+      "satisfaction_events": [],
+      "session_count_since": 0
+    }
+  },
+  "triggered_drives": []
+}
