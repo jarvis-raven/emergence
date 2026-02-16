@@ -67,6 +67,57 @@ COLOR_DIM = "\033[90m"
 COLOR_WARNING = "\033[33m"  # Yellow for warnings
 
 
+def _create_satisfaction_breadcrumb(
+    drive_name: str,
+    depth: str,
+    reason: str,
+    pressure_before: float,
+    pressure_after: float,
+) -> None:
+    """Create a session breadcrumb for journal ingestion (#155).
+    
+    Writes a markdown file to memory/sessions/ with YAML frontmatter
+    so the Room journal can ingest satisfaction events.
+    """
+    import os
+    
+    now = datetime.now(timezone.utc)
+    timestamp = now.isoformat()
+    date_prefix = now.strftime("%Y-%m-%d-%H%M")
+    slug = drive_name.lower()
+    
+    # Find workspace path (prefer OPENCLAW_WORKSPACE, fall back to home)
+    workspace = os.environ.get(
+        "OPENCLAW_WORKSPACE",
+        os.path.join(os.path.expanduser("~"), ".openclaw", "workspace")
+    )
+    sessions_dir = Path(workspace) / "memory" / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    
+    filename = f"{date_prefix}-{slug}-satisfaction.md"
+    filepath = sessions_dir / filename
+    
+    # Create markdown with YAML frontmatter
+    content = f"""---
+drive: {drive_name}
+depth: {depth}
+mode: choice
+type: satisfaction
+pressure_before: {pressure_before:.1f}
+pressure_after: {pressure_after:.1f}
+timestamp: {timestamp}
+---
+
+# {drive_name} Satisfaction ({depth})
+
+**Reason:** {reason}
+
+*Pressure: {pressure_before:.1f} → {pressure_after:.1f}*
+"""
+    
+    filepath.write_text(content)
+
+
 # --- Helper Functions ---
 
 
@@ -894,6 +945,21 @@ def cmd_satisfy(args) -> int:
     else:
         if old_pressure >= threshold:  # Was over threshold
             print(f"  Removed from triggered drives list")
+
+    # Create session breadcrumb for journal ingestion (#155)
+    reason = getattr(args, "reason", None)
+    if reason:
+        try:
+            _create_satisfaction_breadcrumb(
+                drive_name=drive_name,
+                depth=depth,
+                reason=reason,
+                pressure_before=old_pressure,
+                pressure_after=new_pressure,
+            )
+            print(f"  📝 Session breadcrumb created")
+        except Exception as e:
+            print(f"  ⚠ Breadcrumb creation failed: {e}", file=sys.stderr)
 
     return EXIT_SUCCESS
 
