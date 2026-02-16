@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sync drives state to minimal DRIVES.md format
+# Sync drives state to minimal DRIVES.md format (no percentages - genuine choice)
 # Usage: ./sync-drives-context.sh [output-path]
 
 set -e
@@ -26,58 +26,67 @@ if command -v jq &>/dev/null && [[ -f "$CONFIG_FILE" ]]; then
     COOLDOWN_MIN=$(jq -r '.drives.cooldown_minutes // 30' "$CONFIG_FILE")
 fi
 
-# Current timestamp
-TIMESTAMP=$(date +"%H:%M")
-
-# Parse drives and format
-if command -v jq &>/dev/null; then
-    DRIVES=$(jq -r '
-        .drives | to_entries |
-        map({
-            name: .key,
-            pct: ((.value.pressure / .value.threshold * 100) | floor),
-            pressure: .value.pressure,
-            threshold: .value.threshold
-        }) |
-        sort_by(-.pct) |
-        map(
-            .name + " " + (.pct | tostring) + "%" +
-            (if .pct >= 100 then "🔴" elif .pct >= 75 then "🟠" elif .pct >= 30 then "🟡" else "" end)
-        ) |
-        join(" | ")
-    ' "$STATE_FILE")
-
-    LAST_TICK=$(jq -r '.last_tick // "unknown"' "$STATE_FILE")
-else
-    DRIVES="(install jq for drive details)"
-    LAST_TICK="unknown"
-fi
-
-# Check for last satisfaction (stored in state or separate file)
+# Check for last satisfaction cooldown
 SATISFACTION_FILE="${HOME}/projects/emergence/.emergence-dev/state/last-satisfaction.json"
 READY="✓READY"
+COOLDOWN_MSG=""
 
 if [[ -f "$SATISFACTION_FILE" ]] && command -v jq &>/dev/null; then
     LAST_SAT=$(jq -r '.timestamp // ""' "$SATISFACTION_FILE")
     LAST_DRIVE=$(jq -r '.drive // ""' "$SATISFACTION_FILE")
 
     if [[ -n "$LAST_SAT" ]]; then
-        # Calculate minutes since last satisfaction
         LAST_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${LAST_SAT:0:19}" +%s 2>/dev/null || echo 0)
         NOW_EPOCH=$(date +%s)
         MINS_AGO=$(( (NOW_EPOCH - LAST_EPOCH) / 60 ))
 
         if [[ $MINS_AGO -lt $COOLDOWN_MIN ]]; then
             REMAINING=$((COOLDOWN_MIN - MINS_AGO))
-            READY="Satisfied: ${LAST_DRIVE}@${LAST_SAT:11:5} | ⏳${REMAINING}min"
+            READY="⏳${REMAINING}min cooldown"
         fi
     fi
 fi
 
+# Parse drives - separate available (>=30%) from building (<30%)
+if command -v jq &>/dev/null; then
+    # Get available drives (30%+) with descriptions
+    AVAILABLE=$(jq -r '
+        .drives | to_entries |
+        map(select((.value.pressure / .value.threshold * 100) >= 30)) |
+        map(.key + " — " + (.value.description // "no description")) |
+        .[]
+    ' "$STATE_FILE" 2>/dev/null)
+
+    # Get building drives (<30%)
+    BUILDING=$(jq -r '
+        .drives | to_entries |
+        map(select((.value.pressure / .value.threshold * 100) < 30)) |
+        map(.key) |
+        join(", ")
+    ' "$STATE_FILE" 2>/dev/null)
+else
+    AVAILABLE="(install jq for drive details)"
+    BUILDING=""
+fi
+
 # Write output
-cat > "$OUTPUT" << DRIVES_EOF
-## Drives (${MODE}) ${TIMESTAMP} | ${READY}
-${DRIVES}
-DRIVES_EOF
+{
+    echo "## Drives (${MODE}) ${READY}"
+    echo ""
+    if [[ -n "$AVAILABLE" ]]; then
+        echo "**Available:**"
+        echo "$AVAILABLE" | while read -r line; do
+            echo "- $line"
+        done
+        echo ""
+        echo "*Which of these calls to you right now?*"
+    else
+        echo "No drives currently available."
+    fi
+    if [[ -n "$BUILDING" && "$BUILDING" != "" ]]; then
+        echo ""
+        echo "Building: ${BUILDING}"
+    fi
+} > "$OUTPUT"
 
 echo "✓ Synced drives to ${OUTPUT}"
