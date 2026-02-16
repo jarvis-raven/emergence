@@ -163,13 +163,19 @@ def check_python_version() -> tuple[bool, str]:
     if version.major < REQUIRED_PYTHON_MAJOR:
         return (
             False,
-            f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ required, found {version_str}",
+            (
+                f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ "
+                f"required, found {version_str}"
+            ),
         )
 
     if version.major == REQUIRED_PYTHON_MAJOR and version.minor < REQUIRED_PYTHON_MINOR:
         return (
             False,
-            f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ required, found {version_str}",
+            (
+                f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ "
+                f"required, found {version_str}"
+            ),
         )
 
     return True, f"Python {version_str} ✓"
@@ -449,10 +455,12 @@ def _check_node_soft_dep() -> bool:
     if not ok:
         if HAS_RICH and console:
             console.print(
-                "  [soft_violet]ℹ[/] [dim_gray]Node.js is optional — only needed for The Room dashboard[/]"
+                "  [soft_violet]ℹ[/] [dim_gray]Node.js is optional — only "
+                "needed for The Room dashboard[/]"
             )
             console.print(
-                "  [soft_violet]ℹ[/] [dim_gray]Install Node.js 18+ from https://nodejs.org/ if you want the UI[/]"
+                "  [soft_violet]ℹ[/] [dim_gray]Install Node.js 18+ from "
+                "https://nodejs.org/ if you want the UI[/]"
             )
         else:
             print("  ℹ Node.js is optional — only needed for The Room dashboard")
@@ -574,10 +582,12 @@ def run_prerequisite_check(auto_fix: bool = False) -> int:
     else:
         if HAS_RICH and console:
             console.print(
-                "[bold white]▲ Hard dependencies met. Soft dependencies optional but recommended.[/]"
+                "[bold white]▲ Hard dependencies met. "
+                "Soft dependencies optional but recommended.[/]"
             )
             console.print(
-                "  [dim_gray]Emergence will work without Ollama, but embeddings won't be available.[/]"
+                "  [dim_gray]Emergence will work without Ollama, "
+                "but embeddings won't be available.[/]"
             )
         else:
             print("▲ Hard dependencies met. Soft dependencies optional but recommended.")

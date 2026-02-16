@@ -502,8 +502,9 @@ def save_state(state_file: Path, state: dict) -> bool:
 # --- Main Nightly Build ---
 
 
-def run_nightly_build(
-    config: dict, date_override: Optional[str] = None, dry_run: bool = False, verbose: bool = False
+def run_nightly_build(  # noqa: C901
+    config: dict, date_override: Optional[str] = None,
+    dry_run: bool = False, verbose: bool = False
 ) -> dict:
     """Run the nightly build process.
 
@@ -751,8 +752,8 @@ def main():
 
     if command == "status":
         status = get_status(config)
-        print(f"Nightly Build Status")
-        print(f"===================")
+        print("Nightly Build Status")
+        print("===================")
         print(f"Runs completed: {status['runs_completed']}")
         print(f"Last run: {status['last_run'] or 'Never'}")
         print(f"Last date processed: {status['last_date_processed'] or 'None'}")

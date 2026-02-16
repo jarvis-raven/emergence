@@ -230,6 +230,106 @@ def generate_fragment(
     }
 
 
+def _build_ollama_prompt(concept_pairs: list) -> str:
+    """Build the creative prompt for Ollama."""
+    pairs_text = "\n".join(
+        f'  {i+1}. "{p.concept_a}" + "{p.concept_b}"' for i, p in enumerate(concept_pairs)
+    )
+
+    return f"""You are a dream engine — you generate surreal, poetic dream fragments from concept pairs.
+
+For each pair below, write ONE dream fragment: a single evocative sentence that connects the two concepts in an unexpected, dreamlike way. Be surreal but coherent. Be poetic, not technical. Each fragment should feel like a moment from a dream.
+
+Concept pairs:
+{pairs_text}
+
+Respond with ONLY a JSON array of strings, one fragment per pair. Example:
+["A neural network tends a garden where thoughts bloom...", "The silence between code and poetry hums with color."]
+
+Respond with the JSON array only, no other text."""
+
+
+def _parse_ollama_response(reply: str, verbose: bool) -> Optional[list]:
+    """Parse Ollama JSON response into a list of strings.
+
+    Returns None if parsing fails.
+    """
+    try:
+        parsed = json.loads(reply)
+    except json.JSONDecodeError:
+        # Try to extract JSON array from response
+        start = reply.find("[")
+        end = reply.rfind("]")
+        if start >= 0 and end > start:
+            try:
+                parsed = json.loads(reply[start : end + 1])
+            except json.JSONDecodeError:
+                if verbose:
+                    print("  ⚠ Could not parse Ollama response as JSON array")
+                return None
+        else:
+            if verbose:
+                print("  ⚠ Could not parse Ollama response as JSON array")
+            return None
+
+    # Handle both list format and dict format
+    if isinstance(parsed, dict):
+        # Some models wrap in {"fragments": [...]} or similar
+        for key in ("fragments", "dreams", "results", "items"):
+            if key in parsed and isinstance(parsed[key], list):
+                parsed = parsed[key]
+                break
+        else:
+            # Model might use concept names as keys (e.g., llama3.2)
+            # Extract all string values from the dict
+            if all(isinstance(v, str) for v in parsed.values()):
+                parsed = list(parsed.values())
+                if verbose:
+                    print(
+                        f"  ℹ Ollama returned dict with concept-name keys, extracted {len(parsed)} values"
+                    )
+            else:
+                if verbose:
+                    print("  ⚠ Ollama response is dict but no array found")
+                return None
+
+    if not isinstance(parsed, list):
+        if verbose:
+            print("  ⚠ Ollama response is not a list")
+        return None
+
+    return parsed
+
+
+def _build_fragments_from_ollama(parsed: list, concept_pairs: list, verbose: bool) -> list:
+    """Build fragment dictionaries from parsed Ollama response."""
+    fragments = []
+    for i, (fragment_text, pair) in enumerate(zip(parsed, concept_pairs)):
+        if not isinstance(fragment_text, str):
+            fragment_text = str(fragment_text)
+
+        # Clean up
+        fragment_text = fragment_text.strip().strip('"').strip()
+        if not fragment_text:
+            continue
+
+        fragments.append(
+            {
+                "fragment": fragment_text,
+                "template": "ollama",
+                "concepts": [pair.concept_a, pair.concept_b],
+                "source": "ollama",
+            }
+        )
+
+    if verbose:
+        print(f"  ✓ Ollama generated {len(fragments)} dream fragments")
+        if fragments:
+            print(f"    Example: \"{fragments[0]['fragment'][:70]}...\"")
+
+    return fragments
+
+
 def generate_with_ollama(
     concept_pairs: list, config: Optional[dict] = None, verbose: bool = False
 ) -> Optional[list[dict]]:
@@ -251,22 +351,7 @@ def generate_with_ollama(
     ollama_url = de_config.get("ollama_url", OLLAMA_DEFAULT_URL)
     model = de_config.get("ollama_model", OLLAMA_DEFAULT_MODEL)
 
-    # Build the pairs description
-    pairs_text = "\n".join(
-        f'  {i+1}. "{p.concept_a}" + "{p.concept_b}"' for i, p in enumerate(concept_pairs)
-    )
-
-    prompt = f"""You are a dream engine — you generate surreal, poetic dream fragments from concept pairs.
-
-For each pair below, write ONE dream fragment: a single evocative sentence that connects the two concepts in an unexpected, dreamlike way. Be surreal but coherent. Be poetic, not technical. Each fragment should feel like a moment from a dream.
-
-Concept pairs:
-{pairs_text}
-
-Respond with ONLY a JSON array of strings, one fragment per pair. Example:
-["A neural network tends a garden where thoughts bloom...", "The silence between code and poetry hums with color."]
-
-Respond with the JSON array only, no other text."""
+    prompt = _build_ollama_prompt(concept_pairs)
 
     req_data = json.dumps(
         {"model": model, "prompt": prompt, "stream": False, "format": "json"}
@@ -298,78 +383,96 @@ Respond with the JSON array only, no other text."""
         return None
 
     try:
-        # Parse the response — expect a JSON array of strings
-        # Try direct parse first
-        try:
-            parsed = json.loads(reply)
-        except json.JSONDecodeError:
-            # Try to extract JSON array from response
-            start = reply.find("[")
-            end = reply.rfind("]")
-            if start >= 0 and end > start:
-                parsed = json.loads(reply[start : end + 1])
-            else:
-                if verbose:
-                    print(f"  ⚠ Could not parse Ollama response as JSON array")
-                return None
-
-        # Handle both list format and dict format
-        if isinstance(parsed, dict):
-            # Some models wrap in {"fragments": [...]} or similar
-            for key in ("fragments", "dreams", "results", "items"):
-                if key in parsed and isinstance(parsed[key], list):
-                    parsed = parsed[key]
-                    break
-            else:
-                # Model might use concept names as keys (e.g., llama3.2)
-                # Extract all string values from the dict
-                if all(isinstance(v, str) for v in parsed.values()):
-                    parsed = list(parsed.values())
-                    if verbose:
-                        print(
-                            f"  ℹ Ollama returned dict with concept-name keys, extracted {len(parsed)} values"
-                        )
-                else:
-                    if verbose:
-                        print(f"  ⚠ Ollama response is dict but no array found")
-                    return None
-
-        if not isinstance(parsed, list):
-            if verbose:
-                print(f"  ⚠ Ollama response is not a list")
+        parsed = _parse_ollama_response(reply, verbose)
+        if parsed is None:
             return None
 
         # Build fragment dicts
-        fragments = []
-        for i, (fragment_text, pair) in enumerate(zip(parsed, concept_pairs)):
-            if not isinstance(fragment_text, str):
-                fragment_text = str(fragment_text)
-
-            # Clean up
-            fragment_text = fragment_text.strip().strip('"').strip()
-            if not fragment_text:
-                continue
-
-            fragments.append(
-                {
-                    "fragment": fragment_text,
-                    "template": "ollama",
-                    "concepts": [pair.concept_a, pair.concept_b],
-                    "source": "ollama",
-                }
-            )
-
-        if verbose:
-            print(f"  ✓ Ollama generated {len(fragments)} dream fragments")
-            if fragments:
-                print(f"    Example: \"{fragments[0]['fragment'][:70]}...\"")
-
+        fragments = _build_fragments_from_ollama(parsed, concept_pairs, verbose)
         return fragments if fragments else None
 
     except (json.JSONDecodeError, KeyError, IndexError) as e:
         if verbose:
             print(f"  ⚠ Failed to parse Ollama response: {e}")
         return None
+
+
+def _parse_openrouter_response(content: str, verbose: bool) -> Optional[list]:
+    """Parse OpenRouter response content into a list of strings.
+
+    Returns None if parsing fails.
+    """
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        # Sometimes the response wraps it in markdown
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError:
+                if verbose:
+                    print("  ⚠ Could not parse OpenRouter content as JSON")
+                return None
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError:
+                if verbose:
+                    print("  ⚠ Could not parse OpenRouter content as JSON")
+                return None
+        else:
+            if verbose:
+                print("  ⚠ Could not parse OpenRouter content as JSON")
+            return None
+
+    # Handle both list format and dict format
+    if isinstance(parsed, dict):
+        for key in ("fragments", "dreams", "results", "items"):
+            if key in parsed and isinstance(parsed[key], list):
+                parsed = parsed[key]
+                break
+        else:
+            if verbose:
+                print("  ⚠ OpenRouter response is dict but no array found")
+            return None
+
+    if not isinstance(parsed, list):
+        if verbose:
+            print("  ⚠ OpenRouter response is not a list")
+        return None
+
+    return parsed
+
+
+def _build_fragments_from_openrouter(parsed: list, concept_pairs: list, verbose: bool) -> list:
+    """Build fragment dictionaries from parsed OpenRouter response."""
+    fragments = []
+    for i, (fragment_text, pair) in enumerate(zip(parsed, concept_pairs)):
+        if not isinstance(fragment_text, str):
+            fragment_text = str(fragment_text)
+
+        # Clean up
+        fragment_text = fragment_text.strip().strip('"').strip()
+        if not fragment_text:
+            continue
+
+        fragments.append(
+            {
+                "fragment": fragment_text,
+                "template": "openrouter",
+                "concepts": [pair.concept_a, pair.concept_b],
+                "source": "openrouter",
+            }
+        )
+
+    if verbose:
+        print(f"  ✓ OpenRouter generated {len(fragments)} dream fragments")
+        if fragments:
+            print(f"    Example: \"{fragments[0]['fragment'][:70]}...\"")
+
+    return fragments
 
 
 def generate_with_openrouter(
@@ -453,62 +556,12 @@ Respond with the JSON array only, no other text."""
                 return None
 
             # Parse the JSON array from content
-            try:
-                parsed = json.loads(content)
-            except json.JSONDecodeError:
-                # Sometimes the response wraps it in markdown
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                    parsed = json.loads(content)
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
-                    parsed = json.loads(content)
-                else:
-                    if verbose:
-                        print(f"  ⚠ Could not parse OpenRouter content as JSON")
-                    return None
-
-            # Handle both list format and dict format
-            if isinstance(parsed, dict):
-                for key in ("fragments", "dreams", "results", "items"):
-                    if key in parsed and isinstance(parsed[key], list):
-                        parsed = parsed[key]
-                        break
-                else:
-                    if verbose:
-                        print(f"  ⚠ OpenRouter response is dict but no array found")
-                    return None
-
-            if not isinstance(parsed, list):
-                if verbose:
-                    print(f"  ⚠ OpenRouter response is not a list")
+            parsed = _parse_openrouter_response(content, verbose)
+            if parsed is None:
                 return None
 
             # Build fragment dicts
-            fragments = []
-            for i, (fragment_text, pair) in enumerate(zip(parsed, concept_pairs)):
-                if not isinstance(fragment_text, str):
-                    fragment_text = str(fragment_text)
-
-                # Clean up
-                fragment_text = fragment_text.strip().strip('"').strip()
-                if not fragment_text:
-                    continue
-
-                fragments.append(
-                    {
-                        "fragment": fragment_text,
-                        "template": "openrouter",
-                        "concepts": [pair.concept_a, pair.concept_b],
-                        "source": "openrouter",
-                    }
-                )
-
-            if verbose:
-                print(f"  ✓ OpenRouter generated {len(fragments)} dream fragments")
-                if fragments:
-                    print(f"    Example: \"{fragments[0]['fragment'][:70]}...\"")
-
+            fragments = _build_fragments_from_openrouter(parsed, concept_pairs, verbose)
             return fragments if fragments else None
 
     except urllib.error.URLError as e:
@@ -519,6 +572,61 @@ Respond with the JSON array only, no other text."""
         if verbose:
             print(f"  ⚠ Failed to parse OpenRouter response: {e}")
         return None
+
+
+def _supplement_with_templates(fragments: list, concept_pairs: list, reference_date: datetime, verbose: bool) -> list:
+    """Supplement partial LLM results with template-based fragments."""
+    remaining_pairs = concept_pairs[len(fragments) :]
+    seed = int(reference_date.strftime("%Y%m%d"))
+    generator = FragmentGenerator(seed=seed)
+    template_fragments = generator.generate_batch(remaining_pairs)
+    return fragments + template_fragments
+
+
+def _try_openrouter_generation(concept_pairs: list, config: dict, reference_date: datetime, verbose: bool) -> Optional[list]:
+    """Try to generate fragments using OpenRouter. Returns None if unavailable."""
+    de_config = config.get("dream_engine", {})
+    use_openrouter = de_config.get("use_openrouter", False)
+
+    if not use_openrouter:
+        return None
+
+    if verbose:
+        print("  Trying OpenRouter for creative dream generation...")
+
+    fragments = generate_with_openrouter(concept_pairs, config, verbose)
+
+    if fragments and len(fragments) >= len(concept_pairs) // 2:
+        return fragments
+    elif fragments:
+        if verbose:
+            print(f"  OpenRouter returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates...")
+        return _supplement_with_templates(fragments, concept_pairs, reference_date, verbose)
+
+    return None
+
+
+def _try_ollama_generation(concept_pairs: list, config: dict, reference_date: datetime, verbose: bool, use_openrouter: bool) -> Optional[list]:
+    """Try to generate fragments using Ollama. Returns None if unavailable."""
+    de_config = config.get("dream_engine", {})
+    use_ollama = de_config.get("use_ollama", not use_openrouter)
+
+    if not use_ollama:
+        return None
+
+    if verbose:
+        print("  Trying Ollama for creative dream generation...")
+
+    fragments = generate_with_ollama(concept_pairs, config, verbose)
+
+    if fragments and len(fragments) >= len(concept_pairs) // 2:
+        return fragments
+    elif fragments:
+        if verbose:
+            print(f"  Ollama returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates...")
+        return _supplement_with_templates(fragments, concept_pairs, reference_date, verbose)
+
+    return None
 
 
 def generate_fragments(
@@ -541,50 +649,19 @@ def generate_fragments(
     if reference_date is None:
         reference_date = datetime.now()
 
-    de_config = (config or {}).get("dream_engine", {})
+    config = config or {}
+    de_config = config.get("dream_engine", {})
+    use_openrouter = de_config.get("use_openrouter", False)
 
     # Try OpenRouter first if configured (cloud-based, reliable, paid)
-    use_openrouter = de_config.get("use_openrouter", False)
-    if use_openrouter:
-        if verbose:
-            print("  Trying OpenRouter for creative dream generation...")
-        fragments = generate_with_openrouter(concept_pairs, config, verbose)
-        if fragments and len(fragments) >= len(concept_pairs) // 2:
-            return fragments
-        elif fragments:
-            if verbose:
-                print(
-                    f"  OpenRouter returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates..."
-                )
-            # Got some but not all — supplement with templates
-            remaining_pairs = concept_pairs[len(fragments) :]
-            seed = int(reference_date.strftime("%Y%m%d"))
-            generator = FragmentGenerator(seed=seed)
-            template_fragments = generator.generate_batch(remaining_pairs)
-            return fragments + template_fragments
+    fragments = _try_openrouter_generation(concept_pairs, config, reference_date, verbose)
+    if fragments:
+        return fragments
 
     # Try Ollama next (free, creative, local)
-    use_ollama = de_config.get(
-        "use_ollama", not use_openrouter
-    )  # Default to Ollama only if OpenRouter not configured
-
-    if use_ollama:
-        if verbose:
-            print("  Trying Ollama for creative dream generation...")
-        fragments = generate_with_ollama(concept_pairs, config, verbose)
-        if fragments and len(fragments) >= len(concept_pairs) // 2:
-            return fragments
-        elif fragments:
-            if verbose:
-                print(
-                    f"  Ollama returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates..."
-                )
-            # Got some but not all — supplement with templates
-            remaining_pairs = concept_pairs[len(fragments) :]
-            seed = int(reference_date.strftime("%Y%m%d"))
-            generator = FragmentGenerator(seed=seed)
-            template_fragments = generator.generate_batch(remaining_pairs)
-            return fragments + template_fragments
+    fragments = _try_ollama_generation(concept_pairs, config, reference_date, verbose, use_openrouter)
+    if fragments:
+        return fragments
 
     # Fallback: template-based generation
     if verbose:

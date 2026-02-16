@@ -1244,7 +1244,9 @@ what needs protecting, but do not weaken the core principles.*
 # --- Main Orchestrator ---
 
 
-def main(args: Optional[List[str]] = None) -> int:  # noqa: C901 - Main orchestrator with sequential setup steps
+def main(  # noqa: C901 - Main orchestrator with sequential setup steps
+    args: Optional[List[str]] = None,
+) -> int:
     """Main entry point for the emergence init command.
 
     Flow:
