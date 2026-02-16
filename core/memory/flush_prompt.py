@@ -1,5 +1,3 @@
-from typing import Optional
-
 #!/usr/bin/env python3
 """Flush prompt template renderer for Emergence memory system.
 
@@ -13,6 +11,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from string import Template
+from typing import Optional
 
 # --- Constants ---
 DEFAULT_TEMPLATE_NAME = "flush-prompt.template.md"
@@ -177,6 +176,40 @@ def _parse_config(config_file: Path) -> dict:
         return json.loads(content)
 
 
+def _parse_yaml_value(value: str):
+    """Parse a YAML value string to appropriate Python type."""
+    # Remove quotes if present
+    if value.startswith(("'", '"')) and value.endswith(("'", '"')):
+        return value[1:-1]
+
+    # Try to parse as number or bool
+    if value.lower() == "true":
+        return True
+    elif value.lower() == "false":
+        return False
+    elif value.isdigit():
+        return int(value)
+    elif re.match(r"^\d+\.\d+$", value):
+        return float(value)
+
+    return value
+
+
+def _process_yaml_key_value(key: str, value: str, indent_stack: list):
+    """Process a key:value pair from YAML."""
+    # Handle nested sections
+    if not value:  # Section header
+        new_section = {}
+        if isinstance(indent_stack[-1], dict):
+            indent_stack[-1][key] = new_section
+        indent_stack.append(new_section)
+    else:
+        # Parse value and add to current section
+        parsed_value = _parse_yaml_value(value)
+        if isinstance(indent_stack[-1], dict):
+            indent_stack[-1][key] = parsed_value
+
+
 def _simple_yaml_parse(content: str) -> dict:
     """Simple YAML parser for flat configs (no external deps).
 
@@ -187,7 +220,6 @@ def _simple_yaml_parse(content: str) -> dict:
     - Comments starting with #
     """
     result = {}
-    current_section = None
     indent_stack = [result]
 
     for line in content.split("\n"):
@@ -196,39 +228,12 @@ def _simple_yaml_parse(content: str) -> dict:
         if not stripped or stripped.startswith("#"):
             continue
 
-        # Calculate indent level
-        indent = len(line) - len(line.lstrip())
-
         # Parse key: value
         if ":" in stripped:
             key, _, value = stripped.partition(":")
             key = key.strip()
             value = value.strip()
-
-            # Remove quotes if present
-            if value.startswith(("'", '"')) and value.endswith(("'", '"')):
-                value = value[1:-1]
-
-            # Handle nested sections
-            if not value:  # Section header
-                new_section = {}
-                if isinstance(indent_stack[-1], dict):
-                    indent_stack[-1][key] = new_section
-                current_section = new_section
-                indent_stack.append(new_section)
-            else:
-                # Try to parse as number or bool
-                if value.lower() == "true":
-                    value = True
-                elif value.lower() == "false":
-                    value = False
-                elif value.isdigit():
-                    value = int(value)
-                elif re.match(r"^\d+\.\d+$", value):
-                    value = float(value)
-
-                if isinstance(indent_stack[-1], dict):
-                    indent_stack[-1][key] = value
+            _process_yaml_key_value(key, value, indent_stack)
 
     return result
 

@@ -408,7 +408,40 @@ def extract_with_keywords(metadata: dict, body: str) -> str:
     return " ".join(summary_parts)
 
 
-def extract_insights(
+def _try_ollama_extraction(prompt: str, config: Optional[dict], verbose: bool) -> Optional[str]:
+    """Try Ollama extraction with verbose logging."""
+    if verbose:
+        print("  🧠 Trying Ollama for insight extraction...")
+    result = extract_with_ollama(prompt, config)
+    if result:
+        if verbose:
+            print("  ✓ Ollama extraction successful")
+        return result
+    if verbose:
+        print("  ⚠ Ollama not available")
+    return None
+
+
+def _try_openrouter_extraction(prompt: str, config: Optional[dict], verbose: bool) -> Optional[str]:
+    """Try OpenRouter extraction with verbose logging."""
+    if not _get_openrouter_key(config):
+        if verbose:
+            print("  ⚠ OpenRouter not configured")
+        return None
+
+    if verbose:
+        print("  🧠 Trying OpenRouter fallback...")
+    result = extract_with_openrouter(prompt, config)
+    if result:
+        if verbose:
+            print("  ✓ OpenRouter extraction successful")
+        return result
+    if verbose:
+        print("  ⚠ OpenRouter failed")
+    return None
+
+
+def extract_insights(  # noqa: C901
     metadata: dict, body: str, config: Optional[dict] = None, verbose: bool = False
 ) -> str:
     """Orchestrator: Try Ollama → OpenRouter → keywords.
@@ -425,29 +458,14 @@ def extract_insights(
     prompt = build_consolidation_prompt(metadata, body)
 
     # 1. Try Ollama first (local, free)
-    if verbose:
-        print("  🧠 Trying Ollama for insight extraction...")
-    result = extract_with_ollama(prompt, config)
+    result = _try_ollama_extraction(prompt, config, verbose)
     if result:
-        if verbose:
-            print("  ✓ Ollama extraction successful")
         return result
-    if verbose:
-        print("  ⚠ Ollama not available")
 
     # 2. Try OpenRouter if configured
-    if _get_openrouter_key(config):
-        if verbose:
-            print("  🧠 Trying OpenRouter fallback...")
-        result = extract_with_openrouter(prompt, config)
-        if result:
-            if verbose:
-                print("  ✓ OpenRouter extraction successful")
-            return result
-        if verbose:
-            print("  ⚠ OpenRouter failed")
-    elif verbose:
-        print("  ⚠ OpenRouter not configured")
+    result = _try_openrouter_extraction(prompt, config, verbose)
+    if result:
+        return result
 
     # 3. Fallback to keyword extraction
     if verbose:
@@ -554,6 +572,48 @@ def append_to_daily(daily_path: Path, entry: str, dry_run: bool = False) -> bool
 # --- Main Consolidation Logic ---
 
 
+def _read_and_parse_session(session_file: Path, verbose: bool) -> tuple:
+    """Read and parse a session file."""
+    if verbose:
+        print(f"Processing: {session_file.name}")
+
+    try:
+        content = session_file.read_text(encoding="utf-8")
+    except IOError as e:
+        if verbose:
+            print(f"  ✗ Error reading file: {e}")
+        return None, None, None
+
+    metadata, body = parse_frontmatter(content)
+
+    if not metadata and not body.strip():
+        if verbose:
+            print("  ✗ Empty or unparsable file")
+        return None, None, None
+
+    return content, metadata, body
+
+
+def _append_entry_to_daily(
+    metadata: dict, insights: str, session_file: Path, config: dict, dry_run: bool, verbose: bool
+) -> bool:
+    """Generate and append entry to daily memory."""
+    target_date = get_target_date(metadata)
+    daily_dir = get_daily_dir(config)
+    daily_path = daily_dir / f"{target_date}.md"
+
+    entry = format_consolidated_entry(metadata, insights, session_file)
+
+    if append_to_daily(daily_path, entry, dry_run):
+        if verbose:
+            print(f"  ✓ Appended to {daily_path.name}")
+        return True
+    else:
+        if verbose:
+            print(f"  ✗ Failed to append to {daily_path.name}")
+        return False
+
+
 def consolidate_session(
     session_file: Path, config: dict, state: dict, dry_run: bool = False, verbose: bool = False
 ) -> bool:
@@ -569,43 +629,17 @@ def consolidate_session(
     Returns:
         True if successful
     """
-    if verbose:
-        print(f"Processing: {session_file.name}")
-
-    # Read session file
-    try:
-        content = session_file.read_text(encoding="utf-8")
-    except IOError as e:
-        if verbose:
-            print(f"  ✗ Error reading file: {e}")
-        return False
-
-    # Parse frontmatter and body
-    metadata, body = parse_frontmatter(content)
-
-    if not metadata and not body.strip():
-        if verbose:
-            print("  ✗ Empty or unparsable file")
+    # Read and parse session file
+    content, metadata, body = _read_and_parse_session(session_file, verbose)
+    if metadata is None:
         return False
 
     # Extract insights
     insights = extract_insights(metadata, body, config, verbose)
 
-    # Determine target daily file
-    target_date = get_target_date(metadata)
-    daily_dir = get_daily_dir(config)
-    daily_path = daily_dir / f"{target_date}.md"
-
-    # Format entry
-    entry = format_consolidated_entry(metadata, insights, session_file)
-
     # Append to daily memory
-    if append_to_daily(daily_path, entry, dry_run):
-        if verbose:
-            print(f"  ✓ Appended to {daily_path.name}")
-    else:
-        if verbose:
-            print(f"  ✗ Failed to append to {daily_path.name}")
+    success = _append_entry_to_daily(metadata, insights, session_file, config, dry_run, verbose)
+    if not success:
         return False
 
     # Mark as consolidated
@@ -613,6 +647,47 @@ def consolidate_session(
         mark_consolidated(state, session_file)
 
     return True
+
+
+def _get_files_to_process(
+    config: dict, state: dict, specific_file: Optional[Path], verbose: bool
+) -> Optional[list[Path]]:
+    """Determine which files to process."""
+    if specific_file:
+        if specific_file.exists():
+            return [specific_file]
+        else:
+            if verbose:
+                print(f"Error: File not found: {specific_file}")
+            return None
+    else:
+        session_dir = get_session_dir(config)
+        return discover_sessions(session_dir, state)
+
+
+def _process_session_files(
+    files: list[Path], config: dict, state: dict, dry_run: bool, verbose: bool
+) -> dict:
+    """Process a list of session files."""
+    results = {
+        "processed": 0,
+        "failed": 0,
+        "sessions": [],
+    }
+
+    for session_file in files:
+        success = consolidate_session(session_file, config, state, dry_run, verbose)
+
+        if success:
+            results["processed"] += 1
+            results["sessions"].append(session_file.name)
+        else:
+            results["failed"] += 1
+
+        if verbose:
+            print()
+
+    return results
 
 
 def run_consolidation(
@@ -629,29 +704,14 @@ def run_consolidation(
     Returns:
         Results dictionary with stats
     """
-    results = {
-        "processed": 0,
-        "failed": 0,
-        "skipped": 0,
-        "sessions": [],
-    }
-
     # Load state
     state_file = get_state_file(config)
     state = load_state(state_file)
 
     # Determine files to process
-    if specific_file:
-        if specific_file.exists():
-            files = [specific_file]
-        else:
-            if verbose:
-                print(f"Error: File not found: {specific_file}")
-            results["failed"] += 1
-            return results
-    else:
-        session_dir = get_session_dir(config)
-        files = discover_sessions(session_dir, state)
+    files = _get_files_to_process(config, state, specific_file, verbose)
+    if files is None:
+        return {"processed": 0, "failed": 1, "skipped": 0, "sessions": []}
 
     if verbose:
         count = len(files)
@@ -661,17 +721,8 @@ def run_consolidation(
         print()
 
     # Process each file
-    for session_file in files:
-        success = consolidate_session(session_file, config, state, dry_run, verbose)
-
-        if success:
-            results["processed"] += 1
-            results["sessions"].append(session_file.name)
-        else:
-            results["failed"] += 1
-
-        if verbose:
-            print()
+    results = _process_session_files(files, config, state, dry_run, verbose)
+    results["skipped"] = 0
 
     # Save state
     if not dry_run and results["processed"] > 0:
@@ -706,6 +757,63 @@ def get_status(config: dict) -> dict:
 
 
 # --- CLI Interface ---
+
+
+def _parse_consolidation_args(args: list) -> tuple:
+    """Parse command line arguments for consolidation."""
+    if not args or args[0] in ("--help", "-h"):
+        return None, False, False, None, None
+
+    command = args[0]
+    dry_run = "--dry-run" in args
+    verbose = "--verbose" in args or "-v" in args
+
+    config_path = None
+    if "--config" in args:
+        idx = args.index("--config")
+        if idx + 1 < len(args):
+            config_path = Path(args[idx + 1])
+
+    specific_file = None
+    if "--session" in args:
+        idx = args.index("--session")
+        if idx + 1 < len(args):
+            specific_file = Path(args[idx + 1])
+
+    return command, dry_run, verbose, config_path, specific_file
+
+
+def _handle_status_cmd(config: dict) -> int:
+    """Handle the status command."""
+    status = get_status(config)
+    print("Consolidation Status")
+    print("===================")
+    print(f"Pending sessions: {status['pending_count']}")
+    print(f"Session directory: {status['session_dir']}")
+    print(f"State file: {status['state_file']}")
+    if status["pending_files"]:
+        print("\nPending files (first 10):")
+        for f in status["pending_files"]:
+            print(f"  - {f}")
+    return 0
+
+
+def _handle_run_cmd(
+    config: dict, dry_run: bool, verbose: bool, specific_file: Optional[Path]
+) -> int:
+    """Handle the run command."""
+    if verbose:
+        print(f"Consolidation Engine v{VERSION}")
+        print(f"====================={ '=' * len(VERSION) }")
+        print()
+
+    results = run_consolidation(config, dry_run, verbose, specific_file)
+
+    if verbose:
+        msg = f"Summary: {results['processed']} processed, {results['failed']} failed"
+        print(msg)
+
+    return 0 if results["failed"] == 0 else 1
 
 
 def print_usage():
@@ -768,30 +876,12 @@ def main():
     config = load_config(config_path)
 
     if command == "status":
-        status = get_status(config)
-        print(f"Consolidation Status")
-        print(f"===================")
-        print(f"Pending sessions: {status['pending_count']}")
-        print(f"Session directory: {status['session_dir']}")
-        print(f"State file: {status['state_file']}")
-        if status["pending_files"]:
-            print(f"\nPending files (first 10):")
-            for f in status["pending_files"]:
-                print(f"  - {f}")
-        sys.exit(0)
+        exit_code = _handle_status_cmd(config)
+        sys.exit(exit_code)
 
     elif command == "run":
-        if verbose:
-            print(f"Consolidation Engine v{VERSION}")
-            print(f"====================={ '=' * len(VERSION) }")
-            print()
-
-        results = run_consolidation(config, dry_run, verbose, specific_file)
-
-        if verbose:
-            print(f"Summary: {results['processed']} processed, " f"{results['failed']} failed")
-
-        sys.exit(0 if results["failed"] == 0 else 1)
+        exit_code = _handle_run_cmd(config, dry_run, verbose, specific_file)
+        sys.exit(exit_code)
 
     else:
         print(f"Unknown command: {command}", file=sys.stderr)

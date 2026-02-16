@@ -62,7 +62,7 @@ def parse_drive_discovery(session_file: Path) -> Optional[dict]:
     desc_pattern = rf"{re.escape(drive_name)}[^\n]*?[—–-]\s*([^\.\n]+)"
     desc_match = re.search(desc_pattern, content, re.IGNORECASE)
     description = (
-        desc_match.group(1).strip() if desc_match else f"Discovered during First Light exploration"
+        desc_match.group(1).strip() if desc_match else "Discovered during First Light exploration"
     )
 
     # Try to find a better description in the context
@@ -121,7 +121,7 @@ def register_discovered_drive(workspace: Path, drive_meta: dict, auto_activate: 
 
     # Auto-activate if requested
     if auto_activate:
-        activate_drive(emergence_dir, drive_meta)
+        activate_drive(workspace / ".emergence", drive_meta)
 
 
 def activate_drive(emergence_dir: Path, drive_meta: dict):
@@ -319,7 +319,7 @@ def show_pending_reviews(workspace: Path):
 
         print(f"\n  • {new_drive}")
         print(f"    Description: {review.get('new_drive_description', 'N/A')[:60]}...")
-        print(f"    Similar to:")
+        print("    Similar to:")
         for sim in similar[:2]:
             print(f"      - {sim['name']} ({sim['similarity']:.2f})")
 

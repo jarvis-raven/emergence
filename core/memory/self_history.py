@@ -98,7 +98,7 @@ def snapshot_exists(snapshot_dir: Path, date_str: str) -> bool:
     return snapshot_path.exists()
 
 
-def create_snapshot(
+def create_snapshot(  # noqa: C901
     config: dict, date_str: Optional[str] = None, dry_run: bool = False, verbose: bool = False
 ) -> Optional[Path]:
     """Create a snapshot of SELF.md.
@@ -316,7 +316,7 @@ Examples:
     )
 
 
-def main():
+def main():  # noqa: C901
     """CLI entry point."""
     args = sys.argv[1:]
 
@@ -365,8 +365,8 @@ def main():
 
     elif command == "status":
         status = get_status(config)
-        print(f"Self-History Status")
-        print(f"==================")
+        print("Self-History Status")
+        print("==================")
         print(f"Snapshot directory: {status['snapshot_dir']}")
         print(f"SELF.md path: {status['self_path']}")
         print(f"SELF.md exists: {'Yes' if status['self_exists'] else 'No'}")

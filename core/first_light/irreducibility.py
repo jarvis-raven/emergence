@@ -602,7 +602,7 @@ def review_pending_drives(workspace: Path, specific_drive: Optional[str] = None)
         output += f"    Run: drives review {new_drive}\n\n"
 
     output += f"\nTotal pending: {len(reviews)}"
-    output += f"\nRun 'drives review <name>' for irreducibility test"
+    output += "\nRun 'drives review <name>' for irreducibility test"
 
     return output
 

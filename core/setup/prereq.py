@@ -15,7 +15,7 @@ import socket
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 # Try to import branding for styled output
 try:
@@ -87,6 +87,38 @@ def _read_emergence_config() -> dict[str, Any]:
         return {}
 
 
+def _try_parse_port(value: Any) -> Optional[int]:
+    """Try to parse a port value as integer.
+
+    Args:
+        value: Value to parse
+
+    Returns:
+        Port number if valid, None otherwise
+    """
+    try:
+        return int(value) if value else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _get_port_from_openclaw_config() -> Optional[int]:
+    """Try to read port from OpenClaw's own config file.
+
+    Returns:
+        Port number if found, None otherwise
+    """
+    openclaw_config_path = Path.home() / ".openclaw" / "openclaw.json"
+    try:
+        if openclaw_config_path.exists():
+            with open(openclaw_config_path, "r") as f:
+                oc_config = json.load(f)
+            return _try_parse_port(oc_config.get("gateway", {}).get("port"))
+    except (json.JSONDecodeError, IOError):
+        pass
+    return None
+
+
 def _get_openclaw_port() -> int:
     """Determine OpenClaw gateway port.
 
@@ -97,33 +129,20 @@ def _get_openclaw_port() -> int:
         The port number to use for gateway checks
     """
     # Check environment variable first
-    env_port = os.environ.get("OPENCLAW_GATEWAY_PORT")
+    env_port = _try_parse_port(os.environ.get("OPENCLAW_GATEWAY_PORT"))
     if env_port:
-        try:
-            return int(env_port)
-        except ValueError:
-            pass
+        return env_port
 
     # Check emergence config
     config = _read_emergence_config()
-    config_port = config.get("openclaw", {}).get("port")
+    config_port = _try_parse_port(config.get("openclaw", {}).get("port"))
     if config_port:
-        try:
-            return int(config_port)
-        except (ValueError, TypeError):
-            pass
+        return config_port
 
-    # Check OpenClaw's own config (~/.openclaw/openclaw.json)
-    openclaw_config_path = Path.home() / ".openclaw" / "openclaw.json"
-    try:
-        if openclaw_config_path.exists():
-            with open(openclaw_config_path, "r") as f:
-                oc_config = json.load(f)
-            oc_port = oc_config.get("gateway", {}).get("port")
-            if oc_port:
-                return int(oc_port)
-    except (json.JSONDecodeError, ValueError, TypeError, IOError):
-        pass
+    # Check OpenClaw's own config
+    oc_port = _get_port_from_openclaw_config()
+    if oc_port:
+        return oc_port
 
     # Default fallback
     return DEFAULT_OPENCLAW_PORT
@@ -144,13 +163,19 @@ def check_python_version() -> tuple[bool, str]:
     if version.major < REQUIRED_PYTHON_MAJOR:
         return (
             False,
-            f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ required, found {version_str}",
+            (
+                f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ "
+                f"required, found {version_str}"
+            ),
         )
 
     if version.major == REQUIRED_PYTHON_MAJOR and version.minor < REQUIRED_PYTHON_MINOR:
         return (
             False,
-            f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ required, found {version_str}",
+            (
+                f"Python {REQUIRED_PYTHON_MAJOR}.{REQUIRED_PYTHON_MINOR}+ "
+                f"required, found {version_str}"
+            ),
         )
 
     return True, f"Python {version_str} ✓"
@@ -401,6 +426,115 @@ def pull_ollama_model(model: str = DEFAULT_OLLAMA_MODEL) -> bool:
 # --- Orchestrator Functions ---
 
 
+def _check_python_hard_dep() -> tuple[bool, str]:
+    """Check Python version (hard dependency).
+
+    Returns:
+        Tuple of (success, error_message if failed)
+    """
+    ok, msg = check_python_version()
+    _print_check(ok, msg)
+    if not ok:
+        if HAS_RICH and console:
+            console.print(f"\n[bold soft_violet]Error:[/] [white]{msg}[/]")
+            console.print("[dim_gray]Please upgrade Python to 3.9 or higher.[/]")
+        else:
+            print(f"\nError: {msg}")
+            print("Please upgrade Python to 3.9 or higher.")
+    return ok, msg
+
+
+def _check_node_soft_dep() -> bool:
+    """Check Node.js version (soft dependency).
+
+    Returns:
+        True if satisfied, False otherwise
+    """
+    ok, msg = check_node_version()
+    _print_check(ok, msg, is_warning=True)
+    if not ok:
+        if HAS_RICH and console:
+            console.print(
+                "  [soft_violet]ℹ[/] [dim_gray]Node.js is optional — only "
+                "needed for The Room dashboard[/]"
+            )
+            console.print(
+                "  [soft_violet]ℹ[/] [dim_gray]Install Node.js 18+ from "
+                "https://nodejs.org/ if you want the UI[/]"
+            )
+        else:
+            print("  ℹ Node.js is optional — only needed for The Room dashboard")
+            print("  ℹ Install Node.js 18+ from https://nodejs.org/ if you want the UI")
+    return ok
+
+
+def _check_openclaw_hard_dep() -> tuple[bool, str]:
+    """Check OpenClaw gateway (hard dependency).
+
+    Returns:
+        Tuple of (success, error_message if failed)
+    """
+    ok, msg = check_openclaw_gateway()
+    _print_check(ok, msg)
+    if not ok:
+        if HAS_RICH and console:
+            console.print(f"\n[bold soft_violet]Error:[/] [white]{msg}[/]")
+            console.print("[dim_gray]Start OpenClaw gateway: openclaw gateway start[/]")
+        else:
+            print(f"\nError: {msg}")
+            print("Start OpenClaw gateway: openclaw gateway start")
+    return ok, msg
+
+
+def _check_and_install_ollama(auto_fix: bool, platform_name: str) -> bool:
+    """Check Ollama installation and optionally install.
+
+    Args:
+        auto_fix: Whether to auto-install without prompting
+        platform_name: Detected platform name
+
+    Returns:
+        True if Ollama is available, False otherwise
+    """
+    ollama_installed, msg = check_ollama_installed()
+    _print_check(ollama_installed, msg, is_warning=True)
+
+    if not ollama_installed:
+        offer_ollama_install(platform_name)
+
+        if auto_fix:
+            return run_ollama_install(platform_name)
+        elif sys.stdin.isatty():
+            response = input("\n  Install Ollama now? ([y]es / [N]o): ").strip().lower()
+            if response in ("y", "yes"):
+                return run_ollama_install(platform_name)
+    return ollama_installed
+
+
+def _check_and_pull_model(auto_fix: bool) -> bool:
+    """Check Ollama model and optionally pull it.
+
+    Args:
+        auto_fix: Whether to auto-pull without prompting
+
+    Returns:
+        True if model is available, False otherwise
+    """
+    model_ok, msg = check_ollama_model(DEFAULT_OLLAMA_MODEL)
+    _print_check(model_ok, msg, is_warning=True)
+
+    if not model_ok:
+        if auto_fix:
+            return pull_ollama_model(DEFAULT_OLLAMA_MODEL)
+        elif sys.stdin.isatty():
+            response = (
+                input(f"\n  Pull {DEFAULT_OLLAMA_MODEL} now? ([Y]es / [n]o): ").strip().lower()
+            )
+            if response in ("", "y", "yes"):
+                return pull_ollama_model(DEFAULT_OLLAMA_MODEL)
+    return model_ok
+
+
 def run_prerequisite_check(auto_fix: bool = False) -> int:
     """Run all prerequisite checks with interactive prompts.
 
@@ -414,124 +548,51 @@ def run_prerequisite_check(auto_fix: bool = False) -> int:
     """
     print("Checking prerequisites for Emergence...\n")
 
-    hard_deps_ok = True
-    soft_deps_ok = True
-
     # Hard dependency: Python
-    ok, msg = check_python_version()
-    _print_check(ok, msg)
-    if not ok:
-        hard_deps_ok = False
-        if HAS_RICH and console:
-            console.print(f"\n[bold soft_violet]Error:[/] [white]{msg}[/]")
-            console.print("[dim_gray]Please upgrade Python to 3.9 or higher.[/]")
-        else:
-            print(f"\nError: {msg}")
-            print("Please upgrade Python to 3.9 or higher.")
+    python_ok, _ = _check_python_hard_dep()
+    if not python_ok:
         return 1
 
     # Soft dependency: Node (only needed for Room dashboard)
-    ok, msg = check_node_version()
-    _print_check(ok, msg, is_warning=True)
-    if not ok:
-        soft_deps_ok = False
-        if HAS_RICH and console:
-            console.print(
-                f"  [soft_violet]ℹ[/] [dim_gray]Node.js is optional — only needed for The Room dashboard[/]"
-            )
-            console.print(
-                f"  [soft_violet]ℹ[/] [dim_gray]Install Node.js 18+ from https://nodejs.org/ if you want the UI[/]"
-            )
-        else:
-            print(f"  ℹ Node.js is optional — only needed for The Room dashboard")
-            print(f"  ℹ Install Node.js 18+ from https://nodejs.org/ if you want the UI")
+    node_ok = _check_node_soft_dep()
 
-    # Hard dependency: OpenClaw
     # Hard dependency: OpenClaw gateway
-    ok, msg = check_openclaw_gateway()
-    _print_check(ok, msg)
-    if not ok:
-        hard_deps_ok = False
-        if HAS_RICH and console:
-            console.print(f"\n[bold soft_violet]Error:[/] [white]{msg}[/]")
-            console.print("[dim_gray]Start OpenClaw gateway: openclaw gateway start[/]")
-        else:
-            print(f"\nError: {msg}")
-            print("Start OpenClaw gateway: openclaw gateway start")
+    openclaw_ok, _ = _check_openclaw_hard_dep()
+    if not openclaw_ok:
         return 1
 
     print()  # Blank line before soft deps
 
     # Soft dependency: Ollama
     platform_name = detect_platform()
-    ollama_installed, msg = check_ollama_installed()
-    _print_check(ollama_installed, msg, is_warning=True)
-
-    if not ollama_installed:
-        offer_ollama_install(platform_name)
-
-        if auto_fix:
-            if run_ollama_install(platform_name):
-                ollama_installed = True
-            else:
-                soft_deps_ok = False
-        elif sys.stdin.isatty():
-            response = input("\n  Install Ollama now? ([y]es / [N]o): ").strip().lower()
-            if response in ("y", "yes"):
-                if run_ollama_install(platform_name):
-                    ollama_installed = True
-                else:
-                    soft_deps_ok = False
-            else:
-                soft_deps_ok = False
-        else:
-            # Non-interactive, skip soft dep install
-            soft_deps_ok = False
+    ollama_ok = _check_and_install_ollama(auto_fix, platform_name)
 
     # Check/pull model if Ollama is available
-    if ollama_installed:
-        model_ok, msg = check_ollama_model(DEFAULT_OLLAMA_MODEL)
-        _print_check(model_ok, msg, is_warning=True)
-
-        if not model_ok:
-            if auto_fix:
-                if pull_ollama_model(DEFAULT_OLLAMA_MODEL):
-                    model_ok = True
-                else:
-                    soft_deps_ok = False
-            elif sys.stdin.isatty():
-                response = (
-                    input(f"\n  Pull {DEFAULT_OLLAMA_MODEL} now? ([Y]es / [n]o): ").strip().lower()
-                )
-                if response in ("", "y", "yes"):
-                    if pull_ollama_model(DEFAULT_OLLAMA_MODEL):
-                        model_ok = True
-                    else:
-                        soft_deps_ok = False
-                else:
-                    soft_deps_ok = False
-            else:
-                soft_deps_ok = False
+    model_ok = False
+    if ollama_ok:
+        model_ok = _check_and_pull_model(auto_fix)
 
     print()  # Blank line before summary
 
-    if hard_deps_ok and soft_deps_ok:
-        # All checks passed - should not reach here if truly all passed
+    # Determine final status
+    soft_deps_ok = node_ok and ollama_ok and model_ok
+
+    if soft_deps_ok:
         return 0
-    elif hard_deps_ok:
+    else:
         if HAS_RICH and console:
             console.print(
-                "[bold white]▲ Hard dependencies met. Soft dependencies optional but recommended.[/]"
+                "[bold white]▲ Hard dependencies met. "
+                "Soft dependencies optional but recommended.[/]"
             )
             console.print(
-                "  [dim_gray]Emergence will work without Ollama, but embeddings won't be available.[/]"
+                "  [dim_gray]Emergence will work without Ollama, "
+                "but embeddings won't be available.[/]"
             )
         else:
             print("▲ Hard dependencies met. Soft dependencies optional but recommended.")
             print("  Emergence will work without Ollama, but embeddings won't be available.")
         return 2
-    else:
-        return 1
 
 
 def run_check_json() -> dict[str, Any]:

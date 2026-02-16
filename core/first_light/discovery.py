@@ -538,6 +538,38 @@ def list_discovered_drives(config: dict) -> list[dict]:
     return discovered
 
 
+def _handle_create_command(config: dict, args):
+    """Handle the create command."""
+    verbose = getattr(args, "verbose", False)
+    dry_run = getattr(args, "dry_run", False)
+
+    if dry_run:
+        print("First Light Drive Discovery (DRY RUN)")
+        print("=" * 37)
+    else:
+        print("First Light Drive Discovery")
+        print("=" * 27)
+
+    results = run_drive_discovery(config, dry_run=dry_run, verbose=verbose)
+
+    if not verbose:
+        print(f"Drives created: {len(results['created'])}")
+        print(f"Drives skipped: {len(results['skipped'])}")
+        print(f"Errors: {len(results['errors'])}")
+
+        if results["created"]:
+            print("\nCreated:")
+            for name in results["created"]:
+                print(f"  ✓ {name}")
+
+        if results["errors"]:
+            print("\nErrors:")
+            for err in results["errors"]:
+                print(f"  ✗ {err}")
+
+    return 0 if not results["errors"] else 1
+
+
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -568,35 +600,7 @@ def main():
     config = load_config(args.config)
 
     if args.command == "create":
-        verbose = args.verbose if hasattr(args, "verbose") else False
-        dry_run = args.dry_run if hasattr(args, "dry_run") else False
-
-        if dry_run:
-            print("First Light Drive Discovery (DRY RUN)")
-            print("=" * 37)
-        else:
-            print("First Light Drive Discovery")
-            print("=" * 27)
-
-        results = run_drive_discovery(config, dry_run=dry_run, verbose=verbose)
-
-        if not verbose:
-            print(f"Drives created: {len(results['created'])}")
-            print(f"Drives skipped: {len(results['skipped'])}")
-            print(f"Errors: {len(results['errors'])}")
-
-            if results["created"]:
-                print("\nCreated:")
-                for name in results["created"]:
-                    print(f"  ✓ {name}")
-
-            if results["errors"]:
-                print("\nErrors:")
-                for err in results["errors"]:
-                    print(f"  ✗ {err}")
-
-        sys.exit(0 if not results["errors"] else 1)
-
+        sys.exit(_handle_create_command(config, args))
     elif args.command == "list":
         drives = list_discovered_drives(config)
 

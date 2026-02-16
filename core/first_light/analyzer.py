@@ -1032,6 +1032,53 @@ def get_drive_suggestions(config: dict) -> list[dict]:
     return sorted(suggestions, key=lambda x: x.get("confidence", 0), reverse=True)
 
 
+def _handle_analyze_command(config: dict, args):
+    """Handle the analyze command."""
+    specific = getattr(args, "session", None)
+    verbose = getattr(args, "verbose", False)
+
+    results = run_analysis(config, specific, verbose)
+
+    if not verbose:
+        print("First Light Analysis")
+        print("=" * 19)
+        print(f"Sessions analyzed: {results['analyzed']}")
+        print(f"Sessions failed: {results['failed']}")
+        print(f"Total patterns found: {results['patterns_found']}")
+
+        if results["sessions"]:
+            print()
+            print("Patterns by session:")
+            for r in results["sessions"]:
+                patterns = ", ".join(p["pattern_type"] for p in r["patterns"])
+                print(f"  #{r.get('session_number', '?')}: {patterns or 'None'}")
+
+    return 0 if results["failed"] == 0 else 1
+
+
+def _handle_patterns_command(config: dict):
+    """Handle the patterns command."""
+    summary = get_pattern_summary(config)
+
+    print("Detected Patterns")
+    print("=" * 17)
+
+    if not summary:
+        print("No patterns detected yet. Run 'analyze' first.")
+    else:
+        for ptype, data in sorted(
+            summary.items(), key=lambda x: x[1]["session_count"], reverse=True
+        ):
+            print(f"\n{ptype}")
+            print(f"  Sessions: {data['session_count']}")
+            print(f"  Confidence: {data['avg_confidence']:.0%}")
+            print(f"  Intensity: {data['avg_intensity']}/10")
+            if data["suggested_drive"]:
+                print(f"  → {data['suggested_drive']}")
+
+    return 0
+
+
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="First Light Session Analyzer — Pattern detection")
@@ -1063,48 +1110,9 @@ def main():
     config = load_config(args.config)
 
     if args.command == "analyze":
-        specific = args.session if hasattr(args, "session") else None
-        verbose = args.verbose if hasattr(args, "verbose") else False
-
-        results = run_analysis(config, specific, verbose)
-
-        if not verbose:
-            print("First Light Analysis")
-            print("=" * 19)
-            print(f"Sessions analyzed: {results['analyzed']}")
-            print(f"Sessions failed: {results['failed']}")
-            print(f"Total patterns found: {results['patterns_found']}")
-
-            if results["sessions"]:
-                print()
-                print("Patterns by session:")
-                for r in results["sessions"]:
-                    patterns = ", ".join(p["pattern_type"] for p in r["patterns"])
-                    print(f"  #{r.get('session_number', '?')}: {patterns or 'None'}")
-
-        sys.exit(0 if results["failed"] == 0 else 1)
-
+        sys.exit(_handle_analyze_command(config, args))
     elif args.command == "patterns":
-        summary = get_pattern_summary(config)
-
-        print("Detected Patterns")
-        print("=" * 17)
-
-        if not summary:
-            print("No patterns detected yet. Run 'analyze' first.")
-        else:
-            for ptype, data in sorted(
-                summary.items(), key=lambda x: x[1]["session_count"], reverse=True
-            ):
-                print(f"\n{ptype}")
-                print(f"  Sessions: {data['session_count']}")
-                print(f"  Confidence: {data['avg_confidence']:.0%}")
-                print(f"  Intensity: {data['avg_intensity']}/10")
-                if data["suggested_drive"]:
-                    print(f"  → {data['suggested_drive']}")
-
-        sys.exit(0)
-
+        sys.exit(_handle_patterns_command(config))
     elif args.command == "suggest":
         suggestions = get_drive_suggestions(config)
 
