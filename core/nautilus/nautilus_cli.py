@@ -368,6 +368,14 @@ def cmd_migrate(args):
     print(json.dumps(result, indent=2))
 
 
+def cmd_chambers(args):
+    """Pass through to chambers module (classify, promote, crystallize, status)."""
+    subprocess.run(
+        [sys.executable, "-m", "core.nautilus.chambers"] + args,
+        cwd=get_workspace().parent,  # emergence repo root
+    )
+
+
 # === Main ===
 
 COMMANDS = {
@@ -375,6 +383,7 @@ COMMANDS = {
     "status": cmd_status,
     "maintain": cmd_maintain,
     "migrate": cmd_migrate,
+    "chambers": cmd_chambers,
 }
 
 
@@ -387,9 +396,11 @@ def main():
         print("  emergence nautilus status")
         print("  emergence nautilus maintain [--register-recent]")
         print("  emergence nautilus migrate [--dry-run] [--verbose]")
+        print("  emergence nautilus chambers <promote|crystallize|status> [--dry-run]")
         print("\nExamples:")
         print('  emergence nautilus search "project nautilus" --verbose')
         print("  emergence nautilus maintain --register-recent")
+        print("  emergence nautilus chambers promote --dry-run")
         sys.exit(1)
 
     COMMANDS[sys.argv[1]](sys.argv[2:])

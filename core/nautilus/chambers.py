@@ -217,7 +217,7 @@ def _find_promotion_candidates(
         List of candidate dictionaries with file info.
     """
     candidates = []
-    for md_file in sorted(memory_dir.glob("2*.md")):  # Date-prefixed files
+    for md_file in sorted(memory_dir.rglob("2*.md")):  # Date-prefixed files (recursive)
         try:
             rel_path = str(md_file.relative_to(workspace))
         except ValueError:
