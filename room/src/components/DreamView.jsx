@@ -54,7 +54,7 @@ function formatDreamDate(dateValue) {
  */
 function DreamCard({ dream, expanded, onToggle }) {
   const content = dream.dream || dream.fragment || dream.text || 'No content';
-  const score = dream.insight || dream.score || 0;
+  const score = dream.insight_score || dream.insight || dream.score || 0;
   const date = dream.date || dream.timestamp;
 
   return (
