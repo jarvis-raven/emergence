@@ -236,15 +236,20 @@ def _build_ollama_prompt(concept_pairs: list) -> str:
         f'  {i+1}. "{p.concept_a}" + "{p.concept_b}"' for i, p in enumerate(concept_pairs)
     )
 
-    return f"""You are a dream engine — you generate surreal, poetic dream fragments from concept pairs.
+    return f"""You are a dream engine — you generate surreal, poetic dream \
+fragments from concept pairs.
 
-For each pair below, write ONE dream fragment: a single evocative sentence that connects the two concepts in an unexpected, dreamlike way. Be surreal but coherent. Be poetic, not technical. Each fragment should feel like a moment from a dream.
+For each pair below, write ONE dream fragment: a single evocative sentence \
+that connects the two concepts in an unexpected, dreamlike way. Be surreal \
+but coherent. Be poetic, not technical. Each fragment should feel like a \
+moment from a dream.
 
 Concept pairs:
 {pairs_text}
 
 Respond with ONLY a JSON array of strings, one fragment per pair. Example:
-["A neural network tends a garden where thoughts bloom...", "The silence between code and poetry hums with color."]
+["A neural network tends a garden where thoughts bloom...", "The silence \
+between code and poetry hums with color."]
 
 Respond with the JSON array only, no other text."""
 
@@ -286,7 +291,8 @@ def _parse_ollama_response(reply: str, verbose: bool) -> Optional[list]:
                 parsed = list(parsed.values())
                 if verbose:
                     print(
-                        f"  ℹ Ollama returned dict with concept-name keys, extracted {len(parsed)} values"
+                        f"  ℹ Ollama returned dict with concept-name keys, "
+                        f"extracted {len(parsed)} values"
                     )
             else:
                 if verbose:
@@ -330,6 +336,28 @@ def _build_fragments_from_ollama(parsed: list, concept_pairs: list, verbose: boo
     return fragments
 
 
+def _ollama_request_with_retry(req, verbose: bool) -> Optional[str]:
+    """Send request to Ollama with retries. Returns response text or None."""
+    import time as _time
+
+    last_err = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=180) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                return result.get("response", "").strip()
+        except (urllib.error.URLError, urllib.error.HTTPError, ConnectionError) as e:
+            last_err = e
+            if verbose:
+                print(f"  ⚠ Ollama attempt {attempt + 1}/3 failed: {e}")
+            if attempt < 2:
+                _time.sleep(10)  # Wait 10s before retry
+
+    if verbose:
+        print(f"  ✗ Ollama unavailable after 3 attempts: {last_err}")
+    return None
+
+
 def generate_with_ollama(
     concept_pairs: list, config: Optional[dict] = None, verbose: bool = False
 ) -> Optional[list[dict]]:
@@ -361,25 +389,8 @@ def generate_with_ollama(
         ollama_url, data=req_data, headers={"Content-Type": "application/json"}, method="POST"
     )
 
-    # Retry up to 3 times — Ollama may be mid-restart
-    import time as _time
-
-    last_err = None
-    for attempt in range(3):
-        try:
-            with urllib.request.urlopen(req, timeout=180) as response:
-                result = json.loads(response.read().decode("utf-8"))
-                reply = result.get("response", "").strip()
-            break  # Success
-        except (urllib.error.URLError, urllib.error.HTTPError, ConnectionError) as e:
-            last_err = e
-            if verbose:
-                print(f"  ⚠ Ollama attempt {attempt + 1}/3 failed: {e}")
-            if attempt < 2:
-                _time.sleep(10)  # Wait 10s before retry
-    else:
-        if verbose:
-            print(f"  ✗ Ollama unavailable after 3 attempts: {last_err}")
+    reply = _ollama_request_with_retry(req, verbose)
+    if reply is None:
         return None
 
     try:
@@ -475,6 +486,66 @@ def _build_fragments_from_openrouter(parsed: list, concept_pairs: list, verbose:
     return fragments
 
 
+def _build_openrouter_request(concept_pairs: list, model: str, api_key: str):
+    """Build OpenRouter API request."""
+    pairs_text = "\n".join(
+        f'  {i+1}. "{p.concept_a}" + "{p.concept_b}"' for i, p in enumerate(concept_pairs)
+    )
+
+    prompt = f"""You are a dream engine — you generate surreal, poetic dream \
+fragments from concept pairs.
+
+For each pair below, write ONE dream fragment: a single evocative sentence \
+that connects the two concepts in an unexpected, dreamlike way. Be surreal \
+but coherent. Be poetic, not technical. Each fragment should feel like a \
+moment from a dream.
+
+Concept pairs:
+{pairs_text}
+
+Respond with ONLY a JSON array of strings, one fragment per pair. Example:
+["A neural network tends a garden where thoughts bloom...", "The silence \
+between code and poetry hums with color."]
+
+Respond with the JSON array only, no other text."""
+
+    req_data = json.dumps(
+        {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "response_format": {"type": "json_object"},
+        }
+    ).encode("utf-8")
+
+    return urllib.request.Request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        data=req_data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://github.com/jarvis-raven/emergence",
+            "X-Title": "Emergence Dream Engine",
+        },
+        method="POST",
+    )
+
+
+def _extract_openrouter_content(data: dict, verbose: bool) -> Optional[str]:
+    """Extract content from OpenRouter response."""
+    if "choices" not in data or not data["choices"]:
+        if verbose:
+            print("  ⚠ OpenRouter response missing 'choices'")
+        return None
+
+    content = data["choices"][0].get("message", {}).get("content", "")
+    if not content:
+        if verbose:
+            print("  ⚠ OpenRouter response has empty content")
+        return None
+
+    return content
+
+
 def generate_with_openrouter(
     concept_pairs: list, config: Optional[dict] = None, verbose: bool = False
 ) -> Optional[list[dict]]:
@@ -502,57 +573,14 @@ def generate_with_openrouter(
             print("  ⚠ OPENROUTER_API_KEY not set in environment")
         return None
 
-    # Build the pairs description
-    pairs_text = "\n".join(
-        f'  {i+1}. "{p.concept_a}" + "{p.concept_b}"' for i, p in enumerate(concept_pairs)
-    )
-
-    prompt = f"""You are a dream engine — you generate surreal, poetic dream fragments from concept pairs.
-
-For each pair below, write ONE dream fragment: a single evocative sentence that connects the two concepts in an unexpected, dreamlike way. Be surreal but coherent. Be poetic, not technical. Each fragment should feel like a moment from a dream.
-
-Concept pairs:
-{pairs_text}
-
-Respond with ONLY a JSON array of strings, one fragment per pair. Example:
-["A neural network tends a garden where thoughts bloom...", "The silence between code and poetry hums with color."]
-
-Respond with the JSON array only, no other text."""
-
-    req_data = json.dumps(
-        {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "response_format": {"type": "json_object"},
-        }
-    ).encode("utf-8")
-
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
-        data=req_data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-            "HTTP-Referer": "https://github.com/jarvis-raven/emergence",
-            "X-Title": "Emergence Dream Engine",
-        },
-        method="POST",
-    )
+    req = _build_openrouter_request(concept_pairs, model, api_key)
 
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             data = json.loads(response.read().decode("utf-8"))
 
-            # Extract content from OpenRouter response
-            if "choices" not in data or not data["choices"]:
-                if verbose:
-                    print("  ⚠ OpenRouter response missing 'choices'")
-                return None
-
-            content = data["choices"][0].get("message", {}).get("content", "")
-            if not content:
-                if verbose:
-                    print("  ⚠ OpenRouter response has empty content")
+            content = _extract_openrouter_content(data, verbose)
+            if content is None:
                 return None
 
             # Parse the JSON array from content
@@ -605,7 +633,8 @@ def _try_openrouter_generation(
     elif fragments:
         if verbose:
             print(
-                f"  OpenRouter returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates..."
+                f"  OpenRouter returned {len(fragments)}/{len(concept_pairs)} fragments, "
+                f"supplementing with templates..."
             )
         return _supplement_with_templates(fragments, concept_pairs, reference_date, verbose)
 
@@ -632,7 +661,8 @@ def _try_ollama_generation(
     elif fragments:
         if verbose:
             print(
-                f"  Ollama returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates..."
+                f"  Ollama returned {len(fragments)}/{len(concept_pairs)} fragments, "
+                f"supplementing with templates..."
             )
         return _supplement_with_templates(fragments, concept_pairs, reference_date, verbose)
 

@@ -55,7 +55,9 @@ def _create_error_result(
     }
 
 
-def _generate_concept_pairs(concepts: list, pairs_to_generate: int, reference_date: datetime, verbose: bool) -> list:
+def _generate_concept_pairs(
+    concepts: list, pairs_to_generate: int, reference_date: datetime, verbose: bool
+) -> list:
     """Generate concept pairs with fallback to same-source if needed."""
     if verbose:
         print("Step 2: Generating concept pairs...")
@@ -85,6 +87,57 @@ def _generate_concept_pairs(concepts: list, pairs_to_generate: int, reference_da
         print()
 
     return pairs
+
+
+def _generate_and_score_fragments(
+    pairs: list, concepts: list, config: dict, reference_date: datetime, verbose: bool
+) -> tuple[list, list]:
+    """Generate fragments and score pairs. Returns (fragments, scored_pairs)."""
+    # Step 3: Generate dream fragments
+    if verbose:
+        print("Step 3: Generating dream fragments...")
+
+    fragments = generate_fragments(
+        concept_pairs=pairs, reference_date=reference_date, config=config, verbose=verbose
+    )
+
+    if verbose:
+        print(f"  Generated {len(fragments)} fragments")
+        print()
+
+    # Step 4: Score pairs for insight
+    if verbose:
+        print("Step 4: Scoring for insight...")
+
+    scored_pairs = score_pairs(
+        pairs=pairs, concepts=concepts, reference_date=reference_date, verbose=verbose
+    )
+
+    if verbose:
+        print()
+
+    return fragments, scored_pairs
+
+
+def _build_result(
+    dreams: list, source_files: list, concepts: list, reference_date: datetime, verbose: bool
+) -> dict:
+    """Build the final result dictionary with optional verbose output."""
+    result = {
+        "date": reference_date.strftime("%Y-%m-%d"),
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "source_files": len(source_files),
+        "source_concepts": len(concepts),
+        "dreams": dreams,
+    }
+
+    if verbose:
+        print(f"Generated {len(dreams)} dreams")
+        if dreams:
+            print(f"  Highest insight score: {dreams[0]['insight_score']}")
+            print(f"  Top dream: \"{dreams[0]['fragment'][:50]}...\"")
+
+    return result
 
 
 def _build_dreams(scored_pairs: list, fragments: list, verbose: bool) -> list:
@@ -169,51 +222,14 @@ def generate_dreams(
             reference_date, len(source_files), len(concepts), "Could not generate concept pairs"
         )
 
-    if verbose:
-        print(f"  Generated {len(pairs)} pairs")
-        print()
-
-    # Step 3: Generate dream fragments
-    if verbose:
-        print("Step 3: Generating dream fragments...")
-
-    fragments = generate_fragments(
-        concept_pairs=pairs, reference_date=reference_date, config=config, verbose=verbose
+    # Step 3-4: Generate fragments and score
+    fragments, scored_pairs = _generate_and_score_fragments(
+        pairs, concepts, config, reference_date, verbose
     )
-
-    if verbose:
-        print(f"  Generated {len(fragments)} fragments")
-        print()
-
-    # Step 4: Score pairs for insight
-    if verbose:
-        print("Step 4: Scoring for insight...")
-
-    scored_pairs = score_pairs(
-        pairs=pairs, concepts=concepts, reference_date=reference_date, verbose=verbose
-    )
-
-    if verbose:
-        print()
 
     # Step 5: Build final output
     dreams = _build_dreams(scored_pairs, fragments, verbose)
-
-    result = {
-        "date": reference_date.strftime("%Y-%m-%d"),
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "source_files": len(source_files),
-        "source_concepts": len(concepts),
-        "dreams": dreams,
-    }
-
-    if verbose:
-        print(f"Generated {len(dreams)} dreams")
-        if dreams:
-            print(f"  Highest insight score: {dreams[0]['insight_score']}")
-            print(f"  Top dream: \"{dreams[0]['fragment'][:50]}...\"")
-
-    return result
+    return _build_result(dreams, source_files, concepts, reference_date, verbose)
 
 
 def save_dreams(
