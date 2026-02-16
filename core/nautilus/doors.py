@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Suppress runpy import warning
+import warnings as _w; _w.filterwarnings("ignore", category=RuntimeWarning, module="runpy"); del _w
 """
 Nautilus Doors — Phase 3
 Context-aware pre-filtering for memory search.

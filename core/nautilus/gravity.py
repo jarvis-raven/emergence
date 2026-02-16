@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Suppress runpy import warning
+import warnings as _w; _w.filterwarnings("ignore", category=RuntimeWarning, module="runpy"); del _w
 """
 Nautilus Gravity Engine — Phase 1
 Importance-weighted memory scoring layer.

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Suppress runpy import warning
+import warnings as _w; _w.filterwarnings("ignore", category=RuntimeWarning, module="runpy"); del _w
 """
 Nautilus Chambers — Phase 2
 Temporal memory layers with automatic promotion.
