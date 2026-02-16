@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "last_tick": "2026-02-16T16:42:23.576302+00:00",
+  "drives": {
+    "MAINTENANCE": {
+      "pressure": 6.5612179783333335,
+      "threshold": 20.0,
+      "status": "building",
+      "description": "System health, self-preservation, keeping things running"
+    },
+    "REST": {
+      "pressure": 20.0,
+      "threshold": 30.0,
+      "status": "building",
+      "description": "Recovery. Prevents burnout spiraling. Builds from work done"
+    },
+    "CARE": {
+      "pressure": 6.5612179783333335,
+      "threshold": 25.0,
+      "status": "building",
+      "description": "Connection to human partner — checking in, remembering what matters"
+    },
+    "WANDER": {
+      "pressure": 13.280608989166662,
+      "threshold": 20.0,
+      "status": "building",
+      "description": "Unstructured free time. Go wherever your curiosity leads."
+    }
+  }
+}

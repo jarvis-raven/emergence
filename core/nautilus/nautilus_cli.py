@@ -53,7 +53,7 @@ def _parse_search_args(args):
         if args[i] == "--n" and i + 1 < len(args):
             n = int(args[i + 1])
             i += 2
-        elif args[i] == "--context" and i + 1 < len(args):
+        elif args[i] in ("--context", "--door") and i + 1 < len(args):
             context = args[i + 1]
             i += 2
         elif args[i] == "--chamber" and i + 1 < len(args):
