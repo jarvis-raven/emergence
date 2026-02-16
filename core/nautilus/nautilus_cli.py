@@ -35,7 +35,7 @@ def cmd_search(args):
     """Full Nautilus search pipeline."""
     if not args:
         print(
-            "Usage: emergence nautilus search <query> [--n 5] [--trapdoor] [--verbose]",
+            "Usage: emergence nautilus search <query> [--n 5] [--trapdoor] [--verbose] [--door <context>]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -44,6 +44,7 @@ def cmd_search(args):
     n = 5
     trapdoor = False
     verbose = False
+    door_filter = None
 
     i = 0
     while i < len(args):
@@ -56,6 +57,9 @@ def cmd_search(args):
         elif args[i] == "--verbose":
             verbose = True
             i += 1
+        elif args[i] == "--door" and i + 1 < len(args):
+            door_filter = args[i + 1]
+            i += 2
         else:
             query_parts.append(args[i])
             i += 1
@@ -76,7 +80,12 @@ def cmd_search(args):
     except:
         context_tags = []
 
-    if verbose:
+    # Override context tags with door filter if provided
+    if door_filter:
+        context_tags = [door_filter]
+        if verbose:
+            print(f"🚪 Door filter: {door_filter}", file=sys.stderr)
+    elif verbose:
         print(f"🚪 Context: {context_tags or 'none detected'}", file=sys.stderr)
 
     # Step 2: Run base memory search via OpenClaw
@@ -136,14 +145,31 @@ def cmd_search(args):
         for r in results:
             path = r.get("path", "")
             row = db.execute(
-                "SELECT tags, chamber FROM gravity WHERE path = ? LIMIT 1", (path,)
+                "SELECT context_tags, chamber FROM gravity WHERE path = ? LIMIT 1", (path,)
             ).fetchone()
 
-            if row and row["tags"]:
-                file_tags = json.loads(row["tags"])
-                overlap = len(set(context_tags) & set(file_tags))
-                r["context_match"] = overlap / max(len(context_tags), 1) if overlap > 0 else 0.3
+            if row and row["context_tags"]:
+                try:
+                    file_tags = json.loads(row["context_tags"])
+                except (json.JSONDecodeError, TypeError):
+                    file_tags = []
+                
+                # If door filter is active, require exact match
+                if door_filter:
+                    if door_filter in file_tags:
+                        overlap = 1
+                        r["context_match"] = 1.0
+                    else:
+                        # Skip results that don't match the door filter
+                        continue
+                else:
+                    # Normal context filtering: calculate overlap
+                    overlap = len(set(context_tags) & set(file_tags))
+                    r["context_match"] = overlap / max(len(context_tags), 1) if overlap > 0 else 0.3
             else:
+                # If door filter is active, skip untagged files
+                if door_filter:
+                    continue
                 r["context_match"] = 0.5  # Neutral for untagged
 
             r["chamber"] = row["chamber"] if row else "unknown"
@@ -157,7 +183,8 @@ def cmd_search(args):
         results = sorted(filtered, key=lambda x: x.get("score", 0), reverse=True)
 
         if verbose:
-            print(f"🚪 Context filtered: {len(results)} results", file=sys.stderr)
+            mode_str = f"door={door_filter}" if door_filter else "context"
+            print(f"🚪 {mode_str} filtered: {len(results)} results", file=sys.stderr)
 
     # Step 5: Resolve mirrors for top results
     mirror_info = {}
@@ -179,12 +206,25 @@ def cmd_search(args):
     # Truncate and output
     results = results[:n]
 
+    # Determine mode
+    if trapdoor:
+        mode = "trapdoor"
+    elif door_filter:
+        mode = f"door-filtered:{door_filter}"
+    elif context_tags:
+        mode = "context-filtered"
+    else:
+        mode = "full"
+
     output = {
         "query": query,
         "context": context_tags,
-        "mode": "trapdoor" if trapdoor else ("context-filtered" if context_tags else "full"),
+        "mode": mode,
         "results": results,
     }
+
+    if door_filter:
+        output["door_filter"] = door_filter
 
     if mirror_info:
         output["mirrors"] = mirror_info
@@ -386,12 +426,13 @@ def main():
         print("🐚 Nautilus Memory Palace")
         print(f"Commands: {', '.join(COMMANDS.keys())}")
         print("\nUsage:")
-        print("  emergence nautilus search <query> [--n 5] [--trapdoor] [--verbose]")
+        print("  emergence nautilus search <query> [--n 5] [--trapdoor] [--verbose] [--door <context>]")
         print("  emergence nautilus status")
         print("  emergence nautilus maintain [--register-recent]")
         print("  emergence nautilus migrate [--dry-run] [--verbose]")
         print("\nExamples:")
         print('  emergence nautilus search "project nautilus" --verbose')
+        print('  emergence nautilus search "security issue" --door project:ourblock')
         print("  emergence nautilus maintain --register-recent")
         sys.exit(1)
 

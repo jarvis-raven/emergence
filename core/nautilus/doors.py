@@ -294,6 +294,83 @@ def cmd_tag(args: List[str]) -> Dict[str, Any]:
         sys.exit(1)
 
 
+def get_chunks_by_door(door_tag: str) -> List[Dict[str, Any]]:
+    """
+    Get all chunks that have a specific door/context tag.
+
+    Args:
+        door_tag: The context tag to filter by (e.g., "project:nautilus")
+
+    Returns:
+        List of chunk dictionaries with path and context information.
+    """
+    try:
+        db = get_db()
+        rows = db.execute(
+            """
+            SELECT path, line_start, line_end, context_tags, chamber, access_count, last_accessed_at
+            FROM gravity
+            WHERE context_tags LIKE ?
+            ORDER BY access_count DESC
+            """,
+            (f'%"{door_tag}"%',),
+        ).fetchall()
+
+        chunks = []
+        for row in rows:
+            try:
+                tags = json.loads(row["context_tags"] or "[]")
+                if door_tag in tags:
+                    chunks.append({
+                        "path": row["path"],
+                        "line_start": row["line_start"],
+                        "line_end": row["line_end"],
+                        "context_tags": tags,
+                        "chamber": row["chamber"],
+                        "access_count": row["access_count"],
+                        "last_accessed_at": row["last_accessed_at"],
+                    })
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Error parsing row for {row.get('path', 'unknown')}: {e}")
+                continue
+
+        db.close()
+        logger.info(f"Found {len(chunks)} chunks with door tag '{door_tag}'")
+        return chunks
+
+    except sqlite3.Error as e:
+        logger.error(f"Database error in get_chunks_by_door: {e}")
+        return []
+
+
+def cmd_query(args: List[str]) -> Dict[str, Any]:
+    """
+    Query chunks by door/context tag.
+
+    Args:
+        args: Command arguments [door_tag]
+
+    Returns:
+        Dictionary with matching chunks.
+    """
+    if not args:
+        logger.error("No door tag provided to query")
+        print("Usage: doors query <door_tag>", file=sys.stderr)
+        sys.exit(1)
+
+    door_tag = args[0]
+    chunks = get_chunks_by_door(door_tag)
+
+    result = {
+        "door_tag": door_tag,
+        "count": len(chunks),
+        "chunks": chunks,
+    }
+
+    print(json.dumps(result, indent=2))
+    return result
+
+
 def cmd_auto_tag(args: List[str]) -> Dict[str, Any]:
     """
     Auto-tag all memory files based on content analysis.
@@ -399,6 +476,7 @@ def cmd_auto_tag(args: List[str]) -> Dict[str, Any]:
 COMMANDS = {
     "classify": cmd_classify,
     "tag": cmd_tag,
+    "query": cmd_query,
     "auto-tag": cmd_auto_tag,
 }
 
