@@ -28,7 +28,7 @@ import subprocess
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from . import config
 from .gravity import get_db as get_gravity_db, now_iso
