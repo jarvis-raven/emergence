@@ -29,6 +29,7 @@ DEFAULT_DB_NAME = "gravity.db"
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 CONFIG_PATHS = [
+    Path.home() / ".openclaw" / "workspace" / "emergence.json",  # OpenClaw workspace (primary)
     Path.home() / ".openclaw" / "config" / "emergence.json",
     Path.home() / ".openclaw" / "emergence.json",
     PROJECT_ROOT / "emergence.json",
@@ -85,8 +86,10 @@ def get_workspace() -> Path:
 
     # 2. Config file
     config = _get_config()
-    if "workspace" in config:
-        path = Path(config["workspace"]).expanduser()
+    # Check both top-level "workspace" and nested "paths.workspace"
+    workspace_path = config.get("workspace") or config.get("paths", {}).get("workspace")
+    if workspace_path:
+        path = Path(workspace_path).expanduser()
         if path.exists():
             logger.debug(f"Using workspace from config: {path}")
             return path.resolve()
