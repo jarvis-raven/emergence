@@ -408,9 +408,7 @@ def extract_with_keywords(metadata: dict, body: str) -> str:
     return " ".join(summary_parts)
 
 
-def _try_ollama_extraction(
-    prompt: str, config: Optional[dict], verbose: bool
-) -> Optional[str]:
+def _try_ollama_extraction(prompt: str, config: Optional[dict], verbose: bool) -> Optional[str]:
     """Try Ollama extraction with verbose logging."""
     if verbose:
         print("  🧠 Trying Ollama for insight extraction...")
@@ -424,9 +422,7 @@ def _try_ollama_extraction(
     return None
 
 
-def _try_openrouter_extraction(
-    prompt: str, config: Optional[dict], verbose: bool
-) -> Optional[str]:
+def _try_openrouter_extraction(prompt: str, config: Optional[dict], verbose: bool) -> Optional[str]:
     """Try OpenRouter extraction with verbose logging."""
     if not _get_openrouter_key(config):
         if verbose:
@@ -599,8 +595,7 @@ def _read_and_parse_session(session_file: Path, verbose: bool) -> tuple:
 
 
 def _append_entry_to_daily(
-    metadata: dict, insights: str, session_file: Path,
-    config: dict, dry_run: bool, verbose: bool
+    metadata: dict, insights: str, session_file: Path, config: dict, dry_run: bool, verbose: bool
 ) -> bool:
     """Generate and append entry to daily memory."""
     target_date = get_target_date(metadata)
@@ -620,8 +615,7 @@ def _append_entry_to_daily(
 
 
 def consolidate_session(
-    session_file: Path, config: dict, state: dict,
-    dry_run: bool = False, verbose: bool = False
+    session_file: Path, config: dict, state: dict, dry_run: bool = False, verbose: bool = False
 ) -> bool:
     """Consolidate a single session file.
 
@@ -644,9 +638,7 @@ def consolidate_session(
     insights = extract_insights(metadata, body, config, verbose)
 
     # Append to daily memory
-    success = _append_entry_to_daily(
-        metadata, insights, session_file, config, dry_run, verbose
-    )
+    success = _append_entry_to_daily(metadata, insights, session_file, config, dry_run, verbose)
     if not success:
         return False
 
@@ -674,8 +666,7 @@ def _get_files_to_process(
 
 
 def _process_session_files(
-    files: list[Path], config: dict, state: dict,
-    dry_run: bool, verbose: bool
+    files: list[Path], config: dict, state: dict, dry_run: bool, verbose: bool
 ) -> dict:
     """Process a list of session files."""
     results = {
@@ -700,8 +691,7 @@ def _process_session_files(
 
 
 def run_consolidation(
-    config: dict, dry_run: bool = False, verbose: bool = False,
-    specific_file: Optional[Path] = None
+    config: dict, dry_run: bool = False, verbose: bool = False, specific_file: Optional[Path] = None
 ) -> dict:
     """Run the consolidation process.
 

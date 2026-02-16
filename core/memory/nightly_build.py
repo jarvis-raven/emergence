@@ -347,7 +347,8 @@ Merge with existing entries, remove stale ones.
 
 ### 4. Relationship Status
 Note if you interacted with your human today. How did it feel?
-**Update USER.md** if you learned anything new about them (preferences, patterns, what matters to them). Remove outdated information.
+**Update USER.md** if you learned anything new about them (preferences,
+patterns, what matters to them). Remove outdated information.
 
 ### 5. Footer
 Update the timestamp: "*Last updated: {datetime.now(timezone.utc).isoformat()} by nightly_build*"
@@ -503,8 +504,7 @@ def save_state(state_file: Path, state: dict) -> bool:
 
 
 def run_nightly_build(  # noqa: C901
-    config: dict, date_override: Optional[str] = None,
-    dry_run: bool = False, verbose: bool = False
+    config: dict, date_override: Optional[str] = None, dry_run: bool = False, verbose: bool = False
 ) -> dict:
     """Run the nightly build process.
 

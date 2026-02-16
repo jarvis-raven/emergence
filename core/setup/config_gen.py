@@ -415,10 +415,7 @@ def _validate_room_section(room: dict) -> list[str]:
     if not isinstance(port, int):
         errors.append("room.port must be an integer")
     elif room_enabled and not (1024 <= port <= 65535):
-        errors.append(
-            f"room.port must be between 1024 and 65535 "
-            f"(or 0 to disable), got {port}"
-        )
+        errors.append(f"room.port must be between 1024 and 65535 " f"(or 0 to disable), got {port}")
 
     if not isinstance(room.get("https"), bool):
         errors.append("room.https must be a boolean")
@@ -450,23 +447,16 @@ def _validate_first_light_section(first_light: dict) -> list[str]:
     valid_frequencies = ["patient", "balanced", "accelerated", "custom"]
     freq = first_light.get("frequency")
     if freq not in valid_frequencies:
-        errors.append(
-            f"first_light.frequency must be one of: {valid_frequencies}"
-        )
+        errors.append(f"first_light.frequency must be one of: {valid_frequencies}")
 
     valid_sizes = ["small", "medium", "large"]
     size = first_light.get("session_size")
     if size not in valid_sizes:
-        errors.append(
-            f"first_light.session_size must be one of: {valid_sizes}"
-        )
+        errors.append(f"first_light.session_size must be one of: {valid_sizes}")
 
     spd = first_light.get("sessions_per_day")
     if not isinstance(spd, int) or spd < 1 or spd > 24:
-        errors.append(
-            "first_light.sessions_per_day must be an integer "
-            "between 1 and 24"
-        )
+        errors.append("first_light.sessions_per_day must be an integer " "between 1 and 24")
 
     fl_model = first_light.get("model")
     if fl_model is not None:
@@ -489,13 +479,9 @@ def _validate_drives_section(drives: dict) -> list[str]:
         else:
             drive_cfg = drives[drive_name]
             if not isinstance(drive_cfg.get("threshold"), (int, float)):
-                errors.append(
-                    f"drives.{drive_name}.threshold must be a number"
-                )
+                errors.append(f"drives.{drive_name}.threshold must be a number")
             if not isinstance(drive_cfg.get("rate_per_hour"), (int, float)):
-                errors.append(
-                    f"drives.{drive_name}.rate_per_hour must be a number"
-                )
+                errors.append(f"drives.{drive_name}.rate_per_hour must be a number")
 
     return errors
 
@@ -815,9 +801,7 @@ def _generate_commented_json(config: dict) -> str:
 
 
 def _configure_agent_identity(
-    config: dict,
-    prefilled_name: Optional[str],
-    prefilled_human_name: Optional[str]
+    config: dict, prefilled_name: Optional[str], prefilled_human_name: Optional[str]
 ) -> None:
     """Configure agent identity section.
 
@@ -838,9 +822,7 @@ def _configure_agent_identity(
             print(f"  Agent name: {prefilled_name} (from earlier)")
     else:
         config["agent"]["name"] = _prompt_with_default(
-            "What would you like to name your agent?",
-            config["agent"]["name"],
-            required=True
+            "What would you like to name your agent?", config["agent"]["name"], required=True
         )
 
     if prefilled_human_name:
@@ -898,9 +880,7 @@ def _configure_model(config: dict) -> None:
             "  [aurora_mint]4.[/] [white]ollama/llama3.2[/]                     "
             "[dim_gray](local, no API costs)[/]"
         )
-        console.print(
-            "  [aurora_mint]5.[/] [white]Custom[/] [dim_gray](type your own)[/]"
-        )
+        console.print("  [aurora_mint]5.[/] [white]Custom[/] [dim_gray](type your own)[/]")
     else:
         print("\nSelect a model to power your agent:\n")
         if openclaw_model:
@@ -924,10 +904,7 @@ def _configure_model(config: dict) -> None:
     model_selection = _prompt_with_default("Choose model (0-5)", "1")
 
     if model_selection == "5":
-        model_input = _prompt_with_default(
-            "Enter model (provider/model-name)",
-            DEFAULT_MODEL
-        )
+        model_input = _prompt_with_default("Enter model (provider/model-name)", DEFAULT_MODEL)
     elif model_selection in model_choices:
         model_input = model_choices[model_selection]
         if HAS_RICH_BRANDING:
@@ -976,10 +953,7 @@ def _configure_paths(config: dict) -> None:
         console.print("\n  [dim_gray]Example: /home/you/agent-workspace[/]")
     else:
         print("\n  Example: /home/you/agent-workspace")
-    base_path = _prompt_with_default(
-        "Base workspace directory (absolute path)",
-        default_workspace
-    )
+    base_path = _prompt_with_default("Base workspace directory (absolute path)", default_workspace)
 
     # If base path changed, update derived paths
     if base_path != config["paths"]["workspace"]:
@@ -1004,8 +978,7 @@ def _configure_paths(config: dict) -> None:
         for key, value in config["paths"].items():
             desc = path_descriptions.get(key, "")
             console.print(
-                f"    [aurora_mint]•[/] [white]{key}:[/] "
-                f"[dim_gray]{value}  — {desc}[/]"
+                f"    [aurora_mint]•[/] [white]{key}:[/] " f"[dim_gray]{value}  — {desc}[/]"
             )
     else:
         print("\n  Derived paths (relative to workspace):")
@@ -1016,10 +989,7 @@ def _configure_paths(config: dict) -> None:
     if _confirm("\nCustomize individual paths?", default=False):
         for key in config["paths"]:
             desc = path_descriptions.get(key, "")
-            config["paths"][key] = _prompt_with_default(
-                f"  {key} ({desc})",
-                config["paths"][key]
-            )
+            config["paths"][key] = _prompt_with_default(f"  {key} ({desc})", config["paths"][key])
 
 
 def _configure_room(config: dict) -> None:
@@ -1029,25 +999,19 @@ def _configure_room(config: dict) -> None:
         config: Configuration dictionary to update
     """
     if HAS_RICH_BRANDING:
-        console.print(
-            f"\n[bold aurora_mint]╭─ Room [dim_gray](Dashboard)[/] "
-            f"{'─' * 28}╮[/]"
-        )
+        console.print(f"\n[bold aurora_mint]╭─ Room [dim_gray](Dashboard)[/] " f"{'─' * 28}╮[/]")
     else:
         print_header("Room (Dashboard)")
     print_dim(
-        "The Room is a web dashboard for your agent. "
-        "You can skip it if you don't need it."
+        "The Room is a web dashboard for your agent. " "You can skip it if you don't need it."
     )
     if HAS_RICH_BRANDING:
         console.print()
         console.print(
-            "  [aurora_mint][0][/] [white]No Room[/] "
-            "[dim_gray](skip dashboard setup)[/]"
+            "  [aurora_mint][0][/] [white]No Room[/] " "[dim_gray](skip dashboard setup)[/]"
         )
         console.print(
-            "  [aurora_mint][1][/] [white]Enable Room on port 7373[/] "
-            "[dim_gray](default)[/]"
+            "  [aurora_mint][1][/] [white]Enable Room on port 7373[/] " "[dim_gray](default)[/]"
         )
         console.print(
             "  [aurora_mint][2][/] [white]Custom port[/] "
@@ -1078,24 +1042,19 @@ def _configure_room(config: dict) -> None:
         config["room"]["port"] = 7373
         if HAS_RICH_BRANDING:
             console.print(
-                f"  [soft_violet]→[/] [white]Room enabled on port "
-                f"{config['room']['port']}[/]"
+                f"  [soft_violet]→[/] [white]Room enabled on port " f"{config['room']['port']}[/]"
             )
         else:
             print(f"  → Room enabled on port {config['room']['port']}")
 
         config["room"]["https"] = _confirm(
-            "Enable HTTPS? (requires SSL certificate setup)",
-            default=config["room"]["https"]
+            "Enable HTTPS? (requires SSL certificate setup)", default=config["room"]["https"]
         )
     elif room_choice == "2":
         # Custom port
         config["room"]["enabled"] = True
         while True:
-            custom_port = _prompt_with_default(
-                "Enter port number",
-                "7373"
-            ).strip()
+            custom_port = _prompt_with_default("Enter port number", "7373").strip()
             if not custom_port:
                 print("  Port number cannot be empty. Using default: 7373")
                 config["room"]["port"] = 7373
@@ -1112,15 +1071,13 @@ def _configure_room(config: dict) -> None:
 
         if HAS_RICH_BRANDING:
             console.print(
-                f"  [soft_violet]→[/] [white]Room enabled on port "
-                f"{config['room']['port']}[/]"
+                f"  [soft_violet]→[/] [white]Room enabled on port " f"{config['room']['port']}[/]"
             )
         else:
             print(f"  → Room enabled on port {config['room']['port']}")
 
         config["room"]["https"] = _confirm(
-            "Enable HTTPS? (requires SSL certificate setup)",
-            default=config["room"]["https"]
+            "Enable HTTPS? (requires SSL certificate setup)", default=config["room"]["https"]
         )
     else:
         # Invalid choice, use default
@@ -1129,16 +1086,14 @@ def _configure_room(config: dict) -> None:
         if HAS_RICH_BRANDING:
             console.print("  [dim_gray]Invalid choice, using default:[/]")
             console.print(
-                f"  [soft_violet]→[/] [white]Room enabled on port "
-                f"{config['room']['port']}[/]"
+                f"  [soft_violet]→[/] [white]Room enabled on port " f"{config['room']['port']}[/]"
             )
         else:
             print("  Invalid choice, using default:")
             print(f"  → Room enabled on port {config['room']['port']}")
 
         config["room"]["https"] = _confirm(
-            "Enable HTTPS? (requires SSL certificate setup)",
-            default=config["room"]["https"]
+            "Enable HTTPS? (requires SSL certificate setup)", default=config["room"]["https"]
         )
 
 
@@ -1158,10 +1113,7 @@ def _configure_first_light(config: dict) -> None:
 
     # Sessions per day
     sessions_per_day = int(
-        _prompt_with_default(
-            "Sessions per day (how many exploration sessions daily)",
-            "3"
-        )
+        _prompt_with_default("Sessions per day (how many exploration sessions daily)", "3")
     )
     sessions_per_day = max(1, min(24, sessions_per_day))  # Clamp 1-24
     config["first_light"]["sessions_per_day"] = sessions_per_day
@@ -1187,10 +1139,7 @@ def _configure_first_light(config: dict) -> None:
     else:
         print()
         print("Session size:")
-        print(
-            "  [1] Small  — 1-2 agents per session "
-            "(minimal, good for low-resource devices)"
-        )
+        print("  [1] Small  — 1-2 agents per session " "(minimal, good for low-resource devices)")
         print("  [2] Medium — 3-5 agents per session (recommended)")
         print("  [3] Large  — 6-10 agents per session (thorough but costly)")
         print()
@@ -1206,12 +1155,8 @@ def _configure_first_light(config: dict) -> None:
     print()
 
     # Session duration
-    session_duration = int(
-        _prompt_with_default("Session duration (minutes)", "15")
-    )
-    config["first_light"]["session_duration_minutes"] = max(
-        5, min(120, session_duration)
-    )
+    session_duration = int(_prompt_with_default("Session duration (minutes)", "15"))
+    config["first_light"]["session_duration_minutes"] = max(5, min(120, session_duration))
     print()
 
     # Calculate cost estimate
@@ -1229,21 +1174,15 @@ def _configure_first_light(config: dict) -> None:
             f"   [dim_gray]Sessions: {sessions_per_day}/day, {session_size} "
             f"size (~${cost_per_session[session_size]:.2f}/session)[/]"
         )
+        console.print(f"   [white]Estimated daily cost:[/] [aurora_mint]~${daily_cost:.2f}[/]")
         console.print(
-            f"   [white]Estimated daily cost:[/] [aurora_mint]~${daily_cost:.2f}[/]"
-        )
-        console.print(
-            f"   [white]Estimated weekly cost:[/] "
-            f"[aurora_mint]~${weekly_cost:.2f}[/]"
+            f"   [white]Estimated weekly cost:[/] " f"[aurora_mint]~${weekly_cost:.2f}[/]"
         )
         console.print()
         console.print(
-            "   [soft_violet]ℹ️[/]  "
-            "[dim_gray]First Light typically lasts 2-4 weeks.[/]"
+            "   [soft_violet]ℹ️[/]  " "[dim_gray]First Light typically lasts 2-4 weeks.[/]"
         )
-        console.print(
-            "   [dim_gray]After that, costs depend on your drive configuration.[/]"
-        )
+        console.print("   [dim_gray]After that, costs depend on your drive configuration.[/]")
     else:
         print("💰  COST ESTIMATE")
         print(
@@ -1265,14 +1204,8 @@ def _configure_first_light(config: dict) -> None:
         config["first_light"]["frequency"] = "balanced"
 
     # Model override for First Light
-    if _confirm(
-        "\nUse a different model for First Light sessions?",
-        default=False
-    ):
-        fl_model = _prompt_with_default(
-            "First Light model",
-            config["agent"]["model"]
-        )
+    if _confirm("\nUse a different model for First Light sessions?", default=False):
+        fl_model = _prompt_with_default("First Light model", config["agent"]["model"])
         config["first_light"]["model"] = fl_model if fl_model else None
     else:
         config["first_light"]["model"] = None  # Inherit from agent
@@ -1298,60 +1231,46 @@ def _configure_drives_budget(config: dict) -> None:
     # Core drive interval
     core_hours = float(
         _prompt_with_default(
-            "Minimum hours between core drive triggers "
-            "(CARE, MAINTENANCE, REST)",
-            "4"
+            "Minimum hours between core drive triggers " "(CARE, MAINTENANCE, REST)", "4"
         )
     )
     config["drives"]["intervals"]["core_min_hours"] = max(1, core_hours)
 
     # Discovered drive interval
     discovered_hours = float(
-        _prompt_with_default(
-            "Minimum hours between discovered drive triggers",
-            "6"
-        )
+        _prompt_with_default("Minimum hours between discovered drive triggers", "6")
     )
-    config["drives"]["intervals"]["discovered_min_hours"] = max(
-        2, discovered_hours
-    )
+    config["drives"]["intervals"]["discovered_min_hours"] = max(2, discovered_hours)
 
     # Global cooldown
     cooldown_hours = float(
-        _prompt_with_default(
-            "Global cooldown between any triggers (hours)",
-            "1"
-        )
+        _prompt_with_default("Global cooldown between any triggers (hours)", "1")
     )
-    config["drives"]["intervals"]["global_cooldown_hours"] = max(
-        0.5, cooldown_hours
-    )
+    config["drives"]["intervals"]["global_cooldown_hours"] = max(0.5, cooldown_hours)
 
     if HAS_RICH_BRANDING:
         console.print()
         console.print("[dim_gray]With these settings:[/]")
         max_sessions = int(
-            config['drives']['budget']['daily_limit_usd'] /
-            config['drives']['budget']['session_cost_estimate']
+            config["drives"]["budget"]["daily_limit_usd"]
+            / config["drives"]["budget"]["session_cost_estimate"]
         )
         console.print(f"  [dim_gray]• Max ~{max_sessions} sessions/day[/]")
-        core_min = config['drives']['intervals']['core_min_hours']
+        core_min = config["drives"]["intervals"]["core_min_hours"]
         console.print(f"  [dim_gray]• Core drives: every {core_min}+ hours[/]")
-        disc_min = config['drives']['intervals']['discovered_min_hours']
-        console.print(
-            f"  [dim_gray]• Discovered drives: every {disc_min}+ hours[/]"
-        )
+        disc_min = config["drives"]["intervals"]["discovered_min_hours"]
+        console.print(f"  [dim_gray]• Discovered drives: every {disc_min}+ hours[/]")
     else:
         print()
         print("With these settings:")
         max_sessions = int(
-            config['drives']['budget']['daily_limit_usd'] /
-            config['drives']['budget']['session_cost_estimate']
+            config["drives"]["budget"]["daily_limit_usd"]
+            / config["drives"]["budget"]["session_cost_estimate"]
         )
         print(f"  • Max ~{max_sessions} sessions/day")
-        core_min = config['drives']['intervals']['core_min_hours']
+        core_min = config["drives"]["intervals"]["core_min_hours"]
         print(f"  • Core drives: every {core_min}+ hours")
-        disc_min = config['drives']['intervals']['discovered_min_hours']
+        disc_min = config["drives"]["intervals"]["discovered_min_hours"]
         print(f"  • Discovered drives: every {disc_min}+ hours")
     print()
 
@@ -1505,9 +1424,9 @@ def interactive_config_wizard(
         default_workspace = config["paths"]["workspace"]
 
     if HAS_RICH_BRANDING:
-        console.print(f"\n  [dim_gray]Example: /home/you/agent-workspace[/]")
+        console.print("\n  [dim_gray]Example: /home/you/agent-workspace[/]")
     else:
-        print(f"\n  Example: /home/you/agent-workspace")
+        print("\n  Example: /home/you/agent-workspace")
     base_path = _prompt_with_default("Base workspace directory (absolute path)", default_workspace)
 
     # If base path changed, update derived paths
@@ -1529,12 +1448,12 @@ def interactive_config_wizard(
     }
 
     if HAS_RICH_BRANDING:
-        console.print(f"\n  [dim_gray]Derived paths (relative to workspace):[/]")
+        console.print("\n  [dim_gray]Derived paths (relative to workspace):[/]")
         for key, value in config["paths"].items():
             desc = path_descriptions.get(key, "")
             console.print(f"    [aurora_mint]•[/] [white]{key}:[/] [dim_gray]{value}  — {desc}[/]")
     else:
-        print(f"\n  Derived paths (relative to workspace):")
+        print("\n  Derived paths (relative to workspace):")
         for key, value in config["paths"].items():
             desc = path_descriptions.get(key, "")
             print(f"    • {key}: {value}  — {desc}")
@@ -1626,12 +1545,12 @@ def interactive_config_wizard(
         config["room"]["enabled"] = True
         config["room"]["port"] = 7373
         if HAS_RICH_BRANDING:
-            console.print(f"  [dim_gray]Invalid choice, using default:[/]")
+            console.print("  [dim_gray]Invalid choice, using default:[/]")
             console.print(
                 f"  [soft_violet]→[/] [white]Room enabled on port {config['room']['port']}[/]"
             )
         else:
-            print(f"  Invalid choice, using default:")
+            print("  Invalid choice, using default:")
             print(f"  → Room enabled on port {config['room']['port']}")
 
         config["room"]["https"] = _confirm(
@@ -1770,7 +1689,7 @@ def interactive_config_wizard(
 
     if HAS_RICH_BRANDING:
         console.print()
-        console.print(f"[dim_gray]With these settings:[/]")
+        console.print("[dim_gray]With these settings:[/]")
         console.print(
             f"  [dim_gray]• Max ~{int(config['drives']['budget']['daily_limit_usd'] / config['drives']['budget']['session_cost_estimate'])} sessions/day[/]"
         )
@@ -1782,7 +1701,7 @@ def interactive_config_wizard(
         )
     else:
         print()
-        print(f"With these settings:")
+        print("With these settings:")
         print(
             f"  • Max ~{int(config['drives']['budget']['daily_limit_usd'] / config['drives']['budget']['session_cost_estimate'])} sessions/day"
         )
@@ -1804,7 +1723,7 @@ def interactive_config_wizard(
                 f"  [white]Room:[/] [aurora_mint]Enabled on port {config['room']['port']}[/]"
             )
         else:
-            console.print(f"  [white]Room:[/] [dim_gray]Disabled (no dashboard)[/]")
+            console.print("  [white]Room:[/] [dim_gray]Disabled (no dashboard)[/]")
         console.print(
             f"\n  [white]First Light:[/] [aurora_mint]{config['first_light']['frequency']}[/]"
         )
@@ -1834,7 +1753,7 @@ def interactive_config_wizard(
         if config["room"].get("enabled", True):
             print(f"  Room: Enabled on port {config['room']['port']}")
         else:
-            print(f"  Room: Disabled (no dashboard)")
+            print("  Room: Disabled (no dashboard)")
         print(f"\n  First Light: {config['first_light']['frequency']}")
         print(f"    Sessions/day: {config['first_light']['sessions_per_day']}")
         print(f"    Session size: {config['first_light']['session_size']}")
@@ -2022,10 +1941,10 @@ Examples:
     output_path = Path(args.output)
     if write_config(config, output_path):
         print(f"\n✅ Configuration saved to: {output_path.absolute()}")
-        print(f"\nNext steps:")
+        print("\nNext steps:")
         print(f"  1. Review the config: cat {output_path}")
-        print(f"  2. Initialize the workspace: emergence init")
-        print(f"  3. Start First Light: emergence first-light")
+        print("  2. Initialize the workspace: emergence init")
+        print("  3. Start First Light: emergence first-light")
     else:
         print(f"\n❌ Failed to write config to: {output_path}", file=sys.stderr)
         sys.exit(1)
