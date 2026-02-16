@@ -2,43 +2,49 @@
 """
 🐚 Nautilus — Unified Memory Palace CLI
 
-Combines all four phases:
-  Phase 1: Gravity (importance scoring)
-  Phase 2: Chambers (temporal layers)
-  Phase 3: Doors (context filtering)
-  Phase 4: Mirrors (multi-granularity)
+Wraps OpenClaw's memory search with Nautilus re-ranking and filtering.
 
-Primary command: `nautilus search <query>` — runs the full pipeline:
-  1. Classify query context (Doors)
-  2. Search with chamber awareness (Chambers)
-  3. Apply gravity re-ranking (Gravity)
-  4. Resolve mirrors for top results (Mirrors)
+Search pipeline:
+  1. Call `openclaw memory search` for vector similarity candidates
+  2. Enrich each result with Nautilus metadata (access_count, chamber, context_tags)
+  3. Apply optional filters (--context, --chamber)
+  4. Re-rank: final_score = vector_score * (1 + log(access_count + 1)) * recency_boost
+  5. Return top N results as JSON
 
 Usage:
-  emergence nautilus search <query> [--n 5] [--trapdoor] [--verbose]
-  emergence nautilus status          # Full system status
-  emergence nautilus maintain        # Run all maintenance (classify, auto-tag, decay)
+  nautilus search <query> [--n 5] [--context TAG] [--chamber atrium,corridor] [--verbose]
+  nautilus status          # Full system status
+  nautilus maintain        # Run all maintenance (classify, auto-tag, decay)
 """
 
 import json
+import math
 import sys
+import sqlite3
 import subprocess
 from datetime import datetime, timezone
 
-from .config import get_workspace
+from .config import get_workspace, get_gravity_db_path
 
 
-def cmd_search(args):
-    """Full Nautilus search pipeline."""
-    if not args:
-        print(
-            "Usage: emergence nautilus search <query> [--n 5] [--trapdoor] [--verbose]",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+# Chamber-based recency boost factors
+CHAMBER_RECENCY = {
+    "atrium": 1.2,  # Recent/active memories get a boost
+    "corridor": 1.0,  # Summarised memories are neutral
+    "vault": 0.8,  # Crystallised lessons slightly discounted for recency
+}
 
+
+def _parse_search_args(args):
+    """Parse search command arguments.
+
+    Returns:
+        Tuple of (query, n, context, chambers, trapdoor, verbose)
+    """
     query_parts = []
     n = 5
+    context = None
+    chambers = None
     trapdoor = False
     verbose = False
 
@@ -46,6 +52,12 @@ def cmd_search(args):
     while i < len(args):
         if args[i] == "--n" and i + 1 < len(args):
             n = int(args[i + 1])
+            i += 2
+        elif args[i] == "--context" and i + 1 < len(args):
+            context = args[i + 1]
+            i += 2
+        elif args[i] == "--chamber" and i + 1 < len(args):
+            chambers = [c.strip() for c in args[i + 1].split(",")]
             i += 2
         elif args[i] == "--trapdoor":
             trapdoor = True
@@ -57,136 +69,227 @@ def cmd_search(args):
             query_parts.append(args[i])
             i += 1
 
-    query = " ".join(query_parts)
+    return " ".join(query_parts), n, context, chambers, trapdoor, verbose
 
-    # Step 1: Classify context (Doors)
-    # Invoke via subprocess to reuse existing command implementation
-    result = subprocess.run(
-        [sys.executable, "-m", "core.nautilus.doors", "classify", query],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    try:
-        context = json.loads(result.stdout)
-        context_tags = context.get("context_tags", [])
-    except BaseException:
-        context_tags = []
 
-    if verbose:
-        print(f"🚪 Context: {context_tags or 'none detected'}", file=sys.stderr)
+def _get_gravity_metadata(db, path, start_line, end_line):
+    """Look up Nautilus gravity metadata for a search result.
 
-    # Step 2: Run base memory search via OpenClaw
+    Tries exact chunk match first, then falls back to file-level match.
+
+    Args:
+        db: SQLite connection to gravity.db
+        path: File path of the result
+        start_line: Start line of the chunk
+        end_line: End line of the chunk
+
+    Returns:
+        Dict with access_count, chamber, context_tags, last_accessed_at
+    """
+    # Try exact chunk match
+    row = db.execute(
+        """SELECT access_count, chamber, context_tags, last_accessed_at
+           FROM gravity WHERE path = ? AND line_start = ? AND line_end = ?""",
+        (path, start_line, end_line),
+    ).fetchone()
+
+    # Fall back to file-level match
+    if not row:
+        row = db.execute(
+            """SELECT access_count, chamber, context_tags, last_accessed_at
+               FROM gravity WHERE path = ? LIMIT 1""",
+            (path,),
+        ).fetchone()
+
+    if row:
+        try:
+            tags = json.loads(row["context_tags"]) if row["context_tags"] else []
+        except (json.JSONDecodeError, TypeError):
+            tags = []
+        return {
+            "access_count": row["access_count"] or 0,
+            "chamber": row["chamber"] or "atrium",
+            "context_tags": tags,
+            "last_accessed_at": row["last_accessed_at"],
+        }
+
+    return {
+        "access_count": 0,
+        "chamber": "atrium",
+        "context_tags": [],
+        "last_accessed_at": None,
+    }
+
+
+def _compute_final_score(vector_score, access_count, chamber):
+    """Compute re-ranked score using the Nautilus formula.
+
+    Formula: final_score = vector_score * (1 + log(access_count + 1)) * recency_boost
+
+    Args:
+        vector_score: Original vector similarity score
+        access_count: Number of times this chunk has been accessed
+        chamber: Chamber classification (atrium/corridor/vault)
+
+    Returns:
+        Final re-ranked score
+    """
+    importance = 1 + math.log(access_count + 1)
+    recency = CHAMBER_RECENCY.get(chamber, 1.0)
+    return vector_score * importance * recency
+
+
+def _fetch_openclaw_results(query, fetch_count):
+    """Call OpenClaw memory search and return candidate list.
+
+    Args:
+        query: Search query string
+        fetch_count: Number of results to request
+
+    Returns:
+        List of result dicts, or None on failure (error printed to stdout)
+    """
     try:
         result = subprocess.run(
-            ["openclaw", "memory", "search", query, "--max-results", str(n * 3), "--json"],
+            [
+                "openclaw",
+                "memory",
+                "search",
+                query,
+                "--max-results",
+                str(fetch_count),
+                "--json",
+            ],
             capture_output=True,
             text=True,
             timeout=30,
         )
-        raw_results = json.loads(result.stdout)
+        raw = json.loads(result.stdout)
     except Exception as e:
         print(json.dumps({"error": f"Memory search failed: {e}"}))
+        return None
+    return raw if isinstance(raw, list) else raw.get("results", [])
+
+
+def _enrich_and_filter(candidates, context, chambers, trapdoor, verbose):
+    """Enrich candidates with gravity metadata, apply filters, and re-rank.
+
+    Args:
+        candidates: List of raw search results
+        context: Context tag filter (or None)
+        chambers: List of chamber names to keep (or None)
+        trapdoor: If True, skip context filtering
+        verbose: Print debug info to stderr
+
+    Returns:
+        Re-ranked and filtered candidate list
+    """
+    db = sqlite3.connect(str(get_gravity_db_path()))
+    db.row_factory = sqlite3.Row
+
+    for c in candidates:
+        meta = _get_gravity_metadata(
+            db, c.get("path", ""), c.get("startLine", 0), c.get("endLine", 0)
+        )
+        c["access_count"] = meta["access_count"]
+        c["chamber"] = meta["chamber"]
+        c["context_tags"] = meta["context_tags"]
+
+    db.close()
+
+    # Apply filters
+    if context and not trapdoor:
+        candidates = [c for c in candidates if context in c.get("context_tags", [])]
+        if verbose:
+            print(
+                f"🚪 Context filter '{context}': {len(candidates)} remain",
+                file=sys.stderr,
+            )
+
+    if chambers:
+        candidates = [c for c in candidates if c.get("chamber") in chambers]
+        if verbose:
+            print(
+                f"🏛️ Chamber filter {chambers}: {len(candidates)} remain",
+                file=sys.stderr,
+            )
+
+    # Re-rank using the Nautilus formula
+    for c in candidates:
+        vector_score = c.get("score", 0)
+        c["vector_score"] = vector_score
+        c["final_score"] = round(
+            _compute_final_score(vector_score, c["access_count"], c["chamber"]),
+            4,
+        )
+
+    candidates.sort(key=lambda x: x["final_score"], reverse=True)
+    return candidates
+
+
+def _format_results(candidates, n):
+    """Truncate to top N results and clean up output format.
+
+    Args:
+        candidates: Sorted candidate list
+        n: Maximum number of results
+
+    Returns:
+        List of cleaned result dicts
+    """
+    results = candidates[:n]
+    for r in results:
+        r["score"] = r.pop("final_score")
+        if "snippet" in r and len(r.get("snippet", "")) > 300:
+            r["snippet"] = r["snippet"][:300] + "..."
+    return results
+
+
+def cmd_search(args):  # noqa: C901
+    """Nautilus search — wraps OpenClaw memory search with gravity re-ranking.
+
+    Pipeline:
+      1. Call `openclaw memory search` for vector candidates
+      2. Look up each result's Nautilus metadata from gravity.db
+      3. Apply filters (context tags, chamber)
+      4. Re-rank: final_score = vector_score * (1 + log(access_count + 1)) * recency_boost
+      5. Return top N results as JSON
+    """
+    if not args:
+        print(
+            "Usage: nautilus search <query> [--n 5] [--context TAG]"
+            " [--chamber atrium,corridor] [--trapdoor] [--verbose]",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    query, n, context, chambers, trapdoor, verbose = _parse_search_args(args)
+
+    if not query:
+        print("Error: no query provided", file=sys.stderr)
+        sys.exit(1)
+
+    # Step 1: Fetch candidates from OpenClaw
+    candidates = _fetch_openclaw_results(query, n * 3)
+    if candidates is None:
         return
 
-    if not isinstance(raw_results, list):
-        raw_results = raw_results.get("results", [])
-
     if verbose:
-        print(f"🔍 Base search: {len(raw_results)} results", file=sys.stderr)
-
-    # Step 3: Apply gravity re-ranking
-    rerank_result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "core.nautilus.gravity",
-            "rerank",
-            "--json",
-            json.dumps(raw_results),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    try:
-        reranked = json.loads(rerank_result.stdout)
-        if isinstance(reranked, list):
-            results = reranked
-        else:
-            results = raw_results
-    except BaseException:
-        results = raw_results
-
-    if verbose:
-        print(f"⚖️ Gravity applied: {len(results)} results re-ranked", file=sys.stderr)
-
-    # Step 4: Context filtering (Doors) unless trapdoor
-    if not trapdoor and context_tags:
-        import sqlite3
-        from .config import get_gravity_db_path
-
-        db = sqlite3.connect(str(get_gravity_db_path()))
-        db.row_factory = sqlite3.Row
-
-        filtered = []
-        for r in results:
-            path = r.get("path", "")
-            row = db.execute(
-                "SELECT tags, chamber FROM gravity WHERE path = ? LIMIT 1", (path,)
-            ).fetchone()
-
-            if row and row["tags"]:
-                file_tags = json.loads(row["tags"])
-                overlap = len(set(context_tags) & set(file_tags))
-                r["context_match"] = overlap / max(len(context_tags), 1) if overlap > 0 else 0.3
-            else:
-                r["context_match"] = 0.5  # Neutral for untagged
-
-            r["chamber"] = row["chamber"] if row else "unknown"
-
-            # Apply context bonus to score
-            if r.get("context_match", 0) > 0:
-                r["score"] = r.get("score", 0) * (0.8 + 0.2 * r["context_match"])
-                filtered.append(r)
-
-        db.close()
-        results = sorted(filtered, key=lambda x: x.get("score", 0), reverse=True)
-
-        if verbose:
-            print(f"🚪 Context filtered: {len(results)} results", file=sys.stderr)
-
-    # Step 5: Resolve mirrors for top results
-    mirror_info = {}
-    for r in results[:n]:
-        path = r.get("path", "")
-        mirror_result = subprocess.run(
-            [sys.executable, "-m", "core.nautilus.mirrors", "resolve", path],
-            capture_output=True,
-            text=True,
-            timeout=10,
+        print(
+            f"🔍 Base search: {len(candidates)} candidates for '{query}'",
+            file=sys.stderr,
         )
-        try:
-            mir = json.loads(mirror_result.stdout)
-            if mir.get("mirrors"):
-                mirror_info[path] = mir
-        except BaseException:
-            pass
 
-    # Truncate and output
-    results = results[:n]
+    # Step 2-4: Enrich, filter, re-rank
+    candidates = _enrich_and_filter(candidates, context, chambers, trapdoor, verbose)
 
-    output = {
-        "query": query,
-        "context": context_tags,
-        "mode": "trapdoor" if trapdoor else ("context-filtered" if context_tags else "full"),
-        "results": results,
-    }
+    if verbose:
+        print(f"⚖️ Re-ranked: {len(candidates)} results", file=sys.stderr)
 
-    if mirror_info:
-        output["mirrors"] = mirror_info
+    # Step 5: Format and output
+    results = _format_results(candidates, n)
 
-    print(json.dumps(output, indent=2))
+    print(json.dumps({"query": query, "results": results}, indent=2))
 
 
 def cmd_status(args):
@@ -269,7 +372,7 @@ def cmd_status(args):
     )
 
 
-def cmd_maintain(args):
+def cmd_maintain(args):  # noqa: C901
     """Run all maintenance tasks."""
     print("🐚 Nautilus maintenance starting...", file=sys.stderr)
 
@@ -392,15 +495,19 @@ def main():
         print("🐚 Nautilus Memory Palace")
         print(f"Commands: {', '.join(COMMANDS.keys())}")
         print("\nUsage:")
-        print("  emergence nautilus search <query> [--n 5] [--trapdoor] [--verbose]")
-        print("  emergence nautilus status")
-        print("  emergence nautilus maintain [--register-recent]")
-        print("  emergence nautilus migrate [--dry-run] [--verbose]")
-        print("  emergence nautilus chambers <promote|crystallize|status> [--dry-run]")
+        print(
+            "  nautilus search <query> [--n 5] [--context TAG]"
+            " [--chamber atrium,corridor] [--verbose]"
+        )
+        print("  nautilus status")
+        print("  nautilus maintain [--register-recent]")
+        print("  nautilus migrate [--dry-run] [--verbose]")
+        print("  nautilus chambers <promote|crystallize|status> [--dry-run]")
         print("\nExamples:")
-        print('  emergence nautilus search "project nautilus" --verbose')
-        print("  emergence nautilus maintain --register-recent")
-        print("  emergence nautilus chambers promote --dry-run")
+        print('  nautilus search "project nautilus" --verbose')
+        print('  nautilus search "budget issue" --n 10 --context work --chamber atrium,corridor')
+        print("  nautilus maintain --register-recent")
+        print("  nautilus chambers promote --dry-run")
         sys.exit(1)
 
     COMMANDS[sys.argv[1]](sys.argv[2:])
