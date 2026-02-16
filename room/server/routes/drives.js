@@ -1,9 +1,9 @@
 /**
  * Drives Routes — GET /api/drives, POST /api/drives/:name/satisfy
- * 
+ *
  * Returns drive state from .emergence/state/drives.json
  * Handles drive satisfaction (reset pressure to 0)
- * 
+ *
  * Phase 3.5 additions:
  * - GET /api/drives/pending-reviews — drives awaiting consolidation review
  * - GET /api/drives/latent — inactive/latent drives
@@ -14,11 +14,58 @@
 import { Router } from 'express';
 import { loadConfig, getStatePath } from '../utils/configLoader.js';
 import { readJsonFile } from '../utils/fileReader.js';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 
 const router = Router();
+
+/**
+ * Get last satisfaction timestamp for a drive from satisfaction_history.jsonl
+ * @param {string} driveName - Drive name to look up
+ * @returns {string|null} ISO timestamp of last satisfaction or null if never satisfied
+ */
+function getLastSatisfactionTime(driveName) {
+  const openclawStateDir = join(homedir(), '.openclaw', 'state');
+  const historyPath = join(openclawStateDir, 'satisfaction_history.jsonl');
+
+  if (!existsSync(historyPath)) {
+    return null;
+  }
+
+  try {
+    const content = readFileSync(historyPath, 'utf-8');
+    const lines = content
+      .trim()
+      .split('\n')
+      .filter((line) => line.trim());
+
+    // Read backwards to find most recent satisfaction for this drive
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const event = parseJsonLine(lines[i]);
+      if (event?.drive === driveName && event?.timestamp) {
+        return event.timestamp;
+      }
+    }
+  } catch (err) {
+    console.error('Error reading satisfaction history:', err);
+  }
+
+  return null;
+}
+
+/**
+ * Parse a JSON line, returning null if invalid
+ * @param {string} line - JSON line to parse
+ * @returns {object|null} Parsed object or null
+ */
+function parseJsonLine(line) {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * GET /api/drives/state
@@ -29,18 +76,18 @@ router.get('/state', (req, res) => {
     // drives-state.json lives in ~/.openclaw/state/
     const openclawStateDir = join(homedir(), '.openclaw', 'state');
     const stateFilePath = join(openclawStateDir, 'drives-state.json');
-    
+
     if (!existsSync(stateFilePath)) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'drives-state.json not found',
         expected_path: stateFilePath,
-        hint: 'Is the drives daemon running?'
+        hint: 'Is the drives daemon running?',
       });
     }
-    
+
     const content = readFileSync(stateFilePath, 'utf-8');
     const stateData = JSON.parse(content);
-    
+
     res.json(stateData);
   } catch (err) {
     console.error('Daemon state error:', err);
@@ -58,11 +105,11 @@ router.get('/', (req, res) => {
     const drivesPath = getStatePath(config, 'drives.json');
     const stateDir = drivesPath.replace('drives.json', '');
     const statePath = join(stateDir, 'drives-state.json');
-    
+
     // Phase 1: Load both config (drives.json) and runtime (drives-state.json)
     const configData = readJsonFile(drivesPath);
     const stateData = readJsonFile(statePath);
-    
+
     if (!configData && !stateData) {
       // Return empty state if neither file exists
       return res.json({
@@ -73,20 +120,20 @@ router.get('/', (req, res) => {
         trigger_log: [],
       });
     }
-    
+
     // Merge config + state (state values override config for overlapping fields)
     const mergedDrives = {};
     const allDriveNames = new Set([
       ...Object.keys((configData || {}).drives || {}),
-      ...Object.keys((stateData || {}).drives || {})
+      ...Object.keys((stateData || {}).drives || {}),
     ]);
-    
+
     for (const name of allDriveNames) {
       const driveConfig = (configData || {}).drives?.[name] || {};
       const driveState = (stateData || {}).drives?.[name] || {};
       mergedDrives[name] = { ...driveConfig, ...driveState };
     }
-    
+
     // Build merged data structure
     const data = {
       version: (configData || stateData || {}).version || '1.1',
@@ -95,30 +142,30 @@ router.get('/', (req, res) => {
       triggered_drives: (stateData || configData || {}).triggered_drives || [],
       trigger_log: (configData || {}).trigger_log || [],
     };
-    
+
     // Enhance drives with aspect counts and graduation candidates
     const enhancedDrives = {};
     for (const [name, drive] of Object.entries(data.drives || {})) {
       const aspects = drive.aspects || [];
       const aspectCount = aspects.length;
-      
+
       // Check if this drive has aspects that could graduate
       // (v2 plan: 50% pressure dominance over 7 days + 10 satisfactions + 14 days as aspect)
       const graduationCandidates = [];
       if (drive.aspect_details) {
         for (const aspect of drive.aspect_details) {
-          const couldGraduate = 
+          const couldGraduate =
             (aspect.pressure_contribution_7d || 0) > 0.5 &&
             (aspect.satisfaction_count || 0) >= 10 &&
             aspect.created_at &&
-            (new Date() - new Date(aspect.created_at)) > (14 * 24 * 60 * 60 * 1000);
-          
+            new Date() - new Date(aspect.created_at) > 14 * 24 * 60 * 60 * 1000;
+
           if (couldGraduate) {
             graduationCandidates.push(aspect.name);
           }
         }
       }
-      
+
       enhancedDrives[name] = {
         ...drive,
         aspect_count: aspectCount,
@@ -130,9 +177,11 @@ router.get('/', (req, res) => {
         // Valence and thwarting tracking (issue #40)
         valence: drive.valence || 'appetitive',
         thwarting_count: drive.thwarting_count || 0,
+        // Last satisfied timestamp from satisfaction history (issue #127)
+        last_satisfied: getLastSatisfactionTime(name),
       };
     }
-    
+
     res.json({
       ...data,
       drives: enhancedDrives,
@@ -154,7 +203,7 @@ router.get('/pending-reviews', (req, res) => {
     const config = loadConfig();
     const drivesPath = getStatePath(config, 'drives.json');
     const pendingPath = getStatePath(config, 'pending-reviews.json');
-    
+
     // Check for pending-reviews.json first
     if (existsSync(pendingPath)) {
       const pendingData = readJsonFile(pendingPath);
@@ -166,11 +215,11 @@ router.get('/pending-reviews', (req, res) => {
         });
       }
     }
-    
+
     // Fall back to checking drives with pending_review flag
     const data = readJsonFile(drivesPath);
     const drives = data?.drives || {};
-    
+
     const pendingReviews = [];
     for (const [name, drive] of Object.entries(drives)) {
       if (drive.pending_review || drive.similar_to) {
@@ -183,7 +232,7 @@ router.get('/pending-reviews', (req, res) => {
         });
       }
     }
-    
+
     res.json({
       has_pending: pendingReviews.length > 0,
       count: pendingReviews.length,
@@ -203,10 +252,10 @@ router.get('/latent', (req, res) => {
   try {
     const config = loadConfig();
     const drivesPath = getStatePath(config, 'drives.json');
-    
+
     const data = readJsonFile(drivesPath);
     const drives = data?.drives || {};
-    
+
     const latentDrives = [];
     for (const [name, drive] of Object.entries(drives)) {
       if (drive.status === 'latent') {
@@ -218,28 +267,28 @@ router.get('/latent', (req, res) => {
           aspect_of: drive.aspect_of || null,
           discovered_during: drive.discovered_during,
           // Budget impact if activated
-          estimated_daily_cost: 2.50,
+          estimated_daily_cost: 2.5,
         });
       }
     }
-    
+
     // Calculate if budget allows activation
-    const dailyLimit = config.budget?.daily_limit || 50.00;
+    const dailyLimit = config.budget?.daily_limit || 50.0;
     const today = new Date().toISOString().split('T')[0];
     let todaySpend = 0;
-    
+
     for (const drive of Object.values(drives)) {
       const events = drive.satisfaction_events || [];
       for (const event of events) {
         if (event.startsWith(today)) {
-          todaySpend += 2.50; // cost per trigger
+          todaySpend += 2.5; // cost per trigger
         }
       }
     }
-    
+
     const budgetRemaining = dailyLimit - todaySpend;
-    const canActivate = budgetRemaining >= 2.50;
-    
+    const canActivate = budgetRemaining >= 2.5;
+
     res.json({
       has_latent: latentDrives.length > 0,
       count: latentDrives.length,
@@ -247,7 +296,7 @@ router.get('/latent', (req, res) => {
       budget: {
         remaining: Math.round(budgetRemaining * 100) / 100,
         can_activate: canActivate,
-        activation_cost: 2.50,
+        activation_cost: 2.5,
       },
     });
   } catch (err) {
@@ -265,46 +314,42 @@ router.get('/:name/aspects', (req, res) => {
     const { name } = req.params;
     const config = loadConfig();
     const drivesPath = getStatePath(config, 'drives.json');
-    
+
     if (!existsSync(drivesPath)) {
       return res.status(404).json({ error: 'Drives state file not found' });
     }
-    
+
     const content = readFileSync(drivesPath, 'utf-8');
     const data = JSON.parse(content);
-    
+
     if (!data.drives) {
       return res.status(404).json({ error: 'No drives found' });
     }
-    
+
     // Find drive by name (case insensitive)
-    const driveName = Object.keys(data.drives).find(
-      n => n.toUpperCase() === name.toUpperCase()
-    );
-    
+    const driveName = Object.keys(data.drives).find((n) => n.toUpperCase() === name.toUpperCase());
+
     if (!driveName) {
       return res.status(404).json({ error: `Drive "${name}" not found` });
     }
-    
+
     const drive = data.drives[driveName];
     const aspects = drive.aspects || [];
     const aspectDetails = drive.aspect_details || [];
-    
+
     // Calculate if any aspect could graduate
     const graduationInfo = [];
     for (const aspect of aspectDetails) {
       const satisfactionCount = aspect.satisfaction_count || 0;
       const pressureContribution = aspect.pressure_contribution_7d || 0;
       const createdAt = aspect.created_at ? new Date(aspect.created_at) : null;
-      const daysAsAspect = createdAt 
+      const daysAsAspect = createdAt
         ? Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24))
         : 0;
-      
-      const couldGraduate = 
-        pressureContribution > 0.5 &&
-        satisfactionCount >= 10 &&
-        daysAsAspect >= 14;
-      
+
+      const couldGraduate =
+        pressureContribution > 0.5 && satisfactionCount >= 10 && daysAsAspect >= 14;
+
       graduationInfo.push({
         name: aspect.name,
         satisfaction_count: satisfactionCount,
@@ -313,13 +358,13 @@ router.get('/:name/aspects', (req, res) => {
         could_graduate: couldGraduate,
       });
     }
-    
+
     res.json({
       drive: driveName,
       aspect_count: aspects.length,
       aspects: aspects,
       aspect_details: aspectDetails,
-      graduation_candidates: graduationInfo.filter(a => a.could_graduate),
+      graduation_candidates: graduationInfo.filter((a) => a.could_graduate),
       max_aspects_reached: aspects.length >= 5,
       remaining_aspect_slots: Math.max(0, 5 - aspects.length),
     });
@@ -339,74 +384,103 @@ router.post('/:name/satisfy', (req, res) => {
     const { name } = req.params;
     const config = loadConfig();
     const drivesPath = getStatePath(config, 'drives.json');
-    
+
     if (!existsSync(drivesPath)) {
       return res.status(404).json({ error: 'Drives state file not found' });
     }
-    
+
     // Read current drives state
     const content = readFileSync(drivesPath, 'utf-8');
     const data = JSON.parse(content);
-    
+
     if (!data.drives) {
       return res.status(404).json({ error: 'No drives found' });
     }
-    
+
     // Find drive by name (fuzzy match)
     const driveNames = Object.keys(data.drives);
     const normalizedInput = name.toUpperCase().replace(/[-_]/g, '');
-    
+
     let matchedDrive = null;
-    
+
     // Exact match first
-    matchedDrive = driveNames.find(n => n.toUpperCase() === name.toUpperCase());
-    
+    matchedDrive = driveNames.find((n) => n.toUpperCase() === name.toUpperCase());
+
     // Fuzzy match if no exact
     if (!matchedDrive) {
-      matchedDrive = driveNames.find(n => {
+      matchedDrive = driveNames.find((n) => {
         const normalized = n.toUpperCase().replace(/[-_]/g, '');
-        return normalized === normalizedInput ||
-               normalized.includes(normalizedInput) ||
-               normalizedInput.includes(normalized);
+        return (
+          normalized === normalizedInput ||
+          normalized.includes(normalizedInput) ||
+          normalizedInput.includes(normalized)
+        );
       });
     }
-    
+
     if (!matchedDrive) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: `Drive "${name}" not found`,
-        available: driveNames
+        available: driveNames,
       });
     }
-    
+
     // Update the drive
     const drive = data.drives[matchedDrive];
     const previousPressure = drive.pressure;
+    const threshold = drive.threshold || 1.0;
+    const timestamp = new Date().toISOString();
+
     drive.pressure = 0;
-    
-    // Add satisfaction timestamp
+
+    // Add satisfaction timestamp (legacy)
     if (!drive.satisfaction_events) {
       drive.satisfaction_events = [];
     }
-    drive.satisfaction_events.push(new Date().toISOString());
-    
+    drive.satisfaction_events.push(timestamp);
+
     // Trim to last 10 events
     if (drive.satisfaction_events.length > 10) {
       drive.satisfaction_events = drive.satisfaction_events.slice(-10);
     }
-    
+
+    // Write to satisfaction_history.jsonl (issue #127)
+    try {
+      const openclawStateDir = join(homedir(), '.openclaw', 'state');
+      const historyPath = join(openclawStateDir, 'satisfaction_history.jsonl');
+
+      const satisfactionEvent = {
+        timestamp,
+        drive: matchedDrive,
+        pressure_before: previousPressure,
+        pressure_after: 0,
+        band: previousPressure >= threshold ? 'triggered' : 'available',
+        depth: 'moderate',
+        ratio: 1.0, // Full reset from UI
+        source: 'ui-manual',
+      };
+
+      // Append to satisfaction history
+      const historyLine = JSON.stringify(satisfactionEvent) + '\n';
+      appendFileSync(historyPath, historyLine);
+    } catch (historyErr) {
+      console.error('Failed to write satisfaction history:', historyErr);
+      // Non-fatal - continue with satisfaction
+    }
+
     // Remove from triggered_drives if present
     if (data.triggered_drives) {
       data.triggered_drives = data.triggered_drives.filter(
-        d => d.toUpperCase() !== matchedDrive.toUpperCase()
+        (d) => d.toUpperCase() !== matchedDrive.toUpperCase(),
       );
     }
-    
+
     // Update last_tick
     data.last_tick = new Date().toISOString();
-    
+
     // Write back
     writeFileSync(drivesPath, JSON.stringify(data, null, 2));
-    
+
     res.json({
       success: true,
       drive: matchedDrive,
@@ -429,54 +503,52 @@ router.post('/:name/activate', (req, res) => {
     const { name } = req.params;
     const config = loadConfig();
     const drivesPath = getStatePath(config, 'drives.json');
-    
+
     if (!existsSync(drivesPath)) {
       return res.status(404).json({ error: 'Drives state file not found' });
     }
-    
+
     const content = readFileSync(drivesPath, 'utf-8');
     const data = JSON.parse(content);
-    
+
     if (!data.drives) {
       return res.status(404).json({ error: 'No drives found' });
     }
-    
+
     // Find drive by name
-    const driveName = Object.keys(data.drives).find(
-      n => n.toUpperCase() === name.toUpperCase()
-    );
-    
+    const driveName = Object.keys(data.drives).find((n) => n.toUpperCase() === name.toUpperCase());
+
     if (!driveName) {
       return res.status(404).json({ error: `Drive "${name}" not found` });
     }
-    
+
     const drive = data.drives[driveName];
-    
+
     // Check if drive is latent
     if (drive.status !== 'latent') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: `Drive "${name}" is not latent`,
         status: drive.status || 'active',
       });
     }
-    
+
     // Check budget
-    const dailyLimit = config.budget?.daily_limit || 50.00;
+    const dailyLimit = config.budget?.daily_limit || 50.0;
     const today = new Date().toISOString().split('T')[0];
     let todaySpend = 0;
-    
+
     for (const d of Object.values(data.drives)) {
       const events = d.satisfaction_events || [];
       for (const event of events) {
         if (event.startsWith(today)) {
-          todaySpend += 2.50;
+          todaySpend += 2.5;
         }
       }
     }
-    
+
     const budgetRemaining = dailyLimit - todaySpend;
-    
-    if (budgetRemaining < 2.50) {
+
+    if (budgetRemaining < 2.5) {
       return res.status(403).json({
         error: 'Budget limit reached',
         daily_limit: dailyLimit,
@@ -484,29 +556,29 @@ router.post('/:name/activate', (req, res) => {
         remaining: budgetRemaining,
       });
     }
-    
+
     // Activate the drive
     drive.status = 'active';
     drive.activated_at = new Date().toISOString();
     drive.previous_status = 'latent';
-    
+
     // Initialize pressure at 0
     drive.pressure = 0;
-    
+
     // Set rate if not present
     if (!drive.rate_per_hour) {
       drive.rate_per_hour = 1.5; // Base rate for discovered drives
     }
-    
+
     // Write back
     writeFileSync(drivesPath, JSON.stringify(data, null, 2));
-    
+
     res.json({
       success: true,
       drive: driveName,
       status: 'active',
       activated_at: drive.activated_at,
-      estimated_daily_cost: 2.50,
+      estimated_daily_cost: 2.5,
     });
   } catch (err) {
     console.error('Activate drive error:', err);
@@ -521,22 +593,22 @@ router.post('/:name/activate', (req, res) => {
 router.post('/restart', async (req, res) => {
   try {
     const { utimesSync } = require('fs');
-    
+
     // Touch drives-state.json to force daemon to re-evaluate
     const openclawStateDir = join(homedir(), '.openclaw', 'state');
     const stateFilePath = join(openclawStateDir, 'drives-state.json');
-    
+
     if (!existsSync(stateFilePath)) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'drives-state.json not found',
-        hint: 'Is the daemon running?'
+        hint: 'Is the daemon running?',
       });
     }
-    
+
     // Update file modified time to trigger watchers
     const now = new Date();
     utimesSync(stateFilePath, now, now);
-    
+
     res.json({
       success: true,
       message: 'Daemon state refreshed',
@@ -544,9 +616,9 @@ router.post('/restart', async (req, res) => {
     });
   } catch (err) {
     console.error('Restart daemon error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to refresh daemon state',
-      details: err.message
+      details: err.message,
     });
   }
 });
@@ -559,23 +631,24 @@ router.post('/review', (req, res) => {
   try {
     const config = loadConfig();
     const pendingPath = getStatePath(config, 'pending-reviews.json');
-    
+
     if (!existsSync(pendingPath)) {
       return res.json({
         has_pending: false,
         message: 'No pending reviews',
       });
     }
-    
+
     const content = readFileSync(pendingPath, 'utf-8');
     const pending = JSON.parse(content);
-    
+
     res.json({
       has_pending: pending.length > 0,
       count: pending.length,
-      message: pending.length > 0 
-        ? `Found ${pending.length} drive(s) awaiting review`
-        : 'No pending reviews',
+      message:
+        pending.length > 0
+          ? `Found ${pending.length} drive(s) awaiting review`
+          : 'No pending reviews',
       reviews: pending,
     });
   } catch (err) {
