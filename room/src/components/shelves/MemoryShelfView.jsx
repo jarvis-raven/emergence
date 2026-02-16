@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { renderMarkdown } from '../../utils/markdown';
+import { DreamList, parseDreamFile } from '../DreamEntry';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -13,6 +14,7 @@ const TAG_COLORS = {
   correspondence: 'bg-amber-500/20 text-amber-400',
   creative: 'bg-pink-500/20 text-pink-400',
   dream: 'bg-indigo-500/20 text-indigo-400',
+  dreams: 'bg-indigo-500/20 text-indigo-400',
   'self-history': 'bg-cyan-500/20 text-cyan-400',
   'soul-history': 'bg-cyan-500/20 text-cyan-400',
   todo: 'bg-orange-500/20 text-orange-400',
@@ -40,7 +42,7 @@ function formatDisplayDate(dateStr) {
 
     if (dateStr === todayStr) return `Today — ${weekday} ${day} ${month}`;
     if (dateStr === yesterdayStr) return `Yesterday — ${weekday} ${day} ${month}`;
-    
+
     const diffDays = Math.round((now - date) / 86400000);
     if (diffDays < 7) return `${weekday} ${day} ${month}`;
     return `${day} ${month} ${date.getFullYear()}`;
@@ -88,14 +90,15 @@ export default function MemoryShelfView({ data }) {
 
   // Filtered file list
   const filteredFiles = useMemo(() => {
-    let files = activeFilter ? allFiles.filter(f => f.category === activeFilter) : allFiles;
+    let files = activeFilter ? allFiles.filter((f) => f.category === activeFilter) : allFiles;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      files = files.filter(f =>
-        (f.filename || '').toLowerCase().includes(q) ||
-        (f.preview || '').toLowerCase().includes(q) ||
-        (f.date || '').includes(q) ||
-        (f.category || '').toLowerCase().includes(q)
+      files = files.filter(
+        (f) =>
+          (f.filename || '').toLowerCase().includes(q) ||
+          (f.preview || '').toLowerCase().includes(q) ||
+          (f.date || '').includes(q) ||
+          (f.category || '').toLowerCase().includes(q),
       );
     }
     return files;
@@ -107,9 +110,10 @@ export default function MemoryShelfView({ data }) {
     setModalLoading(true);
     try {
       // Use path-based endpoint for non-daily, date-based for daily
-      const url = file.category === 'daily' && file.date
-        ? `${API_URL}/api/memory/daily/${file.date}`
-        : `${API_URL}/api/memory/file?path=${encodeURIComponent(file.path)}`;
+      const url =
+        file.category === 'daily' && file.date
+          ? `${API_URL}/api/memory/daily/${file.date}`
+          : `${API_URL}/api/memory/file?path=${encodeURIComponent(file.path)}`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
@@ -159,7 +163,9 @@ export default function MemoryShelfView({ data }) {
           </div>
           {data?.embeddings && (
             <div className="bg-background/50 rounded-lg p-2 text-center">
-              <div className="text-sm font-semibold text-text">{data.embeddings.chunks?.toLocaleString()}</div>
+              <div className="text-sm font-semibold text-text">
+                {data.embeddings.chunks?.toLocaleString()}
+              </div>
               <div className="text-[10px] text-textMuted">Embeddings</div>
             </div>
           )}
@@ -186,7 +192,9 @@ export default function MemoryShelfView({ data }) {
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-textMuted hover:text-text text-xs"
-              >✕</button>
+              >
+                ✕
+              </button>
             )}
           </div>
 
@@ -207,9 +215,14 @@ export default function MemoryShelfView({ data }) {
             {filterOpen && (
               <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-surface rounded-xl shadow-2xl py-1 z-50 max-h-64 overflow-y-auto">
                 <button
-                  onClick={() => { setActiveFilter(null); setFilterOpen(false); }}
+                  onClick={() => {
+                    setActiveFilter(null);
+                    setFilterOpen(false);
+                  }}
                   className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
-                    !activeFilter ? 'bg-accent/15 text-accent' : 'text-textMuted hover:text-text hover:bg-background/50'
+                    !activeFilter
+                      ? 'bg-accent/15 text-accent'
+                      : 'text-textMuted hover:text-text hover:bg-background/50'
                   }`}
                 >
                   <span>All</span>
@@ -218,9 +231,14 @@ export default function MemoryShelfView({ data }) {
                 {categories.map(({ category, count }) => (
                   <button
                     key={category}
-                    onClick={() => { setActiveFilter(category); setFilterOpen(false); }}
+                    onClick={() => {
+                      setActiveFilter(category);
+                      setFilterOpen(false);
+                    }}
                     className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
-                      activeFilter === category ? 'bg-accent/15 text-accent' : 'text-textMuted hover:text-text hover:bg-background/50'
+                      activeFilter === category
+                        ? 'bg-accent/15 text-accent'
+                        : 'text-textMuted hover:text-text hover:bg-background/50'
                     }`}
                   >
                     <span className="capitalize">{category}</span>
@@ -248,7 +266,9 @@ export default function MemoryShelfView({ data }) {
                   <span className="text-sm font-medium text-text truncate">
                     {file.date ? formatDisplayDate(file.date) : file.filename}
                   </span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${TAG_COLORS[file.category] || 'bg-background/50 text-textMuted'}`}>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${TAG_COLORS[file.category] || 'bg-background/50 text-textMuted'}`}
+                  >
                     {file.category}
                   </span>
                 </div>
@@ -288,12 +308,20 @@ export default function MemoryShelfView({ data }) {
  */
 function FileModal({ file, body, loading, onClose }) {
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
   const title = file.date ? formatDisplayDate(file.date) : file.filename;
+
+  // Parse dream data if this is a dream file
+  const isDreamFile = file.category === 'dreams';
+  const dreams = isDreamFile && body ? parseDreamFile(body) : null;
 
   return (
     <div
@@ -309,7 +337,9 @@ function FileModal({ file, body, loading, onClose }) {
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-lg">{file.icon}</span>
             <h3 className="text-base font-semibold text-text truncate">{title}</h3>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${TAG_COLORS[file.category] || 'bg-background/50 text-textMuted'}`}>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${TAG_COLORS[file.category] || 'bg-background/50 text-textMuted'}`}
+            >
               {file.category}
             </span>
           </div>
@@ -326,18 +356,33 @@ function FileModal({ file, body, loading, onClose }) {
           {loading ? (
             <div className="py-8 text-center text-textMuted/50 animate-pulse">Loading...</div>
           ) : body ? (
-            <div
-              className="prose prose-invert prose-sm max-w-none text-textMuted leading-relaxed
-                [&_h1]:text-base [&_h1]:text-text [&_h1]:mt-4 [&_h1]:mb-2
-                [&_h2]:text-sm [&_h2]:text-text [&_h2]:mt-3 [&_h2]:mb-1
-                [&_h3]:text-sm [&_h3]:text-text/80 [&_h3]:mt-2 [&_h3]:mb-1
-                [&_p]:mb-2 [&_p]:text-sm
-                [&_ul]:mb-2 [&_li]:text-sm
-                [&_blockquote]:border-l-2 [&_blockquote]:border-primary/30 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-textMuted/70
-                [&_code]:text-xs [&_code]:bg-background/50 [&_code]:px-1 [&_code]:rounded
-                [&_hr]:border-textMuted/10 [&_hr]:my-3"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
-            />
+            isDreamFile ? (
+              // Dream files: Parse and render with DreamList
+              dreams ? (
+                <DreamList dreams={dreams} groupByDate={false} compact={false} />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-textMuted text-sm">Unable to parse dream data</p>
+                  <pre className="text-xs text-textMuted/50 mt-4 text-left overflow-auto">
+                    {body}
+                  </pre>
+                </div>
+              )
+            ) : (
+              // Regular files: Render as markdown
+              <div
+                className="prose prose-invert prose-sm max-w-none text-textMuted leading-relaxed
+                  [&_h1]:text-base [&_h1]:text-text [&_h1]:mt-4 [&_h1]:mb-2
+                  [&_h2]:text-sm [&_h2]:text-text [&_h2]:mt-3 [&_h2]:mb-1
+                  [&_h3]:text-sm [&_h3]:text-text/80 [&_h3]:mt-2 [&_h3]:mb-1
+                  [&_p]:mb-2 [&_p]:text-sm
+                  [&_ul]:mb-2 [&_li]:text-sm
+                  [&_blockquote]:border-l-2 [&_blockquote]:border-primary/30 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-textMuted/70
+                  [&_code]:text-xs [&_code]:bg-background/50 [&_code]:px-1 [&_code]:rounded
+                  [&_hr]:border-textMuted/10 [&_hr]:my-3"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
+              />
+            )
           ) : null}
         </div>
       </div>
