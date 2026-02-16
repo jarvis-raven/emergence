@@ -293,6 +293,91 @@ def cmd_tag(args: List[str]) -> Dict[str, Any]:
         sys.exit(1)
 
 
+def _read_and_classify_file(md_file, workspace) -> tuple:
+    """
+    Read file content and classify it.
+
+    Args:
+        md_file: Path to markdown file
+        workspace: Workspace path for relative path calculation
+
+    Returns:
+        Tuple of (rel_path, tags) or (None, None) on error
+    """
+    try:
+        rel_path = str(md_file.relative_to(workspace))
+    except ValueError:
+        rel_path = str(md_file)
+
+    try:
+        content = md_file.read_text(encoding="utf-8")[:5000]  # First 5KB
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning(f"Could not read {rel_path}: {e}")
+        return None, None
+
+    tags = classify_text(content)
+    if not tags:
+        logger.debug(f"No tags found for {rel_path}")
+        return None, None
+
+    return rel_path, tags
+
+
+def _merge_tags_to_db(db: sqlite3.Connection, rel_path: str, tags: List[str]) -> None:
+    """
+    Merge new tags with existing tags in database.
+
+    Args:
+        db: Database connection
+        rel_path: Relative file path
+        tags: New tags to merge
+    """
+    row = db.execute(
+        "SELECT context_tags FROM gravity WHERE path = ? LIMIT 1", (rel_path,)
+    ).fetchone()
+
+    if row:
+        try:
+            existing = json.loads(row["context_tags"] or "[]")
+        except json.JSONDecodeError as e:
+            logger.warning(f"Corrupted context_tags for {rel_path}: {e}")
+            existing = []
+        merged = list(set(existing + tags))
+        db.execute(
+            "UPDATE gravity SET context_tags = ? WHERE path = ?",
+            (json.dumps(merged), rel_path),
+        )
+    else:
+        db.execute(
+            """
+            INSERT INTO gravity (path, line_start, line_end, context_tags)
+            VALUES (?, 0, 0, ?)
+        """,
+            (rel_path, json.dumps(tags)),
+        )
+
+
+def _collect_tag_stats(db: sqlite3.Connection) -> Dict[str, int]:
+    """
+    Collect statistics on tag distribution.
+
+    Args:
+        db: Database connection
+
+    Returns:
+        Dictionary of tag counts
+    """
+    all_tags = []
+    for row in db.execute("SELECT context_tags FROM gravity WHERE context_tags != '[]'").fetchall():
+        try:
+            all_tags.extend(json.loads(row["context_tags"] or "[]"))
+        except json.JSONDecodeError as e:
+            logger.warning(f"Corrupted context_tags in stats: {e}")
+            continue
+
+    return dict(Counter(all_tags).most_common(20))
+
+
 def cmd_auto_tag(args: List[str]) -> Dict[str, Any]:
     """
     Auto-tag all memory files based on content analysis.
@@ -317,64 +402,17 @@ def cmd_auto_tag(args: List[str]) -> Dict[str, Any]:
         logger.info(f"Auto-tagging files in {memory_dir}")
 
         for md_file in sorted(memory_dir.glob("*.md")):
-            try:
-                rel_path = str(md_file.relative_to(workspace))
-            except ValueError:
-                rel_path = str(md_file)
-
-            try:
-                content = md_file.read_text(encoding="utf-8")[:5000]  # First 5KB
-            except (OSError, UnicodeDecodeError) as e:
-                logger.warning(f"Could not read {rel_path}: {e}")
+            rel_path, tags = _read_and_classify_file(md_file, workspace)
+            if rel_path is None or tags is None:
                 continue
 
-            tags = classify_text(content)
-            if not tags:
-                logger.debug(f"No tags found for {rel_path}")
-                continue
-
-            # Merge with existing tags
-            row = db.execute(
-                "SELECT context_tags FROM gravity WHERE path = ? LIMIT 1", (rel_path,)
-            ).fetchone()
-
-            if row:
-                try:
-                    existing = json.loads(row["context_tags"] or "[]")
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Corrupted context_tags for {rel_path}: {e}")
-                    existing = []
-                merged = list(set(existing + tags))
-                db.execute(
-                    "UPDATE gravity SET context_tags = ? WHERE path = ?",
-                    (json.dumps(merged), rel_path),
-                )
-            else:
-                db.execute(
-                    """
-                    INSERT INTO gravity (path, line_start, line_end, context_tags)
-                    VALUES (?, 0, 0, ?)
-                """,
-                    (rel_path, json.dumps(tags)),
-                )
-
+            _merge_tags_to_db(db, rel_path, tags)
             tagged += 1
 
         commit_with_retry(db)
 
-        # Stats
-        all_tags = []
-        for row in db.execute(
-            "SELECT context_tags FROM gravity WHERE context_tags != '[]'"
-        ).fetchall():
-            try:
-                all_tags.extend(json.loads(row["context_tags"] or "[]"))
-            except json.JSONDecodeError as e:
-                logger.warning(f"Corrupted context_tags in stats: {e}")
-                continue
-
-        tag_counts = dict(Counter(all_tags).most_common(20))
-
+        # Collect statistics
+        tag_counts = _collect_tag_stats(db)
         db.close()
 
         result = {"files_tagged": tagged, "tag_distribution": tag_counts}
@@ -405,7 +443,7 @@ COMMANDS = {
 def main() -> None:
     """Main entry point for doors command."""
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        print(f"Usage: python -m core.nautilus doors <command> [args]")
+        print("Usage: python -m core.nautilus doors <command> [args]")
         print(f"Commands: {', '.join(COMMANDS.keys())}")
         sys.exit(1)
 
