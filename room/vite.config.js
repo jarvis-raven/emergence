@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    
+
     // Environment variables exposed to the client
     define: {
       __DEV_MODE__: JSON.stringify(isDev),

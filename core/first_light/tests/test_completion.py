@@ -1,13 +1,5 @@
 """Tests for First Light completion mechanism."""
 
-import json
-import tempfile
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
 from core.first_light.completion import (
     load_first_light_json,
     save_first_light_json,
@@ -22,6 +14,13 @@ from core.first_light.completion import (
     check_and_notify_startup,
     DEFAULT_GATES,
 )
+import tempfile
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 
 class TestFirstLightCompletion:
@@ -80,7 +79,7 @@ class TestFirstLightCompletion:
             "session_count": 5,
             "started_at": datetime.now(timezone.utc).isoformat(),
             "discovered_drives": [],
-            "gates": DEFAULT_GATES
+            "gates": DEFAULT_GATES,
         }
         status = calculate_gate_status(fl)
         assert status["sessions_met"] is False
@@ -96,7 +95,7 @@ class TestFirstLightCompletion:
             "session_count": 15,
             "started_at": started,
             "discovered_drives": [{"name": "TEST"}],
-            "gates": DEFAULT_GATES
+            "gates": DEFAULT_GATES,
         }
         status = calculate_gate_status(fl)
         assert status["days_met"] is False
@@ -112,7 +111,7 @@ class TestFirstLightCompletion:
             "session_count": 15,
             "started_at": (datetime.now(timezone.utc) - timedelta(days=10)).isoformat(),
             "discovered_drives": [{"name": "DRIVE1"}],
-            "gates": DEFAULT_GATES
+            "gates": DEFAULT_GATES,
         }
         status = calculate_gate_status(fl)
         assert status["drives_met"] is False
@@ -163,7 +162,7 @@ class TestFirstLightCompletion:
         fl["completion_transition"] = {
             "notified": False,
             "locked_drives": ["CREATION"],
-            "transition_message": "Test graduation message"
+            "transition_message": "Test graduation message",
         }
         save_first_light_json(self.workspace, fl)
 
@@ -286,16 +285,16 @@ class TestFirstLightCompletion:
             "progress": {
                 "sessions": {"current": 5, "required": 10, "percent": 50},
                 "days": {"current": 3, "required": 7, "percent": 43},
-                "drives": {"current": 2, "required": 3, "percent": 67}
+                "drives": {"current": 2, "required": 3, "percent": 67},
             },
             "gate_status": {
                 "sessions_met": False,
                 "days_met": False,
                 "drives_met": False,
-                "over_soft_limit": False
+                "over_soft_limit": False,
             },
             "can_complete": False,
-            "can_complete_manual": True
+            "can_complete_manual": True,
         }
         display = format_status_display(status)
         assert "First Light Status" in display
@@ -332,7 +331,7 @@ class TestFirstLightCompletion:
         fl["completion_transition"] = {
             "notified": False,
             "locked_drives": ["CREATION"],
-            "transition_message": "Graduation!"
+            "transition_message": "Graduation!",
         }
         save_first_light_json(self.workspace, fl)
 
@@ -346,11 +345,11 @@ class TestFirstLightCompletion:
 def run_tests():
     """Run all tests."""
     test = TestFirstLightCompletion()
-    
+
     methods = [m for m in dir(test) if m.startswith("test_")]
     passed = 0
     failed = 0
-    
+
     for method_name in methods:
         test.setup_method()
         try:
@@ -365,7 +364,7 @@ def run_tests():
             failed += 1
         finally:
             test.teardown_method()
-    
+
     print()
     print(f"Results: {passed} passed, {failed} failed")
     return failed == 0

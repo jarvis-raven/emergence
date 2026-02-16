@@ -1,12 +1,5 @@
 """Unit tests for aspirations and project models."""
 
-import sys
-import os
-import unittest
-
-# Add parent directories to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 from core.aspirations.models import (
     ASPIRATION_CATEGORIES,
     PROJECT_STATUSES,
@@ -15,16 +8,22 @@ from core.aspirations.models import (
     validate_project,
     create_default_data,
 )
+import sys
+import os
+import unittest
+
+# Add parent directories to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 
 class TestAspirationCategories(unittest.TestCase):
     """Test aspiration category constants."""
-    
+
     def test_categories_defined(self):
         """Categories should be a non-empty list."""
         self.assertIsInstance(ASPIRATION_CATEGORIES, list)
         self.assertGreater(len(ASPIRATION_CATEGORIES), 0)
-    
+
     def test_categories_include_expected(self):
         """Should include known categories."""
         expected = ["philosophical", "creative", "growth", "social", "community", "practical"]
@@ -34,12 +33,12 @@ class TestAspirationCategories(unittest.TestCase):
 
 class TestProjectStatuses(unittest.TestCase):
     """Test project status constants."""
-    
+
     def test_statuses_defined(self):
         """Statuses should be a non-empty list."""
         self.assertIsInstance(PROJECT_STATUSES, list)
         self.assertEqual(len(PROJECT_STATUSES), 4)
-    
+
     def test_statuses_include_expected(self):
         """Should include known statuses."""
         expected = ["active", "idea", "paused", "completed"]
@@ -49,12 +48,12 @@ class TestProjectStatuses(unittest.TestCase):
 
 class TestProjectCategories(unittest.TestCase):
     """Test project category constants."""
-    
+
     def test_categories_defined(self):
         """Categories should be a non-empty list."""
         self.assertIsInstance(PROJECT_CATEGORIES, list)
         self.assertGreater(len(PROJECT_CATEGORIES), 0)
-    
+
     def test_categories_include_expected(self):
         """Should include known categories."""
         expected = ["framework", "tool", "creative", "community", "personal"]
@@ -64,7 +63,7 @@ class TestProjectCategories(unittest.TestCase):
 
 class TestValidateAspiration(unittest.TestCase):
     """Test aspiration validation."""
-    
+
     def test_valid_aspiration_all_fields(self):
         """Valid aspiration with all fields should pass."""
         aspiration = {
@@ -78,7 +77,7 @@ class TestValidateAspiration(unittest.TestCase):
         valid, errors = validate_aspiration(aspiration)
         self.assertTrue(valid)
         self.assertEqual(errors, [])
-    
+
     def test_valid_aspiration_required_fields_only(self):
         """Valid aspiration with only required fields should pass."""
         aspiration = {
@@ -91,7 +90,7 @@ class TestValidateAspiration(unittest.TestCase):
         valid, errors = validate_aspiration(aspiration)
         self.assertTrue(valid)
         self.assertEqual(errors, [])
-    
+
     def test_missing_required_field(self):
         """Missing required field should fail."""
         aspiration = {
@@ -104,7 +103,7 @@ class TestValidateAspiration(unittest.TestCase):
         valid, errors = validate_aspiration(aspiration)
         self.assertFalse(valid)
         self.assertTrue(any("description" in e for e in errors))
-    
+
     def test_invalid_category(self):
         """Invalid category should fail."""
         aspiration = {
@@ -117,7 +116,7 @@ class TestValidateAspiration(unittest.TestCase):
         valid, errors = validate_aspiration(aspiration)
         self.assertFalse(valid)
         self.assertTrue(any("category" in e.lower() for e in errors))
-    
+
     def test_id_with_spaces(self):
         """ID with spaces should fail."""
         aspiration = {
@@ -130,7 +129,7 @@ class TestValidateAspiration(unittest.TestCase):
         valid, errors = validate_aspiration(aspiration)
         self.assertFalse(valid)
         self.assertTrue(any("kebab-case" in e.lower() or "space" in e.lower() for e in errors))
-    
+
     def test_all_categories_valid(self):
         """All defined categories should be accepted."""
         for category in ASPIRATION_CATEGORIES:
@@ -147,7 +146,7 @@ class TestValidateAspiration(unittest.TestCase):
 
 class TestValidateProject(unittest.TestCase):
     """Test project validation."""
-    
+
     def test_valid_project_all_fields(self):
         """Valid project with all fields should pass."""
         project = {
@@ -165,7 +164,7 @@ class TestValidateProject(unittest.TestCase):
         valid, errors = validate_project(project)
         self.assertTrue(valid)
         self.assertEqual(errors, [])
-    
+
     def test_valid_project_required_fields_only(self):
         """Valid project with only required fields should pass."""
         project = {
@@ -180,7 +179,7 @@ class TestValidateProject(unittest.TestCase):
         valid, errors = validate_project(project)
         self.assertTrue(valid)
         self.assertEqual(errors, [])
-    
+
     def test_missing_required_field(self):
         """Missing required field should fail."""
         project = {
@@ -195,7 +194,7 @@ class TestValidateProject(unittest.TestCase):
         valid, errors = validate_project(project)
         self.assertFalse(valid)
         self.assertTrue(any("status" in e.lower() for e in errors))
-    
+
     def test_invalid_status(self):
         """Invalid status should fail."""
         project = {
@@ -210,7 +209,7 @@ class TestValidateProject(unittest.TestCase):
         valid, errors = validate_project(project)
         self.assertFalse(valid)
         self.assertTrue(any("status" in e.lower() for e in errors))
-    
+
     def test_invalid_category(self):
         """Invalid category should fail."""
         project = {
@@ -225,7 +224,7 @@ class TestValidateProject(unittest.TestCase):
         valid, errors = validate_project(project)
         self.assertFalse(valid)
         self.assertTrue(any("category" in e.lower() for e in errors))
-    
+
     def test_all_statuses_valid(self):
         """All defined statuses should be accepted."""
         for status in PROJECT_STATUSES:
@@ -240,7 +239,7 @@ class TestValidateProject(unittest.TestCase):
             }
             valid, errors = validate_project(project)
             self.assertTrue(valid, f"Status {status} should be valid: {errors}")
-    
+
     def test_all_project_categories_valid(self):
         """All defined project categories should be accepted."""
         for category in PROJECT_CATEGORIES:
@@ -255,7 +254,7 @@ class TestValidateProject(unittest.TestCase):
             }
             valid, errors = validate_project(project)
             self.assertTrue(valid, f"Category {category} should be valid: {errors}")
-    
+
     def test_invalid_aspiration_id(self):
         """Project with invalid aspirationId should fail when validated."""
         project = {
@@ -270,8 +269,10 @@ class TestValidateProject(unittest.TestCase):
         valid_aspirations = {"other-dream"}
         valid, errors = validate_project(project, valid_aspirations)
         self.assertFalse(valid)
-        self.assertTrue(any("aspirationId" in e.lower() or "aspiration" in e.lower() for e in errors))
-    
+        self.assertTrue(
+            any("aspirationId" in e.lower() or "aspiration" in e.lower() for e in errors)
+        )
+
     def test_valid_aspiration_id(self):
         """Project with valid aspirationId should pass."""
         project = {
@@ -291,7 +292,7 @@ class TestValidateProject(unittest.TestCase):
 
 class TestCreateDefaultData(unittest.TestCase):
     """Test default data creation."""
-    
+
     def test_default_structure(self):
         """Default data should have expected structure."""
         data = create_default_data()
@@ -299,18 +300,18 @@ class TestCreateDefaultData(unittest.TestCase):
         self.assertIn("aspirations", data)
         self.assertIn("projects", data)
         self.assertIn("meta", data)
-    
+
     def test_default_lists_empty(self):
         """Default lists should be empty."""
         data = create_default_data()
         self.assertEqual(data["aspirations"], [])
         self.assertEqual(data["projects"], [])
-    
+
     def test_default_version(self):
         """Default version should be 1."""
         data = create_default_data()
         self.assertEqual(data["version"], 1)
-    
+
     def test_default_meta_has_updatedat(self):
         """Default meta should have updatedAt."""
         data = create_default_data()

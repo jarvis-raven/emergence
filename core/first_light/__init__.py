@@ -55,8 +55,6 @@ from .completion import (
     complete_first_light,
     notify_first_light_completion,
     increment_session_count,
-    get_first_light_status as get_completion_status,
-    format_status_display as format_completion_status,
     manual_complete_first_light,
     check_and_notify_startup,
     calculate_gate_status,

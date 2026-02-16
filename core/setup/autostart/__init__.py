@@ -6,7 +6,7 @@ Provides cross-platform service installation for:
 
 Example:
     from core.setup.autostart import get_installer
-    
+
     installer = get_installer(workspace, agent_name, room_port)
     if installer:
         success, message = installer.install()

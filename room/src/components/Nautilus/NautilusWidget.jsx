@@ -7,7 +7,7 @@ import { useApi } from '../../hooks/useApi';
  */
 function ChamberDistribution({ chambers }) {
   const { atrium, corridor, unknown, total, coverage_pct } = chambers;
-  
+
   const items = [
     { label: 'Atrium', value: atrium, color: 'bg-blue-500', desc: 'Recent context' },
     { label: 'Corridor', value: corridor, color: 'bg-purple-500', desc: 'Transitional' },
@@ -18,15 +18,13 @@ function ChamberDistribution({ chambers }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-text">Chamber Distribution</h3>
-        <span className="text-xs text-textMuted">
-          {Math.round(coverage_pct)}% categorized
-        </span>
+        <span className="text-xs text-textMuted">{Math.round(coverage_pct)}% categorized</span>
       </div>
-      
+
       <div className="space-y-2">
         {items.map((item) => {
           const percentage = total > 0 ? (item.value / total) * 100 : 0;
-          
+
           return (
             <div key={item.label} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
@@ -34,7 +32,7 @@ function ChamberDistribution({ chambers }) {
                 <span className="text-text font-medium">{item.value}</span>
               </div>
               <div className="h-2 bg-background rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full ${item.color} transition-all duration-500`}
                   style={{ width: `${percentage}%` }}
                 />
@@ -44,7 +42,7 @@ function ChamberDistribution({ chambers }) {
           );
         })}
       </div>
-      
+
       <div className="pt-2 border-t border-background/50">
         <div className="text-xs text-textMuted">
           Total chunks: <span className="text-text font-medium">{total}</span>
@@ -60,26 +58,24 @@ function ChamberDistribution({ chambers }) {
  */
 function CoverageCard({ icon, label, value, total, color = 'text-blue-500' }) {
   const percentage = total > 0 ? (value / total) * 100 : 0;
-  
+
   return (
     <div className="bg-background rounded-lg p-4 space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-2xl">{icon}</span>
         <h4 className="text-sm font-medium text-text">{label}</h4>
       </div>
-      
+
       <div className="space-y-1">
         <div className="flex items-baseline gap-2">
-          <span className={`text-2xl font-bold ${color}`}>
-            {Math.round(percentage)}%
-          </span>
+          <span className={`text-2xl font-bold ${color}`}>{Math.round(percentage)}%</span>
           <span className="text-xs text-textMuted">
             {value}/{total}
           </span>
         </div>
-        
+
         <div className="h-1.5 bg-surface rounded-full overflow-hidden">
-          <div 
+          <div
             className={`h-full ${color.replace('text-', 'bg-')} transition-all duration-500`}
             style={{ width: `${percentage}%` }}
           />
@@ -95,21 +91,21 @@ function CoverageCard({ icon, label, value, total, color = 'text-blue-500' }) {
  */
 function GravityStats({ gravity }) {
   const { total_chunks, total_accesses, superseded, db_size } = gravity;
-  
+
   // Format DB size
   const formatSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
-  
+
   return (
     <div className="bg-background rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2">
         <span className="text-2xl">🌍</span>
         <h4 className="text-sm font-medium text-text">Gravity</h4>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <div className="text-xs text-textMuted">Total Chunks</div>
@@ -138,20 +134,20 @@ function GravityStats({ gravity }) {
  */
 function MirrorCoverage({ mirrors }) {
   const { total_events, fully_mirrored, coverage } = mirrors;
-  
+
   const layers = [
     { label: 'Raw', value: coverage.raw, color: 'bg-green-500' },
     { label: 'Summary', value: coverage.summary, color: 'bg-yellow-500' },
     { label: 'Lesson', value: coverage.lesson, color: 'bg-orange-500' },
   ];
-  
+
   return (
     <div className="bg-background rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2">
         <span className="text-2xl">🪞</span>
         <h4 className="text-sm font-medium text-text">Mirror Coverage</h4>
       </div>
-      
+
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="text-textMuted">Total Events</span>
@@ -162,7 +158,7 @@ function MirrorCoverage({ mirrors }) {
           <span className="text-text font-medium">{fully_mirrored}</span>
         </div>
       </div>
-      
+
       <div className="space-y-2 pt-2 border-t border-surface">
         {layers.map((layer) => (
           <div key={layer.label} className="space-y-1">
@@ -171,9 +167,11 @@ function MirrorCoverage({ mirrors }) {
               <span className="text-text font-medium">{layer.value}</span>
             </div>
             <div className="h-1.5 bg-surface rounded-full overflow-hidden">
-              <div 
+              <div
                 className={`h-full ${layer.color} transition-all duration-500`}
-                style={{ width: total_events > 0 ? `${(layer.value / total_events) * 100}%` : '0%' }}
+                style={{
+                  width: total_events > 0 ? `${(layer.value / total_events) * 100}%` : '0%',
+                }}
               />
             </div>
           </div>
@@ -206,9 +204,7 @@ function NautilusError({ error, onRetry }) {
   return (
     <div className="text-center py-12">
       <div className="text-4xl mb-4 opacity-60">🐚</div>
-      <h3 className="text-lg text-text font-medium mb-2">
-        Cannot load Nautilus status
-      </h3>
+      <h3 className="text-lg text-text font-medium mb-2">Cannot load Nautilus status</h3>
       <p className="text-sm text-textMuted mb-4">{error}</p>
       <button
         onClick={onRetry}
@@ -222,7 +218,7 @@ function NautilusError({ error, onRetry }) {
 
 /**
  * NautilusWidget — Memory system visualization
- * 
+ *
  * Displays:
  * - Chamber distribution (Atrium/Corridor/Unknown)
  * - Door coverage (file tagging)
@@ -252,9 +248,7 @@ export default function NautilusWidget() {
           <span className="text-3xl">🐚</span>
           <h2 className="text-xl font-semibold text-text">Nautilus</h2>
         </div>
-        <p className="text-sm text-textMuted">
-          Memory system status and coverage metrics
-        </p>
+        <p className="text-sm text-textMuted">Memory system status and coverage metrics</p>
       </div>
 
       {/* Main Grid */}
@@ -264,7 +258,7 @@ export default function NautilusWidget() {
           <div className="bg-surface rounded-xl p-4 border border-background">
             <ChamberDistribution chambers={chambers || {}} />
           </div>
-          
+
           <GravityStats gravity={gravity || {}} />
         </div>
 
@@ -277,7 +271,7 @@ export default function NautilusWidget() {
             total={doors?.total_files || 0}
             color="text-green-500"
           />
-          
+
           <MirrorCoverage mirrors={mirrors || {}} />
         </div>
       </div>

@@ -86,6 +86,7 @@ Before doing anything else:
 
 # --- Data Models ---
 
+
 class FileDisposition(Enum):
     """Recommendation for how to handle an existing identity file."""
 
@@ -121,6 +122,7 @@ class FileDecision:
 
 # --- File Discovery ---
 
+
 def discover_identity_files(workspace_path: Path) -> dict[str, Path | None]:
     """Scan workspace for existing identity files.
 
@@ -139,6 +141,7 @@ def discover_identity_files(workspace_path: Path) -> dict[str, Path | None]:
 
 # --- File Classification ---
 
+
 def classify_file(filename: str, content: str | None = None, agent_mode: str = "fresh") -> str:
     """Classify a single file and return recommendation string.
 
@@ -148,7 +151,7 @@ def classify_file(filename: str, content: str | None = None, agent_mode: str = "
         agent_mode: "fresh" for new agent, "existing" for adding to existing setup
 
     Returns:
-        Recommendation string: "replace", "keep", "augment", 
+        Recommendation string: "replace", "keep", "augment",
         "backup_replace", or "create"
 
     Raises:
@@ -181,7 +184,9 @@ def classify_file(filename: str, content: str | None = None, agent_mode: str = "
     return classification_map[filename]
 
 
-def classify_files(discovered: dict[str, Path | None], agent_mode: str = "fresh") -> list[FileRecommendation]:
+def classify_files(
+    discovered: dict[str, Path | None], agent_mode: str = "fresh"
+) -> list[FileRecommendation]:
     """Generate recommendations for each discovered file.
 
     Args:
@@ -196,14 +201,16 @@ def classify_files(discovered: dict[str, Path | None], agent_mode: str = "fresh"
     # For fresh installs: create all files without asking
     if agent_mode == "fresh":
         for filename, filepath in discovered.items():
-            recommendations.append(FileRecommendation(
-                filename=filename,
-                current_path=filepath,
-                disposition=FileDisposition.CREATE,
-                reason="Fresh agent install — creating all identity files",
-                user_prompt="Create this file?",
-                backup_required=False,
-            ))
+            recommendations.append(
+                FileRecommendation(
+                    filename=filename,
+                    current_path=filepath,
+                    disposition=FileDisposition.CREATE,
+                    reason="Fresh agent install — creating all identity files",
+                    user_prompt="Create this file?",
+                    backup_required=False,
+                )
+            )
         return recommendations
 
     # For existing agent setups: classify based on file existence
@@ -271,19 +278,22 @@ def classify_files(discovered: dict[str, Path | None], agent_mode: str = "fresh"
         if filepath is not None and disposition == FileDisposition.CREATE:
             disposition = FileDisposition.KEEP
 
-        recommendations.append(FileRecommendation(
-            filename=filename,
-            current_path=filepath,
-            disposition=disposition,
-            reason=details["reason"],
-            user_prompt=details["prompt"],
-            backup_required=details["backup"] if filepath else False,
-        ))
+        recommendations.append(
+            FileRecommendation(
+                filename=filename,
+                current_path=filepath,
+                disposition=disposition,
+                reason=details["reason"],
+                user_prompt=details["prompt"],
+                backup_required=details["backup"] if filepath else False,
+            )
+        )
 
     return recommendations
 
 
 # --- Backup System ---
+
 
 def create_backup(
     source: Path,
@@ -340,6 +350,7 @@ def backup_all_files(
 
 # --- Disposition Utilities ---
 
+
 def invert_disposition(disp: FileDisposition) -> FileDisposition:
     """Get the 'safe' opposite of a disposition."""
     inversions: dict[FileDisposition, FileDisposition] = {
@@ -353,6 +364,7 @@ def invert_disposition(disp: FileDisposition) -> FileDisposition:
 
 
 # --- Augmentation ---
+
 
 def augment_agents_md(existing_path: Path, template_snippet_path: Path | None = None) -> str:
     """Augment existing AGENTS.md with Emergence-specific sections.
@@ -380,6 +392,7 @@ def augment_agents_md(existing_path: Path, template_snippet_path: Path | None = 
 
 # --- Agent Type Classification ---
 
+
 def classify_agent_type(decisions: list[FileDecision]) -> str:
     """Classify whether this is a new or existing agent setup.
 
@@ -397,6 +410,7 @@ def classify_agent_type(decisions: list[FileDecision]) -> str:
 
 
 # --- Resolution Functions ---
+
 
 def resolve_interactively(recommendations: list[FileRecommendation]) -> list[FileDecision]:
     """Present recommendations to user and collect decisions."""
@@ -428,12 +442,14 @@ def resolve_interactively(recommendations: list[FileRecommendation]) -> list[Fil
         else:
             final_disp = rec.disposition
 
-        decisions.append(FileDecision(
-            filename=rec.filename,
-            original_path=rec.current_path,
-            final_disposition=final_disp,
-            user_confirmed=True,
-        ))
+        decisions.append(
+            FileDecision(
+                filename=rec.filename,
+                original_path=rec.current_path,
+                final_disposition=final_disp,
+                user_confirmed=True,
+            )
+        )
 
     return decisions
 
@@ -452,6 +468,7 @@ def resolve_with_defaults(recommendations: list[FileRecommendation]) -> list[Fil
 
 
 # --- Plan Building Utilities ---
+
 
 def build_file_plan(
     decision: FileDecision,
@@ -518,6 +535,7 @@ def update_summary(summary: dict[str, int], action: str) -> None:
 
 # --- Main Entry Point ---
 
+
 def generate_placement_plan(
     workspace: Path,
     interactive: bool = True,
@@ -555,8 +573,11 @@ def generate_placement_plan(
     backups: dict[str, Path] = {}
     if auto_backup:
         files_to_backup = [
-            d.original_path for d in decisions
-            if d.original_path and d.final_disposition in (
+            d.original_path
+            for d in decisions
+            if d.original_path
+            and d.final_disposition
+            in (
                 FileDisposition.REPLACE,
                 FileDisposition.AUGMENT,
                 FileDisposition.BACKUP_REPLACE,
@@ -598,6 +619,7 @@ def generate_placement_plan(
 
 # --- CLI ---
 
+
 def main() -> int:
     """CLI entry point."""
     import argparse
@@ -611,7 +633,7 @@ def main() -> int:
         "--mode",
         choices=["fresh", "existing"],
         default="fresh",
-        help="Agent mode: fresh (new agent) or existing (adding to OpenClaw setup)"
+        help="Agent mode: fresh (new agent) or existing (adding to OpenClaw setup)",
     )
 
     args = parser.parse_args()

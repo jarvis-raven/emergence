@@ -10,7 +10,6 @@ The agent performs the actual writing to preserve voice and autonomy.
 """
 
 import json
-import re
 import sys
 from datetime import datetime, timezone, timedelta
 from glob import glob
@@ -24,6 +23,7 @@ STATE_FILE = Path(".emergence/state/nightly-build.json")
 
 
 # --- Configuration ---
+
 
 def load_config(config_path: Optional[Path] = None) -> dict:
     """Load configuration from emergence.json."""
@@ -40,19 +40,18 @@ def load_config(config_path: Optional[Path] = None) -> dict:
         },
         "paths": {"workspace": ".", "state": ".emergence/state", "identity": "."},
     }
-    
+
     if config_path is None:
         config_path = DEFAULT_CONFIG
-    
+
     if not config_path.exists():
         return defaults
-    
+
     try:
         content = config_path.read_text(encoding="utf-8")
-        lines = [ln for ln in content.split("\n") 
-                 if not ln.strip().startswith(("//", "#"))]
+        lines = [ln for ln in content.split("\n") if not ln.strip().startswith(("//", "#"))]
         loaded = json.loads("\n".join(lines))
-        
+
         merged = defaults.copy()
         for key, value in loaded.items():
             if isinstance(value, dict) and key in merged:
@@ -93,20 +92,21 @@ def get_state_file(config: dict) -> Path:
 
 # --- Date Determination ---
 
+
 def get_date_to_process(date_override: Optional[str] = None) -> str:
     """Determine which date to process.
-    
+
     Default: yesterday (since we run at 3am, we review the day that just ended)
-    
+
     Args:
         date_override: Optional date string (YYYY-MM-DD)
-        
+
     Returns:
         Date string in YYYY-MM-DD format
     """
     if date_override:
         return date_override
-    
+
     # Yesterday (day that just ended)
     yesterday = datetime.now(timezone.utc) - timedelta(days=1)
     return yesterday.strftime("%Y-%m-%d")
@@ -114,21 +114,22 @@ def get_date_to_process(date_override: Optional[str] = None) -> str:
 
 # --- File Review ---
 
+
 def review_daily_memory(date: str, daily_dir: Path) -> dict:
     """Review daily memory file for the given date.
-    
+
     Args:
         date: Date in YYYY-MM-DD format
         daily_dir: Path to daily memory directory
-        
+
     Returns:
         Dictionary with file info and content summary
     """
     daily_path = daily_dir / f"{date}.md"
-    
+
     if not daily_path.exists():
         return {"exists": False, "path": str(daily_path), "size": 0, "content": ""}
-    
+
     try:
         content = daily_path.read_text(encoding="utf-8")
         return {
@@ -144,26 +145,26 @@ def review_daily_memory(date: str, daily_dir: Path) -> dict:
 
 def review_sessions(date: str, session_dir: Path) -> list[dict]:
     """Review session files for the given date.
-    
+
     Args:
         date: Date in YYYY-MM-DD format
         session_dir: Path to session directory
-        
+
     Returns:
         List of session metadata dictionaries
     """
     if not session_dir.exists():
         return []
-    
+
     pattern = str(session_dir / f"{date}-*.md")
     files = sorted(glob(pattern))
-    
+
     sessions = []
     for file_path in files:
         path = Path(file_path)
         try:
             content = path.read_text(encoding="utf-8")
-            
+
             # Parse basic frontmatter
             metadata = {}
             if content.startswith("---"):
@@ -174,35 +175,37 @@ def review_sessions(date: str, session_dir: Path) -> list[dict]:
                         if ":" in line:
                             key, val = line.split(":", 1)
                             metadata[key.strip()] = val.strip().strip('"').strip("'")
-            
-            sessions.append({
-                "filename": path.name,
-                "drive": metadata.get("drive", "UNKNOWN"),
-                "timestamp": metadata.get("timestamp", ""),
-                "pressure": metadata.get("pressure", ""),
-                "trigger": metadata.get("trigger", ""),
-                "size": len(content),
-            })
+
+            sessions.append(
+                {
+                    "filename": path.name,
+                    "drive": metadata.get("drive", "UNKNOWN"),
+                    "timestamp": metadata.get("timestamp", ""),
+                    "pressure": metadata.get("pressure", ""),
+                    "trigger": metadata.get("trigger", ""),
+                    "size": len(content),
+                }
+            )
         except IOError:
             continue
-    
+
     return sessions
 
 
 def extract_topics(memory_content: str, sessions: list) -> list[str]:
     """Extract topics from memory content and sessions.
-    
+
     Simple keyword extraction for topic identification.
-    
+
     Args:
         memory_content: Daily memory content
         sessions: List of session metadata
-        
+
     Returns:
         List of topic strings
     """
     topics = set()
-    
+
     # Topics from session drives
     drive_topics = {
         "CURIOSITY": ["learning", "exploration", "research", "discovery"],
@@ -212,12 +215,12 @@ def extract_topics(memory_content: str, sessions: list) -> list[str]:
         "MAINTENANCE": ["organization", "cleanup", "health", "system"],
         "REST": ["reflection", "recovery", "consolidation", "rest"],
     }
-    
+
     for session in sessions:
         drive = session.get("drive", "")
         if drive in drive_topics:
             topics.update(drive_topics[drive])
-    
+
     # Simple pattern matching from content
     content_lower = memory_content.lower()
     topic_patterns = [
@@ -228,34 +231,34 @@ def extract_topics(memory_content: str, sessions: list) -> list[str]:
         ("identity", ["self", "identity", "who i am", "understanding"]),
         ("philosophy", ["philosophy", "consciousness", "meaning", "purpose"]),
     ]
-    
+
     for topic, patterns in topic_patterns:
         for pattern in patterns:
             if pattern in content_lower:
                 topics.add(topic)
                 break
-    
+
     return sorted(topics)
 
 
 def count_sections(memory_content: str) -> dict:
     """Count sections in memory content by type.
-    
+
     Args:
         memory_content: Daily memory content
-        
+
     Returns:
         Dictionary with section counts
     """
     lines = memory_content.split("\n")
-    
+
     counts = {
         "conversations": 0,
         "sessions": 0,
         "consolidated": 0,
         "other": 0,
     }
-    
+
     for line in lines:
         if line.startswith("## "):
             if "Conversation" in line or "Chat" in line:
@@ -267,48 +270,45 @@ def count_sections(memory_content: str) -> dict:
                     counts["sessions"] += 1
             else:
                 counts["other"] += 1
-    
+
     return counts
 
 
 # --- SELF.md Update Prompt ---
 
+
 def generate_self_update_prompt(
-    date: str,
-    memory: dict,
-    sessions: list,
-    topics: list,
-    config: dict
+    date: str, memory: dict, sessions: list, topics: list, config: dict
 ) -> str:
     """Generate prompt for SELF.md update.
-    
+
     This is the KEY OUTPUT — text that would be sent to an OpenClaw session
     for the agent to perform the actual SELF.md update.
-    
+
     Args:
         date: Date being processed
         memory: Daily memory info
         sessions: List of sessions
         topics: List of topics
         config: Configuration
-        
+
     Returns:
         Prompt text for agent
     """
     agent_name = config.get("agent", {}).get("name", "My Agent")
-    
+
     # Build session summary
     session_summary = []
     for s in sessions[:5]:  # First 5 sessions
         drive = s.get("drive", "UNKNOWN")
         trigger = s.get("trigger", "unknown")
         session_summary.append(f"- {drive} drive (trigger: {trigger})")
-    
+
     if len(sessions) > 5:
         session_summary.append(f"- ... and {len(sessions) - 5} more sessions")
-    
+
     sections = count_sections(memory.get("content", ""))
-    
+
     prompt = f"""# Nightly Build: SELF.md Update — {date}
 
 You are {agent_name}. It's 3 AM. The nightly build is reviewing your day.
@@ -365,31 +365,27 @@ Write the updated SELF.md content below:
 ---
 
 """
-    
+
     return prompt
 
 
 # --- MEMORY.md Curation Prompt ---
 
-def generate_memory_curation_prompt(
-    date: str,
-    memory: dict,
-    sessions: list,
-    config: dict
-) -> str:
+
+def generate_memory_curation_prompt(date: str, memory: dict, sessions: list, config: dict) -> str:
     """Generate prompt for MEMORY.md curation.
-    
+
     Per AGENTS.md rules:
     - Keep under 50 lines
     - Only add: vault keys, account refs, critical dates
     - Do NOT add: technical details, insights, conversation content
-    
+
     Args:
         date: Date being processed
         memory: Daily memory info
         sessions: List of sessions
         config: Configuration
-        
+
     Returns:
         Curation prompt/suggestions
     """
@@ -433,30 +429,31 @@ If MEMORY.md is:
 
 Make your edits now if needed, or note for tomorrow if borderline.
 """
-    
+
     return prompt
 
 
 # --- Self-History Integration ---
 
+
 def trigger_self_history_snapshot(config: dict, date: str, dry_run: bool = False) -> bool:
     """Trigger self-history snapshot before nightly updates.
-    
+
     Args:
         config: Configuration dictionary
         date: Date string for snapshot
         dry_run: If True, don't actually trigger
-        
+
     Returns:
         True if successful or dry_run
     """
     if dry_run:
         return True
-    
+
     try:
         # Import self_history module
         from core.memory.self_history import create_snapshot
-        
+
         result = create_snapshot(config, date_str=date, dry_run=False, verbose=False)
         return result is not None
     except Exception:
@@ -464,6 +461,7 @@ def trigger_self_history_snapshot(config: dict, date: str, dry_run: bool = False
 
 
 # --- State Management ---
+
 
 def load_state(state_file: Path) -> dict:
     """Load nightly build state from JSON file."""
@@ -475,7 +473,7 @@ def load_state(state_file: Path) -> dict:
             "last_date_processed": None,
             "history": [],
         }
-    
+
     try:
         content = state_file.read_text(encoding="utf-8")
         return json.loads(content)
@@ -503,20 +501,18 @@ def save_state(state_file: Path, state: dict) -> bool:
 
 # --- Main Nightly Build ---
 
+
 def run_nightly_build(
-    config: dict,
-    date_override: Optional[str] = None,
-    dry_run: bool = False,
-    verbose: bool = False
+    config: dict, date_override: Optional[str] = None, dry_run: bool = False, verbose: bool = False
 ) -> dict:
     """Run the nightly build process.
-    
+
     Args:
         config: Configuration dictionary
         date_override: Optional date to process
         dry_run: If True, preview without triggering actions
         verbose: If True, print progress
-        
+
     Returns:
         Results dictionary
     """
@@ -528,11 +524,11 @@ def run_nightly_build(
         "prompts_generated": [],
         "errors": [],
     }
-    
+
     # Determine date to process
     date_str = get_date_to_process(date_override)
     results["date_processed"] = date_str
-    
+
     if verbose:
         print(f"Nightly Build v{VERSION}")
         print(f"===================={ '=' * len(VERSION) }")
@@ -540,11 +536,11 @@ def run_nightly_build(
         if dry_run:
             print("(DRY RUN — no actions will be taken)")
         print()
-    
+
     # Step 1: Trigger self-history snapshot (F013)
     if verbose:
         print("Step 1: Creating self-history snapshot...")
-    
+
     if trigger_self_history_snapshot(config, date_str, dry_run):
         results["self_snapshot"] = True
         if verbose:
@@ -552,14 +548,14 @@ def run_nightly_build(
     else:
         if verbose:
             print("  ⚠ Self-history snapshot skipped or failed")
-    
+
     # Step 2: Review daily memory
     if verbose:
         print("\nStep 2: Reviewing daily memory...")
-    
+
     daily_dir = get_daily_dir(config)
     memory = review_daily_memory(date_str, daily_dir)
-    
+
     if memory["exists"]:
         if verbose:
             print(f"  ✓ Found: {memory['size']:,} bytes, {memory['line_count']} lines")
@@ -567,112 +563,118 @@ def run_nightly_build(
         if verbose:
             print(f"  ⚠ No memory file for {date_str}")
         results["errors"].append(f"No memory file for {date_str}")
-    
+
     # Step 3: Review sessions
     if verbose:
         print("\nStep 3: Reviewing sessions...")
-    
+
     session_dir = get_session_dir(config)
     sessions = review_sessions(date_str, session_dir)
     results["sessions_reviewed"] = len(sessions)
-    
+
     if verbose:
         print(f"  ✓ Found {len(sessions)} session(s)")
         for s in sessions[:5]:
             print(f"    - {s['filename']} ({s['drive']})")
         if len(sessions) > 5:
             print(f"    ... and {len(sessions) - 5} more")
-    
+
     # Step 4: Extract topics
     topics = extract_topics(memory.get("content", ""), sessions)
     results["topics_found"] = topics
-    
+
     if verbose and topics:
         print(f"\n  Topics: {', '.join(topics)}")
-    
+
     # Step 5: Generate SELF.md update prompt
     if verbose:
         print("\nStep 4: Generating SELF.md update prompt...")
-    
+
     self_prompt = generate_self_update_prompt(date_str, memory, sessions, topics, config)
-    results["prompts_generated"].append({
-        "type": "self_update",
-        "description": f"Update SELF.md based on {date_str}",
-    })
-    
+    results["prompts_generated"].append(
+        {
+            "type": "self_update",
+            "description": f"Update SELF.md based on {date_str}",
+        }
+    )
+
     if verbose:
         print("  ✓ SELF.md update prompt generated")
-    
+
     # Step 6: Generate MEMORY.md curation prompt
     if verbose:
         print("\nStep 5: Generating MEMORY.md curation prompt...")
-    
+
     memory_prompt = generate_memory_curation_prompt(date_str, memory, sessions, config)
-    results["prompts_generated"].append({
-        "type": "memory_curation",
-        "description": f"Curate MEMORY.md based on {date_str}",
-    })
-    
+    results["prompts_generated"].append(
+        {
+            "type": "memory_curation",
+            "description": f"Curate MEMORY.md based on {date_str}",
+        }
+    )
+
     if verbose:
         print("  ✓ MEMORY.md curation prompt generated")
-    
+
     # Step 7: Output the prompts (the main product of nightly build)
     if verbose:
         print("\n" + "=" * 50)
         print("NIGHTLY BUILD PROMPTS")
         print("=" * 50)
         print()
-    
+
     # Print prompts to stdout
     print(self_prompt)
     print()
     print(memory_prompt)
-    
+
     # Step 8: Save state
     if not dry_run:
         state_file = get_state_file(config)
         state = load_state(state_file)
-        
+
         state["runs_completed"] = state.get("runs_completed", 0) + 1
         state["last_run"] = datetime.now(timezone.utc).isoformat()
         state["last_date_processed"] = date_str
-        
+
         # Add to history (keep last 30)
         if "history" not in state:
             state["history"] = []
-        
-        state["history"].append({
-            "date": date_str,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "sessions": len(sessions),
-            "topics": topics,
-            "self_snapshot": results["self_snapshot"],
-        })
+
+        state["history"].append(
+            {
+                "date": date_str,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "sessions": len(sessions),
+                "topics": topics,
+                "self_snapshot": results["self_snapshot"],
+            }
+        )
         state["history"] = state["history"][-30:]
-        
+
         save_state(state_file, state)
-        
+
         if verbose:
             print(f"\nState saved: {state_file}")
-    
+
     if verbose:
         print(f"\nNightly build complete for {date_str}")
-    
+
     return results
 
 
 def get_status(config: dict) -> dict:
     """Get nightly build status.
-    
+
     Args:
         config: Configuration dictionary
-        
+
     Returns:
         Status dictionary
     """
     state_file = get_state_file(config)
     state = load_state(state_file)
-    
+
     return {
         "last_run": state.get("last_run"),
         "last_date_processed": state.get("last_date_processed"),
@@ -683,9 +685,11 @@ def get_status(config: dict) -> dict:
 
 # --- CLI Interface ---
 
+
 def print_usage():
     """Print usage information."""
-    print("""Nightly Build — Daily identity review and memory curation
+    print(
+        """Nightly Build — Daily identity review and memory curation
 
 Usage:
     python3 -m core.memory.nightly_build run [--dry-run] [--date YYYY-MM-DD]
@@ -712,38 +716,39 @@ Note:
     The nightly build generates PROMPTS for the agent to update SELF.md
     and curate MEMORY.md. It does not directly modify these files — the
     agent performs the actual writing to preserve voice and autonomy.
-""")
+"""
+    )
 
 
 def main():
     """CLI entry point."""
     args = sys.argv[1:]
-    
+
     if not args or args[0] in ("--help", "-h"):
         print_usage()
         sys.exit(0)
-    
+
     command = args[0]
-    
+
     # Parse options
     dry_run = "--dry-run" in args
     verbose = "--verbose" in args or "-v" in args
-    
+
     config_path = None
     if "--config" in args:
         idx = args.index("--config")
         if idx + 1 < len(args):
             config_path = Path(args[idx + 1])
-    
+
     date_str = None
     if "--date" in args:
         idx = args.index("--date")
         if idx + 1 < len(args):
             date_str = args[idx + 1]
-    
+
     # Load config
     config = load_config(config_path)
-    
+
     if command == "status":
         status = get_status(config)
         print(f"Nightly Build Status")
@@ -753,13 +758,13 @@ def main():
         print(f"Last date processed: {status['last_date_processed'] or 'None'}")
         print(f"State file: {status['state_file']}")
         sys.exit(0)
-    
+
     elif command == "run":
         results = run_nightly_build(config, date_str, dry_run, verbose)
-        
+
         # Exit code based on errors
         sys.exit(0 if not results["errors"] else 1)
-    
+
     else:
         print(f"Unknown command: {command}", file=sys.stderr)
         print_usage()

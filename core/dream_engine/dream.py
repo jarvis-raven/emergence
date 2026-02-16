@@ -21,39 +21,37 @@ from typing import Optional
 
 from .config import load_config, get_memory_dir, get_dream_dir, get_dream_engine_config
 from .concepts import extract_concepts
-from .pairs import generate_pairs, create_date_seed
+from .pairs import generate_pairs
 from .fragments import generate_fragments
-from .scoring import score_pairs, build_concept_frequencies, InsightScorer
+from .scoring import score_pairs
 
 
 VERSION = "1.0.0"
 
 
 def generate_dreams(
-    config: dict,
-    reference_date: Optional[datetime] = None,
-    verbose: bool = False
+    config: dict, reference_date: Optional[datetime] = None, verbose: bool = False
 ) -> dict:
     """Generate dreams for a specific date.
-    
+
     Args:
         config: Configuration dictionary
         reference_date: Date to generate dreams for (default: today)
         verbose: Print progress messages
-        
+
     Returns:
         Dictionary with dream generation results
     """
     if reference_date is None:
         reference_date = datetime.now(timezone.utc)
-    
+
     de_config = get_dream_engine_config(config)
     memory_dir = get_memory_dir(config)
-    
-    lookback_days = de_config.get('lookback_days', 7)
-    max_concepts = de_config.get('concepts_per_run', 50)
-    pairs_to_generate = de_config.get('pairs_to_generate', 8)
-    
+
+    lookback_days = de_config.get("lookback_days", 7)
+    max_concepts = de_config.get("concepts_per_run", 50)
+    pairs_to_generate = de_config.get("pairs_to_generate", 8)
+
     if verbose:
         print(f"Dream Engine v{VERSION}")
         print(f"====================={ '=' * len(VERSION) }")
@@ -61,47 +59,47 @@ def generate_dreams(
         print(f"Memory directory: {memory_dir}")
         print(f"Lookback: {lookback_days} days, Max concepts: {max_concepts}")
         print()
-    
+
     # Step 1: Extract concepts
     if verbose:
         print("Step 1: Extracting concepts from memory files...")
-    
+
     concepts, source_files = extract_concepts(
         memory_dir=memory_dir,
         lookback_days=lookback_days,
         max_concepts=max_concepts,
         reference_date=reference_date,
-        verbose=verbose
+        verbose=verbose,
     )
-    
+
     if not concepts:
         if verbose:
             print("No concepts found. Nothing to dream about.")
         return {
-            'date': reference_date.strftime('%Y-%m-%d'),
-            'generated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-            'source_files': 0,
-            'source_concepts': 0,
-            'dreams': [],
-            'error': 'No concepts extracted from memory files'
+            "date": reference_date.strftime("%Y-%m-%d"),
+            "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "source_files": 0,
+            "source_concepts": 0,
+            "dreams": [],
+            "error": "No concepts extracted from memory files",
         }
-    
+
     if verbose:
         print(f"  Extracted {len(concepts)} concepts from {len(source_files)} files")
         print()
-    
+
     # Step 2: Generate pairs
     if verbose:
         print("Step 2: Generating concept pairs...")
-    
+
     pairs = generate_pairs(
         concepts=concepts,
         pairs_to_generate=pairs_to_generate,
         require_cross_source=True,
         reference_date=reference_date,
-        verbose=verbose
+        verbose=verbose,
     )
-    
+
     # Fallback: allow same-source pairs if cross-source produced nothing
     if not pairs:
         if verbose:
@@ -111,139 +109,130 @@ def generate_dreams(
             pairs_to_generate=pairs_to_generate,
             require_cross_source=False,
             reference_date=reference_date,
-            verbose=verbose
+            verbose=verbose,
         )
-    
+
     if not pairs:
         if verbose:
             print("Could not generate any pairs.")
         return {
-            'date': reference_date.strftime('%Y-%m-%d'),
-            'generated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-            'source_files': len(source_files),
-            'source_concepts': len(concepts),
-            'dreams': [],
-            'error': 'Could not generate concept pairs'
+            "date": reference_date.strftime("%Y-%m-%d"),
+            "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "source_files": len(source_files),
+            "source_concepts": len(concepts),
+            "dreams": [],
+            "error": "Could not generate concept pairs",
         }
-    
+
     if verbose:
         print(f"  Generated {len(pairs)} pairs")
         print()
-    
+
     # Step 3: Generate dream fragments
     if verbose:
         print("Step 3: Generating dream fragments...")
-    
+
     fragments = generate_fragments(
-        concept_pairs=pairs,
-        reference_date=reference_date,
-        config=config,
-        verbose=verbose
+        concept_pairs=pairs, reference_date=reference_date, config=config, verbose=verbose
     )
-    
+
     if verbose:
         print(f"  Generated {len(fragments)} fragments")
         print()
-    
+
     # Step 4: Score pairs for insight
     if verbose:
         print("Step 4: Scoring for insight...")
-    
+
     scored_pairs = score_pairs(
-        pairs=pairs,
-        concepts=concepts,
-        reference_date=reference_date,
-        verbose=verbose
+        pairs=pairs, concepts=concepts, reference_date=reference_date, verbose=verbose
     )
-    
+
     if verbose:
         print()
-    
+
     # Step 5: Build final output
     dreams = []
     for (pair, score), fragment in zip(scored_pairs, fragments):
         # Get unique sources from both concepts
         all_sources = list(set(pair.sources_a) | set(pair.sources_b))
-        
+
         dream = {
-            'concepts': [pair.concept_a, pair.concept_b],
-            'fragment': fragment['fragment'],
-            'insight_score': score['total'],
-            'sources': all_sources,
-            'template': fragment['template'],
-            'score_breakdown': score['breakdown'] if verbose else None,
+            "concepts": [pair.concept_a, pair.concept_b],
+            "fragment": fragment["fragment"],
+            "insight_score": score["total"],
+            "sources": all_sources,
+            "template": fragment["template"],
+            "score_breakdown": score["breakdown"] if verbose else None,
         }
-        
+
         # Remove None values
         dream = {k: v for k, v in dream.items() if v is not None}
-        
+
         dreams.append(dream)
-    
+
     # Sort dreams by insight score
-    dreams.sort(key=lambda d: d['insight_score'], reverse=True)
-    
+    dreams.sort(key=lambda d: d["insight_score"], reverse=True)
+
     result = {
-        'date': reference_date.strftime('%Y-%m-%d'),
-        'generated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-        'source_files': len(source_files),
-        'source_concepts': len(concepts),
-        'dreams': dreams,
+        "date": reference_date.strftime("%Y-%m-%d"),
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "source_files": len(source_files),
+        "source_concepts": len(concepts),
+        "dreams": dreams,
     }
-    
+
     if verbose:
         print(f"Generated {len(dreams)} dreams")
         if dreams:
             print(f"  Highest insight score: {dreams[0]['insight_score']}")
             print(f"  Top dream: \"{dreams[0]['fragment'][:50]}...\"")
-    
+
     return result
 
 
 def save_dreams(
-    dreams_data: dict,
-    config: dict,
-    dry_run: bool = False,
-    verbose: bool = False
+    dreams_data: dict, config: dict, dry_run: bool = False, verbose: bool = False
 ) -> bool:
     """Save dreams to JSON file.
-    
+
     Args:
         dreams_data: Dream generation results
         config: Configuration dictionary
         dry_run: If True, don't actually write
         verbose: Print progress messages
-        
+
     Returns:
         True if successful
     """
     dream_dir = get_dream_dir(config)
-    date_str = dreams_data['date']
+    date_str = dreams_data["date"]
     output_path = dream_dir / f"{date_str}.json"
-    
+
     if verbose:
         print(f"\nSaving to: {output_path}")
-    
+
     if dry_run:
         if verbose:
             print("  (DRY RUN - not writing)")
         return True
-    
+
     try:
         # Ensure directory exists
         dream_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Write atomically (temp file then rename)
-        temp_path = output_path.with_suffix('.tmp')
-        with open(temp_path, 'w', encoding='utf-8') as f:
+        temp_path = output_path.with_suffix(".tmp")
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(dreams_data, f, indent=2, ensure_ascii=False)
-        
+
         temp_path.replace(output_path)
-        
+
         if verbose:
             print(f"  ✓ Saved {len(dreams_data['dreams'])} dreams")
-        
+
         return True
-        
+
     except (IOError, OSError) as e:
         print(f"  ✗ Error saving dreams: {e}", file=sys.stderr)
         return False
@@ -253,74 +242,75 @@ def run_dream_generation(
     config: Optional[dict] = None,
     reference_date: Optional[datetime] = None,
     dry_run: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> tuple[bool, dict]:
     """Run the complete dream generation process.
-    
+
     Args:
         config: Configuration dictionary (loaded if None)
         reference_date: Date to generate for (default: today)
         dry_run: Preview without writing
         verbose: Print progress
-        
+
     Returns:
         Tuple of (success, dreams_data)
     """
     if config is None:
         config = load_config()
-    
+
     # Generate dreams
     dreams_data = generate_dreams(config, reference_date, verbose)
-    
+
     # Check if generation failed
-    if dreams_data.get('error'):
+    if dreams_data.get("error"):
         return False, dreams_data
-    
+
     # Save to file
     success = save_dreams(dreams_data, config, dry_run, verbose)
-    
+
     return success, dreams_data
 
 
 def get_status(config: Optional[dict] = None) -> dict:
     """Get dream engine status.
-    
+
     Args:
         config: Configuration dictionary
-        
+
     Returns:
         Status dictionary
     """
     if config is None:
         config = load_config()
-    
+
     memory_dir = get_memory_dir(config)
     dream_dir = get_dream_dir(config)
     de_config = get_dream_engine_config(config)
-    
+
     # Check for memory files
     from .concepts import get_recent_memory_files
+
     recent_files = get_recent_memory_files(
-        memory_dir,
-        lookback_days=de_config.get('lookback_days', 7)
+        memory_dir, lookback_days=de_config.get("lookback_days", 7)
     )
-    
+
     # Check for existing dream files
-    existing_dreams = list(dream_dir.glob('*.json')) if dream_dir.exists() else []
-    
+    existing_dreams = list(dream_dir.glob("*.json")) if dream_dir.exists() else []
+
     return {
-        'memory_dir': str(memory_dir),
-        'dream_dir': str(dream_dir),
-        'recent_memory_files': len(recent_files),
-        'existing_dreams': len(existing_dreams),
-        'latest_dreams': [d.name for d in sorted(existing_dreams)[-5:]],
-        'config': de_config,
+        "memory_dir": str(memory_dir),
+        "dream_dir": str(dream_dir),
+        "recent_memory_files": len(recent_files),
+        "existing_dreams": len(existing_dreams),
+        "latest_dreams": [d.name for d in sorted(existing_dreams)[-5:]],
+        "config": de_config,
     }
 
 
 def print_usage():
     """Print usage information."""
-    print("""Dream Engine — Creative memory recombination system
+    print(
+        """Dream Engine — Creative memory recombination system
 
 Usage:
     python3 -m core.dream_engine.dream run [--date YYYY-MM-DD] [--dry-run] [--verbose]
@@ -347,20 +337,21 @@ Examples:
 
 Cron setup:
     0 4 * * * cd /path/to/workspace && python3 -m core.dream_engine.dream run
-""")
+"""
+    )
 
 
 def parse_date(date_str: str) -> Optional[datetime]:
     """Parse date string to datetime.
-    
+
     Args:
         date_str: Date in YYYY-MM-DD format
-        
+
     Returns:
         Datetime object or None if invalid
     """
     try:
-        dt = datetime.strptime(date_str, '%Y-%m-%d')
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
         return dt.replace(tzinfo=timezone.utc)
     except ValueError:
         return None
@@ -369,36 +360,36 @@ def parse_date(date_str: str) -> Optional[datetime]:
 def main():
     """CLI entry point."""
     args = sys.argv[1:]
-    
-    if not args or args[0] in ('--help', '-h'):
+
+    if not args or args[0] in ("--help", "-h"):
         print_usage()
         sys.exit(0)
-    
+
     command = args[0]
-    
+
     # Parse options
-    dry_run = '--dry-run' in args
-    verbose = '--verbose' in args or '-v' in args
-    
+    dry_run = "--dry-run" in args
+    verbose = "--verbose" in args or "-v" in args
+
     config_path = None
-    if '--config' in args:
-        idx = args.index('--config')
+    if "--config" in args:
+        idx = args.index("--config")
         if idx + 1 < len(args):
             config_path = Path(args[idx + 1])
-    
+
     reference_date = None
-    if '--date' in args:
-        idx = args.index('--date')
+    if "--date" in args:
+        idx = args.index("--date")
         if idx + 1 < len(args):
             reference_date = parse_date(args[idx + 1])
             if reference_date is None:
                 print(f"Error: Invalid date format. Use YYYY-MM-DD.", file=sys.stderr)
                 sys.exit(1)
-    
+
     # Load config
     config = load_config(config_path)
-    
-    if command == 'status':
+
+    if command == "status":
         status = get_status(config)
         print("Dream Engine Status")
         print("==================")
@@ -406,63 +397,57 @@ def main():
         print(f"Dream directory: {status['dream_dir']}")
         print(f"Recent memory files (7 days): {status['recent_memory_files']}")
         print(f"Existing dream files: {status['existing_dreams']}")
-        if status['latest_dreams']:
+        if status["latest_dreams"]:
             print(f"Latest dreams: {', '.join(status['latest_dreams'])}")
         print()
         print("Configuration:")
-        for key, value in status['config'].items():
+        for key, value in status["config"].items():
             print(f"  {key}: {value}")
         sys.exit(0)
-    
-    elif command == 'run':
+
+    elif command == "run":
         success, dreams_data = run_dream_generation(
-            config=config,
-            reference_date=reference_date,
-            dry_run=dry_run,
-            verbose=verbose
+            config=config, reference_date=reference_date, dry_run=dry_run, verbose=verbose
         )
-        
+
         if verbose:
             print()
             if success:
                 print("✓ Dream generation complete")
             else:
                 print("✗ Dream generation failed")
-        
+
         sys.exit(0 if success else 1)
-    
-    elif command == 'test':
+
+    elif command == "test":
         # Test mode: always dry-run unless explicitly told otherwise
-        if '--write' not in args:
+        if "--write" not in args:
             dry_run = True
             if verbose:
                 print("Test mode (dry-run). Use --write to actually save.")
                 print()
-        
+
         success, dreams_data = run_dream_generation(
-            config=config,
-            reference_date=reference_date,
-            dry_run=dry_run,
-            verbose=verbose
+            config=config, reference_date=reference_date, dry_run=dry_run, verbose=verbose
         )
-        
+
         # Print sample output
-        if dreams_data.get('dreams'):
+        if dreams_data.get("dreams"):
             print("\nSample dreams:")
             print("==============")
-            for i, dream in enumerate(dreams_data['dreams'][:3], 1):
+            for i, dream in enumerate(dreams_data["dreams"][:3], 1):
                 print(f"\n{i}. Score: {dream['insight_score']}")
                 print(f"   Concepts: {', '.join(dream['concepts'])}")
                 print(f"   Fragment: \"{dream['fragment']}\"")
                 print(f"   Template: {dream['template']}")
-        
+
         sys.exit(0 if success else 1)
-    
+
     else:
         print(f"Unknown command: {command}", file=sys.stderr)
         print_usage()
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

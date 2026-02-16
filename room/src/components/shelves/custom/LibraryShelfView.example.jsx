@@ -44,9 +44,7 @@ export function LibraryShelfView({ data }) {
               <BookCard key={idx} book={book} compact />
             ))}
             {toRead.length > 5 && (
-              <p className="text-xs text-textMuted pl-3">
-                +{toRead.length - 5} more in queue
-              </p>
+              <p className="text-xs text-textMuted pl-3">+{toRead.length - 5} more in queue</p>
             )}
           </div>
         </div>
@@ -85,9 +83,7 @@ function BookCard({ book, showProgress = false, compact = false }) {
             <p className="text-textMuted text-xs truncate">{author}</p>
           )}
         </div>
-        <div className="text-xs text-textMuted">
-          {formatWords(totalWords)}
-        </div>
+        <div className="text-xs text-textMuted">{formatWords(totalWords)}</div>
       </div>
     );
   }
@@ -97,12 +93,8 @@ function BookCard({ book, showProgress = false, compact = false }) {
       <div className="flex items-start gap-3 mb-2">
         <InterestIndicator level={interest} />
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-text leading-tight mb-1">
-            {title}
-          </h4>
-          {author && author !== 'Unknown' && (
-            <p className="text-xs text-textMuted">{author}</p>
-          )}
+          <h4 className="text-sm font-semibold text-text leading-tight mb-1">{title}</h4>
+          {author && author !== 'Unknown' && <p className="text-xs text-textMuted">{author}</p>}
         </div>
       </div>
 
@@ -112,7 +104,9 @@ function BookCard({ book, showProgress = false, compact = false }) {
           <div>
             <div className="flex justify-between text-xs text-textMuted mb-1">
               <span>{Math.round(progress * 100)}% complete</span>
-              <span>{formatWords(wordsRead)} / {formatWords(totalWords)}</span>
+              <span>
+                {formatWords(wordsRead)} / {formatWords(totalWords)}
+              </span>
             </div>
             <div className="h-1.5 bg-surface rounded-full overflow-hidden">
               <div
@@ -124,12 +118,8 @@ function BookCard({ book, showProgress = false, compact = false }) {
 
           {/* Stats */}
           <div className="flex items-center gap-4 text-xs text-textMuted">
-            {sessionsCompleted > 0 && (
-              <span>{sessionsCompleted} sessions</span>
-            )}
-            {lastReadAt && (
-              <span>Last read: {formatDate(lastReadAt)}</span>
-            )}
+            {sessionsCompleted > 0 && <span>{sessionsCompleted} sessions</span>}
+            {lastReadAt && <span>Last read: {formatDate(lastReadAt)}</span>}
           </div>
         </div>
       )}
@@ -170,6 +160,6 @@ function formatDate(dateStr) {
   if (diffDays === 1) return 'yesterday';
   if (diffDays < 7) return `${diffDays}d ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  
+
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

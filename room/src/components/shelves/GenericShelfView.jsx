@@ -16,7 +16,8 @@ function renderValue(value, depth = 0) {
 
   if (Array.isArray(value)) {
     if (value.length === 0) return <span className="text-textMuted/50 italic">empty array</span>;
-    if (depth >= MAX_DEPTH) return <span className="text-textMuted/50 italic">[{value.length} items]</span>;
+    if (depth >= MAX_DEPTH)
+      return <span className="text-textMuted/50 italic">[{value.length} items]</span>;
     return (
       <ul className="space-y-1">
         {value.map((item, index) => (

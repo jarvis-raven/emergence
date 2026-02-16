@@ -2,7 +2,7 @@
 
 **Issue:** https://github.com/jarvis-raven/emergence/issues/41  
 **Branch:** `feature/issue-41-thwarting-detection`  
-**Date:** 2026-02-13  
+**Date:** 2026-02-13
 
 ## Overview
 
@@ -15,6 +15,7 @@ Implemented comprehensive thwarting detection logic that identifies when drives 
 Created new module with comprehensive thwarting detection:
 
 **Key Functions:**
+
 - `is_thwarted()` - Boolean check for thwarted state (≥3 triggers OR ≥150% pressure)
 - `get_thwarting_status()` - Detailed status dict with reason, counts, and valence
 - `get_thwarted_drives()` - Scan state for all thwarted drives, sorted by severity
@@ -22,17 +23,20 @@ Created new module with comprehensive thwarting detection:
 - `get_thwarting_emoji()` - Visual indicators (⚠3 for thwarted with count)
 
 **Detection Criteria:**
+
 - **Consecutive triggers:** thwarting_count ≥ 3
 - **Extreme pressure:** pressure ≥ 150% of threshold
 - Either condition triggers thwarted state
 
 **Reason Tracking:**
+
 - `consecutive_triggers` - Drive triggered 3+ times without satisfaction
 - `extreme_pressure` - Pressure sustained at crisis levels (≥150%)
 
 ### 2. CLI Integration (`core/drives/cli.py`)
 
 **Updated Functions:**
+
 - Imported thwarting detection functions
 - `_print_drive_line()` - Now uses `get_thwarting_emoji()` for cleaner valence/thwarting display
 - `cmd_status()` - Added dedicated "Thwarted Drives" section that:
@@ -42,6 +46,7 @@ Created new module with comprehensive thwarting detection:
   - Appears right after "Active Drives" for visibility
 
 **Dashboard Display:**
+
 ```
 ⚠️  Thwarted Drives: 2
   ⚠ CREATIVE is thwarted (4 triggers, no satisfaction) at 180%
@@ -53,6 +58,7 @@ Created new module with comprehensive thwarting detection:
 ### 3. Comprehensive Test Suite (`core/drives/tests/test_thwarting_detection.py`)
 
 **35 Tests Covering:**
+
 - Detection logic (normal, triggered, extreme pressure states)
 - Boundary conditions (exactly 150%, just below, edge cases)
 - Status reporting and message formatting
@@ -62,6 +68,7 @@ Created new module with comprehensive thwarting detection:
 - Edge cases (zero threshold, negative pressure, missing fields)
 
 **Test Classes:**
+
 - `TestIsThwarted` - Core detection function (9 tests)
 - `TestGetThwartingStatus` - Detailed status reporting (4 tests)
 - `TestGetThwartedDrives` - State scanning and sorting (5 tests)
@@ -73,6 +80,7 @@ Created new module with comprehensive thwarting detection:
 ### 4. Package Exports (`core/drives/__init__.py`)
 
 Added thwarting functions to package exports for programmatic use:
+
 - `is_thwarted`
 - `get_thwarting_status`
 - `get_thwarted_drives`
@@ -90,6 +98,7 @@ Added thwarting functions to package exports for programmatic use:
 ## Integration with Existing Features
 
 **Builds on #40 (Valence Tracking):**
+
 - Uses existing `valence` field from drives
 - Uses existing `thwarting_count` field
 - Leverages `calculate_valence()` for consistency
@@ -97,6 +106,7 @@ Added thwarting functions to package exports for programmatic use:
 - `satisfy_drive()` already resets count
 
 **Foundation for #42 (Aversive Satisfaction):**
+
 - `is_thwarted()` can be used to trigger different satisfaction prompts
 - `get_thwarting_status()` provides reason for choosing aversive approach
 - Dashboard visibility makes intervention timing clear
@@ -107,24 +117,27 @@ Added thwarting functions to package exports for programmatic use:
 core/drives/tests/test_thwarting_detection.py
   35 passed in 0.08s ✅
 
-core/drives/tests/test_valence.py  
+core/drives/tests/test_valence.py
   23 passed in 0.05s ✅ (existing tests still pass)
 ```
 
 ## Files Changed
 
 **New Files:**
+
 - `core/drives/thwarting.py` (252 lines)
 - `core/drives/tests/test_thwarting_detection.py` (619 lines)
 - `ISSUE_41_IMPLEMENTATION.md` (this file)
 
 **Modified Files:**
+
 - `core/drives/cli.py` - Added thwarting imports, updated `_print_drive_line()`, added thwarted drives section in `cmd_status()`
 - `core/drives/__init__.py` - Added thwarting function exports
 
 ## Usage Examples
 
 ### Programmatic Use
+
 ```python
 from core.drives import is_thwarted, get_thwarted_drives
 
@@ -140,6 +153,7 @@ for thw in thwarted:
 ```
 
 ### CLI Use
+
 ```bash
 # View thwarted drives in status
 emergence drives status
@@ -151,6 +165,7 @@ emergence drives satisfy CREATIVE deep
 ## Next Steps (Issue #42)
 
 This implementation provides the foundation for aversive-specific satisfaction mechanisms:
+
 1. Use `is_thwarted()` to detect when to use aversive prompts
 2. Use `get_thwarting_status()` reason to customize satisfaction approach
 3. Differentiate between "do the thing" (appetitive) and "address blockage" (aversive)

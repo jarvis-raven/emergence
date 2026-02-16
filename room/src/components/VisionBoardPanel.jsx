@@ -62,7 +62,7 @@ export default function VisionBoardPanel() {
   // Get projects for an aspiration
   const getProjectsForAspiration = (aspirationId) => {
     if (!data?.projects) return [];
-    return data.projects.filter(p => p.aspirationId === aspirationId);
+    return data.projects.filter((p) => p.aspirationId === aspirationId);
   };
 
   // Count projects for an aspiration
@@ -91,7 +91,9 @@ export default function VisionBoardPanel() {
       {/* Subheader */}
       {data?.meta?.updatedAt && (
         <div className="flex items-center justify-end mb-3">
-          <span className="text-xs text-textMuted/60">{formatRelativeTime(data.meta.updatedAt)}</span>
+          <span className="text-xs text-textMuted/60">
+            {formatRelativeTime(data.meta.updatedAt)}
+          </span>
         </div>
       )}
 
@@ -104,9 +106,7 @@ export default function VisionBoardPanel() {
           </div>
         )}
 
-        {error && (
-          <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{error}</div>
-        )}
+        {error && <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{error}</div>}
 
         {!loading && !error && (
           <>
@@ -132,11 +132,17 @@ export default function VisionBoardPanel() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-yellow-400/80">✦</span>
-                          <span className="font-medium text-text text-sm truncate">{aspiration.title}</span>
+                          <span className="font-medium text-text text-sm truncate">
+                            {aspiration.title}
+                          </span>
                         </div>
-                        <p className="text-textMuted text-xs line-clamp-2">{aspiration.description}</p>
+                        <p className="text-textMuted text-xs line-clamp-2">
+                          {aspiration.description}
+                        </p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${CATEGORY_STYLES[aspiration.category] || CATEGORY_STYLES.philosophical}`}>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full ${CATEGORY_STYLES[aspiration.category] || CATEGORY_STYLES.philosophical}`}
+                          >
                             {aspiration.category}
                           </span>
                           {aspiration.throughline && (
@@ -144,12 +150,18 @@ export default function VisionBoardPanel() {
                               ~ {aspiration.throughline}
                             </span>
                           )}
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${hasProjects ? 'bg-surface text-textMuted' : 'bg-amber-500/10 text-amber-400/70'}`}>
-                            {hasProjects ? `${projectCount} project${projectCount === 1 ? '' : 's'}` : 'no projects yet'}
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full ${hasProjects ? 'bg-surface text-textMuted' : 'bg-amber-500/10 text-amber-400/70'}`}
+                          >
+                            {hasProjects
+                              ? `${projectCount} project${projectCount === 1 ? '' : 's'}`
+                              : 'no projects yet'}
                           </span>
                         </div>
                       </div>
-                      <span className={`text-textMuted/40 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
+                      <span
+                        className={`text-textMuted/40 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                      >
                         ›
                       </span>
                     </div>
@@ -166,12 +178,20 @@ export default function VisionBoardPanel() {
                                 key={project.id}
                                 className="flex items-center gap-2 p-2 rounded bg-surface/50"
                               >
-                                <span className="text-xs">{STATUS_ICONS[project.status] || '•'}</span>
+                                <span className="text-xs">
+                                  {STATUS_ICONS[project.status] || '•'}
+                                </span>
                                 <div className="flex-1 min-w-0">
-                                  <span className="text-sm text-text truncate block">{project.name}</span>
-                                  <span className="text-xs text-textMuted truncate block">{project.description}</span>
+                                  <span className="text-sm text-text truncate block">
+                                    {project.name}
+                                  </span>
+                                  <span className="text-xs text-textMuted truncate block">
+                                    {project.description}
+                                  </span>
                                 </div>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${STATUS_STYLES[project.status] || STATUS_STYLES.idea}`}>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${STATUS_STYLES[project.status] || STATUS_STYLES.idea}`}
+                                >
                                   {project.status}
                                 </span>
                               </div>

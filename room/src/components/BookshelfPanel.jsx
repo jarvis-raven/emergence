@@ -18,22 +18,23 @@ export default function BookshelfPanel() {
   const [activeShelf, setActiveShelf] = useState('memory');
 
   // Fetch shelf registry
-  const {
-    data: shelvesRaw,
-    loading: shelvesLoading,
-  } = useApi('/api/shelves', { refreshInterval: 60000 });
+  const { data: shelvesRaw, loading: shelvesLoading } = useApi('/api/shelves', {
+    refreshInterval: 60000,
+  });
 
   const allShelves = shelvesRaw?.shelves ?? [];
-  
+
   // Filter to only bookshelf-relevant shelves
-  const visibleShelves = allShelves.filter(s => 
-    BOOKSHELF_SHELF_IDS.includes(s.id) || BOOKSHELF_SHELF_IDS.includes(s.renderer)
+  const visibleShelves = allShelves.filter(
+    (s) => BOOKSHELF_SHELF_IDS.includes(s.id) || BOOKSHELF_SHELF_IDS.includes(s.renderer),
   );
 
   // Fetch active shelf data
-  const activeShelfMeta = visibleShelves.find(s => s.id === activeShelf || s.renderer === activeShelf);
+  const activeShelfMeta = visibleShelves.find(
+    (s) => s.id === activeShelf || s.renderer === activeShelf,
+  );
   const endpoint = activeShelfMeta?.endpoint || `/api/shelves/${activeShelf}`;
-  
+
   const {
     data: shelfDataRaw,
     loading: dataLoading,
@@ -97,9 +98,7 @@ export default function BookshelfPanel() {
 
         {/* Error */}
         {dataError && !dataLoading && (
-          <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">
-            {dataError}
-          </div>
+          <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{dataError}</div>
         )}
 
         {/* Shelf Content */}

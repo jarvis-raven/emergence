@@ -23,9 +23,8 @@ import sqlite3
 import json
 import sys
 import re
-from pathlib import Path
 from collections import Counter
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from . import config
 from .gravity import get_db as get_gravity_db

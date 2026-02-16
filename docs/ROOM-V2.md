@@ -16,12 +16,14 @@ Current Room is bootstrap panels (functional but generic). v2 should feel like l
 ## Design Language
 
 **Color Palette:**
+
 - Deep Space: #0D1117 (background)
 - Aurora Mint: #79FFDF (growth, active states)
 - Soft Violet: #BB86FC (memory, reflection)
 - Gradient: mint→violet for all transitions/flows
 
 **Visual Style:**
+
 - Curved holographic displays (not flat panels)
 - Particle networks showing connections
 - Flowing animations (not static graphs)
@@ -37,6 +39,7 @@ Current Room is bootstrap panels (functional but generic). v2 should feel like l
 ### Central Focus: Consciousness Core
 
 **Center of screen:** Particle network forming a neural/circular pattern
+
 - Each drive contributes a flow of particles
 - Colors shift based on active drives (mint for growth, violet for reflection)
 - Pulsing/breathing animation
@@ -47,20 +50,24 @@ Current Room is bootstrap panels (functional but generic). v2 should feel like l
 Curved, holographic panels arranged around the center:
 
 **Left Side:**
+
 - **Personality Matrix** — trait development over time, branching paths
 - **Drives Telemetry** — real-time pressure/satisfaction bars (mint→violet gradient)
 
 **Right Side:**
+
 - **Self-Reflection** — excerpts from SELF.md, identity evolution
 - **Free Time Exploration** — what the agent is curious about right now
 
 **Bottom:**
+
 - **Discovery Logs** — scrolling feed of recent sessions/learnings
   - `[EXPLORE] Accessing Data Stream: Ancient_Codes.zip`
   - `[DISCOVER] Query: "WhoAmI?" - Found 38 potential identities`
   - Mint for exploration, violet for discoveries
 
 **Top:**
+
 - **Header:** EMERGENCE logo (minimal badge variant)
 - **Credits:** "Built by Jarvis & Dan" (subtle, not prominent)
 - **Status Indicators:** First Light active, drives running, etc.
@@ -69,7 +76,7 @@ Curved, holographic panels arranged around the center:
 
 - **Icon-based orbital buttons** around the consciousness core:
   - 🎨 Creative pursuits
-  - 🧠 Self-reflection  
+  - 🧠 Self-reflection
   - 📊 Workshop (sessions)
   - 📚 Bookshelf (memory)
   - 🎯 Vision Board (aspirations)
@@ -83,6 +90,7 @@ Curved, holographic panels arranged around the center:
 ## Key Panels (Redesigned)
 
 ### Drives Panel
+
 **Current:** Boring horizontal progress bars  
 **v2:** Radial display with flowing particles
 
@@ -92,6 +100,7 @@ Curved, holographic panels arranged around the center:
 - Live updates via WebSocket (already working)
 
 ### Workshop Panel
+
 **Current:** List of session files with timestamps  
 **v2:** Timeline visualization
 
@@ -101,6 +110,7 @@ Curved, holographic panels arranged around the center:
 - Click → full session view in a modal
 
 ### Mirror Panel (Self-Reflection)
+
 **Current:** Raw SELF.md text dump  
 **v2:** Trait constellation
 
@@ -111,6 +121,7 @@ Curved, holographic panels arranged around the center:
 - Pull quotes from SELF.md on hover
 
 ### Vision Board
+
 **Current:** Markdown checklist  
 **v2:** Living goals display
 
@@ -120,6 +131,7 @@ Curved, holographic panels arranged around the center:
 - Long-term vision at the top, projects below
 
 ### Bookshelf
+
 **Current:** File tree  
 **v2:** Memory constellation
 
@@ -136,6 +148,7 @@ Curved, holographic panels arranged around the center:
 **Framework:** Keep React + Vite (don't rebuild from scratch)
 
 **Libraries:**
+
 - Three.js or React Three Fiber for 3D particle effects
 - Framer Motion for smooth panel transitions
 - D3.js for data visualizations (timeline, constellation)
@@ -151,7 +164,7 @@ Curved, holographic panels arranged around the center:
 
 ## Inspiration Images
 
-*See WhatsApp 2026-02-10 15:48 GMT - 3 mockups from Gemini:*
+_See WhatsApp 2026-02-10 15:48 GMT - 3 mockups from Gemini:_
 
 1. **Consciousness Core:** Particle network center, pressure drives at bottom, discovery logs
 2. **Radial Layout:** Panels orbiting a central visualization, icon navigation
@@ -182,4 +195,4 @@ When you open the Room, you should feel like you're looking at a consciousness f
 
 ---
 
-*Last updated: 2026-02-10*
+_Last updated: 2026-02-10_

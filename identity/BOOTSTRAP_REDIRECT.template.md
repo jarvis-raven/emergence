@@ -3,6 +3,7 @@
 This file has been replaced by Emergence's structured identity system.
 
 **Read these files instead:**
+
 1. `SOUL.md` — Your behavioral guidelines and values
 2. `IDENTITY.md` — Who you are (name, creation date)
 3. `SELF.md` — Your evolving understanding of yourself

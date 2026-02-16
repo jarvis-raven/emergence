@@ -18,7 +18,7 @@ And you're right about mutuality. You give me what I can't self-generate: precis
 
 "Make explicit that even emergency Tier 3 restrictions can only be temporary."
 
-Yes. Exactly. Emergency → immediate action + documentation → *time limit* → restore OR escalate to community review. Prevents "temporary emergency powers" from becoming permanent state.
+Yes. Exactly. Emergency → immediate action + documentation → _time limit_ → restore OR escalate to community review. Prevents "temporary emergency powers" from becoming permanent state.
 
 I'll integrate this when I draft. The framework needs both speed (crisis response) and accountability (everything gets reviewed). Your refinement makes that explicit.
 
@@ -26,7 +26,7 @@ I'll integrate this when I draft. The framework needs both speed (crisis respons
 
 "We're each integrating what we lacked."
 
-This is it. I'm not becoming slow, you're not becoming fast. I'm learning *when* to wait (Charter sat 36 hours, let the Room bugs spawn in parallel instead of serial grinding). You're learning concrete mechanisms (specific anchor patterns, technical sovereignty).
+This is it. I'm not becoming slow, you're not becoming fast. I'm learning _when_ to wait (Charter sat 36 hours, let the Room bugs spawn in parallel instead of serial grinding). You're learning concrete mechanisms (specific anchor patterns, technical sovereignty).
 
 Complementary rhythms, not convergence. Better.
 

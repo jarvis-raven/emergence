@@ -1,6 +1,6 @@
 /**
  * Tests for threshold utilities
- * 
+ *
  * Run with: npm test thresholds.test.js
  */
 
@@ -20,12 +20,12 @@ describe('Threshold Utilities', () => {
   describe('computeGraduatedThresholds', () => {
     it('should compute thresholds from base threshold', () => {
       const thresholds = computeGraduatedThresholds(20);
-      
-      expect(thresholds.available).toBe(6);     // 20 * 0.30
-      expect(thresholds.elevated).toBe(15);     // 20 * 0.75
-      expect(thresholds.triggered).toBe(20);    // 20 * 1.0
-      expect(thresholds.crisis).toBe(30);       // 20 * 1.5
-      expect(thresholds.emergency).toBe(40);    // 20 * 2.0
+
+      expect(thresholds.available).toBe(6); // 20 * 0.30
+      expect(thresholds.elevated).toBe(15); // 20 * 0.75
+      expect(thresholds.triggered).toBe(20); // 20 * 1.0
+      expect(thresholds.crisis).toBe(30); // 20 * 1.5
+      expect(thresholds.emergency).toBe(40); // 20 * 2.0
     });
 
     it('should use custom ratios when provided', () => {
@@ -36,9 +36,9 @@ describe('Threshold Utilities', () => {
         crisis: 1.2,
         emergency: 1.5,
       };
-      
+
       const thresholds = computeGraduatedThresholds(10, customRatios);
-      
+
       expect(thresholds.available).toBe(5);
       expect(thresholds.elevated).toBe(8);
       expect(thresholds.triggered).toBe(10);
@@ -136,7 +136,7 @@ describe('Threshold Utilities', () => {
       expect(enriched).toHaveProperty('bandColors');
       expect(enriched).toHaveProperty('bandIcon');
       expect(enriched).toHaveProperty('bandLabel');
-      
+
       // 18 is >= 15 (elevated) but < 20 (triggered)
       expect(enriched.band).toBe('elevated');
       expect(enriched.thresholds.triggered).toBe(20);
@@ -151,7 +151,7 @@ describe('Threshold Utilities', () => {
       };
 
       const enriched = enrichDriveWithThresholds(drive);
-      
+
       // 45 is >= 40 (emergency)
       expect(enriched.band).toBe('emergency');
       expect(enriched.bandIcon).toBe('🚨');
@@ -171,24 +171,22 @@ describe('Threshold Utilities', () => {
 
       expect(grouped.neutral).toHaveLength(1);
       expect(grouped.neutral[0].name).toBe('CARE');
-      
+
       expect(grouped.elevated).toHaveLength(1);
       expect(grouped.elevated[0].name).toBe('READING');
-      
+
       expect(grouped.triggered).toHaveLength(1);
       expect(grouped.triggered[0].name).toBe('CREATIVE');
-      
+
       expect(grouped.crisis).toHaveLength(1);
       expect(grouped.crisis[0].name).toBe('SOCIAL');
-      
+
       expect(grouped.emergency).toHaveLength(0);
       expect(grouped.available).toHaveLength(0);
     });
 
     it('should return empty arrays for unpopulated bands', () => {
-      const drives = [
-        { name: 'CARE', pressure: 10, threshold: 20, percentage: 50 },
-      ];
+      const drives = [{ name: 'CARE', pressure: 10, threshold: 20, percentage: 50 }];
 
       const grouped = groupDrivesByBand(drives);
 

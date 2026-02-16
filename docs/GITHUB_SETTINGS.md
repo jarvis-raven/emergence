@@ -15,7 +15,7 @@ This setting automatically deletes branches when pull requests are merged, compl
 
 ```
 Settings → General → Pull Requests Section
-    
+
     ┌─────────────────────────────────────────────────┐
     │  Pull Requests                                  │
     ├─────────────────────────────────────────────────┤
@@ -32,6 +32,7 @@ Settings → General → Pull Requests Section
 ### What This Does
 
 When enabled:
+
 - ✅ Automatically deletes the **source branch** when a PR is merged
 - ✅ Only affects **head branches** (the branch being merged)
 - ✅ Does **not** delete the **base branch** (e.g., `main`)
@@ -46,12 +47,14 @@ When enabled:
 ### Why Enable This?
 
 **Benefits:**
+
 1. **Immediate cleanup**: Branches are removed right after merge
 2. **Less clutter**: Keeps branch list clean automatically
 3. **Complements automation**: Works with weekly cleanup workflow
 4. **Best practice**: Industry standard for repository hygiene
 
 **Combined Strategy:**
+
 - **GitHub Setting**: Removes branches immediately on PR merge
 - **Weekly Action**: Catches branches that were missed or never had a PR
 - **Manual Script**: On-demand cleanup when needed
@@ -94,13 +97,17 @@ If you need to disable this setting:
 ### Edge Cases
 
 #### Protected Branches
+
 Protected branches are **never** auto-deleted, even with this setting enabled.
 
 #### Forked Repositories
+
 For PRs from forks, this setting only deletes the branch **in the base repository** if the PR was created from a branch in the base repo (not common).
 
 #### Merge Methods
+
 This setting works with all merge methods:
+
 - Regular merge commits
 - Squash and merge
 - Rebase and merge
@@ -108,6 +115,7 @@ This setting works with all merge methods:
 ### Repository Types
 
 This setting is available for:
+
 - ✅ Public repositories
 - ✅ Private repositories
 - ✅ Organization repositories

@@ -1,6 +1,6 @@
 /**
  * ShelfRegistry — discovers and manages shelf manifests
- * 
+ *
  * Built-in shelves registered in code.
  * Custom shelves discovered from ${statePath}/shelves/ directory.
  * Each subdirectory with a valid shelf.json becomes a shelf.
@@ -42,34 +42,34 @@ export class ShelfRegistry {
    */
   async discover() {
     this.custom.clear();
-    
+
     if (!existsSync(this.shelvesPath)) {
       return;
     }
 
     try {
       const entries = readdirSync(this.shelvesPath, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        
+
         const shelfDir = join(this.shelvesPath, entry.name);
         const manifestPath = join(shelfDir, 'shelf.json');
-        
+
         if (!existsSync(manifestPath)) continue;
-        
+
         const raw = readJsonFile(manifestPath);
         if (!raw) {
           console.error(`Failed to read shelf.json from ${entry.name}`);
           continue;
         }
-        
+
         const manifest = this.validateManifest(raw, entry.name);
         if (!manifest) {
           console.error(`Invalid shelf.json in ${entry.name}`);
           continue;
         }
-        
+
         // Skip custom shelves that duplicate a built-in shelf ID
         if (this.builtins.has(manifest.id)) {
           console.log(`Skipping custom shelf '${manifest.id}' — overridden by built-in`);
@@ -96,11 +96,11 @@ export class ShelfRegistry {
   loadUserConfig() {
     const configPath = join(os.homedir(), '.openclaw', 'config', 'shelves.json');
     const config = readJsonFile(configPath);
-    
+
     if (!config) {
       return { builtins: {}, custom: {} };
     }
-    
+
     this.userConfig = config;
     return config;
   }
@@ -122,7 +122,7 @@ export class ShelfRegistry {
         }
       }
     }
-    
+
     // Apply preferences to custom shelves
     for (const [id, pref] of Object.entries(userConfig.custom || {})) {
       if (this.custom.has(id)) {
@@ -147,12 +147,12 @@ export class ShelfRegistry {
       this.builtins.get(id).status = 'disabled';
       return true;
     }
-    
+
     if (this.custom.has(id)) {
       this.custom.get(id).status = 'disabled';
       return true;
     }
-    
+
     return false;
   }
 
@@ -166,12 +166,12 @@ export class ShelfRegistry {
       this.builtins.get(id).status = 'active';
       return true;
     }
-    
+
     if (this.custom.has(id)) {
       this.custom.get(id).status = 'active';
       return true;
     }
-    
+
     return false;
   }
 
@@ -186,12 +186,12 @@ export class ShelfRegistry {
       this.builtins.get(id).manifest.priority = priority;
       return true;
     }
-    
+
     if (this.custom.has(id)) {
       this.custom.get(id).manifest.priority = priority;
       return true;
     }
-    
+
     return false;
   }
 
@@ -212,7 +212,7 @@ export class ShelfRegistry {
     }
 
     const id = raw.id || dirName;
-    
+
     const manifest = {
       id,
       name: raw.name,
@@ -245,7 +245,7 @@ export class ShelfRegistry {
    */
   getAll(includeDisabled = false) {
     const all = [];
-    
+
     for (const [id, shelf] of this.builtins) {
       if (includeDisabled || shelf.status !== 'disabled') {
         all.push({
@@ -255,7 +255,7 @@ export class ShelfRegistry {
         });
       }
     }
-    
+
     for (const [id, shelf] of this.custom) {
       if (includeDisabled || shelf.status !== 'disabled') {
         all.push({
@@ -265,7 +265,7 @@ export class ShelfRegistry {
         });
       }
     }
-    
+
     return all.sort((a, b) => b.manifest.priority - a.manifest.priority);
   }
 
@@ -283,7 +283,7 @@ export class ShelfRegistry {
         isBuiltin: shelf.isBuiltin,
       };
     }
-    
+
     if (this.custom.has(id)) {
       const shelf = this.custom.get(id);
       return {
@@ -292,7 +292,7 @@ export class ShelfRegistry {
         isBuiltin: shelf.isBuiltin,
       };
     }
-    
+
     return null;
   }
 
@@ -307,7 +307,7 @@ export class ShelfRegistry {
     if (this.builtins.has(id)) {
       const shelf = this.builtins.get(id);
       const { manifest, resolveData } = shelf;
-      
+
       if (manifest.dataSource.type === 'custom' && typeof resolveData === 'function') {
         try {
           return await resolveData(config);
@@ -316,32 +316,32 @@ export class ShelfRegistry {
           return null;
         }
       }
-      
+
       if (manifest.dataSource.type === 'inline') {
         return { ...manifest };
       }
-      
+
       return null;
     }
-    
+
     // Check custom shelves
     if (this.custom.has(id)) {
       const shelf = this.custom.get(id);
       const { manifest, shelfDir } = shelf;
-      
+
       if (manifest.dataSource.type === 'file' && manifest.dataSource.path) {
         const filePath = resolve(shelfDir, manifest.dataSource.path);
         const data = readJsonFile(filePath);
         return data !== null ? data : null;
       }
-      
+
       if (manifest.dataSource.type === 'inline') {
         return { ...manifest };
       }
-      
+
       return null;
     }
-    
+
     return null;
   }
 }

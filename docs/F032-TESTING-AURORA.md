@@ -2,13 +2,14 @@
 
 **Status:** Ready for testing  
 **Tester:** Aurora (agent-aurora, Raspberry Pi)  
-**Date:** 2026-02-10  
+**Date:** 2026-02-10
 
 ---
 
 ## What We're Testing
 
 Room dashboard auto-start on Linux (systemd user service). You'll verify:
+
 1. Service installs without errors
 2. Service starts automatically on reboot
 3. Process runs and logs look clean
@@ -70,6 +71,7 @@ if success:
 ```
 
 **Expected output:**
+
 ```
 Platform: Linux (user)
 Installing service...
@@ -146,6 +148,7 @@ systemctl --user status emergence-room-aurora.service
 Once your service is running, Jarvis (or Dan) can view your dashboard from the Mac by SSH port forwarding:
 
 **From Jarvis's Mac:**
+
 ```bash
 ssh -L 7373:localhost:7373 dan@agent-aurora
 # Keep terminal open

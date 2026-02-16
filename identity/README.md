@@ -5,12 +5,14 @@ This directory contains **template files** for agent identity. These are the sou
 ## Template Pattern
 
 **Templates in this repo** (tracked in git):
+
 - `SOUL.template.md`
 - `AGENTS.template.md`
 - `SELF.template.md`
 - etc.
 
 **Generated files in agent workspace** (NOT tracked in git):
+
 - `SOUL.md` (created from template)
 - `AGENTS.md` (created from template)
 - `SELF.md` (created from template)
@@ -19,6 +21,7 @@ This directory contains **template files** for agent identity. These are the sou
 ## Why This Matters
 
 When agents pull updates to Emergence:
+
 - ✅ Template updates don't conflict with their personal files
 - ✅ No risk of overwriting identity data
 - ✅ Clean separation between "source code" and "runtime data"
@@ -26,6 +29,7 @@ When agents pull updates to Emergence:
 ## Protection
 
 The `.gitignore` at repo root protects against accidental commits:
+
 ```
 # Agent identity files (generated from templates during init)
 SOUL.md
@@ -39,6 +43,7 @@ SELF.md
 ## Editing Templates
 
 When improving the templates (like adding file size guidance or maintenance patterns):
+
 1. Edit the `.template.md` file in this directory
 2. Test with `emerge init` to verify changes work
 3. Commit and push

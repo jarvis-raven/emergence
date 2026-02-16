@@ -16,9 +16,8 @@ import sqlite3
 import json
 import sys
 import shutil
-from pathlib import Path
 from datetime import datetime, timezone
-from .config import get_gravity_db_path, get_legacy_db_paths, get_state_dir
+from .config import get_gravity_db_path, get_legacy_db_paths
 
 
 def migrate_database(dry_run=False, verbose=False):

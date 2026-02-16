@@ -11,7 +11,9 @@ Successfully integrated the Nautilus memory system status visualization into the
 ## What Was Added
 
 ### 1. Backend API Route
+
 **File:** `room/server/routes/nautilus.js`
+
 - GET `/api/nautilus/status` endpoint
 - Calls emergence CLI: `python3 -m core.cli nautilus status`
 - Returns normalized JSON with:
@@ -22,14 +24,18 @@ Successfully integrated the Nautilus memory system status visualization into the
   - Summary files: corridor/vault counts
 
 ### 2. Built-in Shelf
+
 **File:** `room/server/shelves/builtins/NautilusShelf.js`
+
 - Shelf manifest with metadata
 - Priority: 95 (just below Memory shelf)
 - Refresh interval: 30 seconds
 - Custom data resolver using emergence CLI
 
 ### 3. Widget Component
+
 **File:** `room/src/components/Nautilus/NautilusWidget.jsx`
+
 - Main visualization component (10KB)
 - Sub-components:
   - `ChamberDistribution` — atrium/corridor/unknown bars
@@ -41,12 +47,16 @@ Successfully integrated the Nautilus memory system status visualization into the
 - Responsive design with Tailwind CSS
 
 ### 4. Shelf Renderer
+
 **File:** `room/src/components/shelves/custom/NautilusShelfView.jsx`
+
 - Thin wrapper component
 - Integrates NautilusWidget into shelf system
 
 ### 5. Integration Points
+
 **Modified Files:**
+
 - `room/server/index.js` — imported and registered nautilus route
 - `room/server/shelves/index.js` — registered NautilusShelf
 - `room/src/components/ShelfPanel.jsx` — added Nautilus tab
@@ -63,16 +73,18 @@ Successfully integrated the Nautilus memory system status visualization into the
 ✅ Responsive design matching Room UI  
 ✅ Dark theme integration  
 ✅ Loading and error states  
-✅ Matches existing component patterns  
+✅ Matches existing component patterns
 
 ## API Endpoints
 
 ### Direct Endpoint
+
 ```bash
 GET http://localhost:8801/api/nautilus/status
 ```
 
 Response:
+
 ```json
 {
   "timestamp": "2026-02-14T21:35:50.102Z",
@@ -115,6 +127,7 @@ Response:
 ```
 
 ### Shelf Endpoint
+
 ```bash
 GET http://localhost:8801/api/shelves/nautilus
 ```
@@ -122,6 +135,7 @@ GET http://localhost:8801/api/shelves/nautilus
 ## UI Integration
 
 The Nautilus tab appears in the ShelfPanel between Memory and Journal:
+
 - 🪞 Mirror
 - 🧠 Memory
 - **🐚 Nautilus** ← NEW
@@ -137,26 +151,29 @@ The Nautilus tab appears in the ShelfPanel between Memory and Journal:
 ✅ Memory shelf active  
 ✅ Journal/Workshop panel unchanged  
 ✅ Aspirations and Projects unchanged  
-✅ WebSocket updates for drives still working  
+✅ WebSocket updates for drives still working
 
 ## Testing
 
 ### Server Test
+
 ```bash
 cd ~/projects/emergence/room
 npm run dev
 ```
 
 Server starts on: http://0.0.0.0:8801  
-Frontend: http://127.0.0.1:3000  
+Frontend: http://127.0.0.1:3000
 
 ### API Test
+
 ```bash
 curl http://localhost:8801/api/nautilus/status | jq .
 curl http://localhost:8801/api/shelves/nautilus | jq .
 ```
 
 ### Frontend Test
+
 1. Open http://127.0.0.1:3000
 2. Click Nautilus tab (🐚)
 3. Verify visualizations load
@@ -165,11 +182,13 @@ curl http://localhost:8801/api/shelves/nautilus | jq .
 ## Architecture Notes
 
 ### Why Built-in Shelf vs Custom?
+
 - **Built-in shelves** are registered in code (server/shelves/builtins/)
 - **Custom shelves** are discovered from state directory (user-specific)
 - Nautilus is core infrastructure → built-in shelf is appropriate
 
 ### Data Flow
+
 ```
 Frontend (NautilusWidget)
   ↓ useApi('/api/shelves/nautilus')
@@ -183,6 +202,7 @@ Frontend displays visualization
 ```
 
 ### Real-time Updates
+
 - Uses `useApi` hook with 30-second refresh interval
 - No WebSocket needed (Nautilus state changes slowly)
 - Future: could add WebSocket for real-time updates on memory events
@@ -190,12 +210,14 @@ Frontend displays visualization
 ## File Checklist
 
 ### Created
+
 - [x] `room/server/routes/nautilus.js` (3.9KB)
 - [x] `room/server/shelves/builtins/NautilusShelf.js` (3.8KB)
 - [x] `room/src/components/Nautilus/NautilusWidget.jsx` (10KB)
 - [x] `room/src/components/shelves/custom/NautilusShelfView.jsx` (328B)
 
 ### Modified
+
 - [x] `room/server/index.js` (added import + route)
 - [x] `room/server/shelves/index.js` (registered NautilusShelf)
 - [x] `room/src/components/ShelfPanel.jsx` (added tab)
@@ -216,6 +238,7 @@ Frontend displays visualization
 **Issue #67:** Add Nautilus Widget to Node.js Room ✅
 
 **Requirements Met:**
+
 - ✅ API endpoint created following existing patterns
 - ✅ Widget component matches Room UI/UX
 - ✅ Integrated into ShelfPanel with tab

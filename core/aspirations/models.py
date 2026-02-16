@@ -27,11 +27,11 @@ PROJECT_CATEGORIES = ["framework", "tool", "creative", "community", "personal"]
 
 class Aspiration(TypedDict, total=False):
     """A single aspiration — the "why" behind work.
-    
+
     Aspirations are long-term dreams, questions, and ambitions that give
     direction to projects. They represent the intangible motivations
     behind tangible work.
-    
+
     Attributes:
         id: Unique kebab-case identifier (e.g., 'understand-self')
         title: Human-readable name
@@ -40,6 +40,7 @@ class Aspiration(TypedDict, total=False):
         createdAt: ISO 8601 date when first articulated
         throughline: Optional thematic thread (e.g., 'depth', 'connection')
     """
+
     id: str
     title: str
     description: str
@@ -50,10 +51,10 @@ class Aspiration(TypedDict, total=False):
 
 class Project(TypedDict, total=False):
     """A single project — the "what" that pursues an aspiration.
-    
+
     Projects are tangible work items linked to aspirations. They have
     status, dates, and details that track progress over time.
-    
+
     Attributes:
         id: Unique kebab-case identifier
         name: Human-readable display name
@@ -66,6 +67,7 @@ class Project(TypedDict, total=False):
         startDate: Optional ISO 8601 date (null for ideas)
         updatedAt: ISO 8601 date of last meaningful change
     """
+
     id: str
     name: str
     aspirationId: str
@@ -80,15 +82,16 @@ class Project(TypedDict, total=False):
 
 class AspirationsData(TypedDict, total=False):
     """The complete data structure for aspirations and projects.
-    
+
     This is the structure persisted to and loaded from aspirations.json.
-    
+
     Attributes:
         version: Schema version for migration support
         aspirations: List of aspiration objects
         projects: List of project objects
         meta: Optional metadata including updatedAt timestamp
     """
+
     version: int
     aspirations: list[Aspiration]
     projects: list[Project]
@@ -129,7 +132,7 @@ PROJECT_SCHEMA = {
 
 def create_default_data() -> AspirationsData:
     """Create a fresh aspirations data structure.
-    
+
     Returns:
         An AspirationsData with empty aspirations and projects lists.
     """
@@ -145,13 +148,13 @@ def create_default_data() -> AspirationsData:
 
 def validate_aspiration(data: dict) -> tuple[bool, list[str]]:
     """Validate an aspiration definition and return any errors.
-    
+
     Args:
         data: The aspiration dict to validate
-        
+
     Returns:
         Tuple of (is_valid, list_of_error_messages)
-        
+
     Examples:
         >>> aspiration = {"id": "test", "title": "Test", "description": "A test", "category": "creative", "createdAt": "2026-01-01"}
         >>> valid, errors = validate_aspiration(aspiration)
@@ -159,12 +162,12 @@ def validate_aspiration(data: dict) -> tuple[bool, list[str]]:
         True
     """
     errors = []
-    
+
     # Check required fields
     for field in ASPIRATION_SCHEMA["required"]:
         if field not in data:
             errors.append(f"Aspiration missing required field: {field}")
-    
+
     # Validate id is kebab-case
     if "id" in data:
         id_val = data["id"]
@@ -172,37 +175,41 @@ def validate_aspiration(data: dict) -> tuple[bool, list[str]]:
             errors.append(f"Aspiration id must be a string, got {type(id_val).__name__}")
         elif " " in id_val:
             errors.append(f"Aspiration id should be kebab-case (no spaces): {id_val}")
-    
+
     # Validate category
     if "category" in data:
         cat = data["category"]
         if cat not in ASPIRATION_CATEGORIES:
-            errors.append(f"Invalid aspiration category: {cat}. Must be one of: {', '.join(ASPIRATION_CATEGORIES)}")
-    
+            errors.append(
+                f"Invalid aspiration category: {cat}. Must be one of: {', '.join(ASPIRATION_CATEGORIES)}"
+            )
+
     # Validate string fields
     string_fields = ["title", "description", "createdAt"]
     for field in string_fields:
         if field in data and not isinstance(data[field], str):
             errors.append(f"Aspiration {field} must be a string")
-    
+
     # Validate throughline if present
     if "throughline" in data and data["throughline"] is not None:
         if not isinstance(data["throughline"], str):
             errors.append("Aspiration throughline must be a string or null")
-    
+
     return len(errors) == 0, errors
 
 
-def validate_project(data: dict, valid_aspiration_ids: Optional[set] = None) -> tuple[bool, list[str]]:
+def validate_project(
+    data: dict, valid_aspiration_ids: Optional[set] = None
+) -> tuple[bool, list[str]]:
     """Validate a project definition and return any errors.
-    
+
     Args:
         data: The project dict to validate
         valid_aspiration_ids: Optional set of valid aspiration ids for cross-validation
-        
+
     Returns:
         Tuple of (is_valid, list_of_error_messages)
-        
+
     Examples:
         >>> project = {"id": "test", "name": "Test", "aspirationId": "dream", "status": "active", "category": "tool", "description": "A test", "updatedAt": "2026-01-01"}
         >>> valid, errors = validate_project(project)
@@ -210,12 +217,12 @@ def validate_project(data: dict, valid_aspiration_ids: Optional[set] = None) -> 
         True
     """
     errors = []
-    
+
     # Check required fields
     for field in PROJECT_SCHEMA["required"]:
         if field not in data:
             errors.append(f"Project missing required field: {field}")
-    
+
     # Validate id is kebab-case
     if "id" in data:
         id_val = data["id"]
@@ -223,38 +230,44 @@ def validate_project(data: dict, valid_aspiration_ids: Optional[set] = None) -> 
             errors.append(f"Project id must be a string, got {type(id_val).__name__}")
         elif " " in id_val:
             errors.append(f"Project id should be kebab-case (no spaces): {id_val}")
-    
+
     # Validate status
     if "status" in data:
         status = data["status"]
         if status not in PROJECT_STATUSES:
-            errors.append(f"Invalid project status: {status}. Must be one of: {', '.join(PROJECT_STATUSES)}")
-    
+            errors.append(
+                f"Invalid project status: {status}. Must be one of: {', '.join(PROJECT_STATUSES)}"
+            )
+
     # Validate category
     if "category" in data:
         cat = data["category"]
         if cat not in PROJECT_CATEGORIES:
-            errors.append(f"Invalid project category: {cat}. Must be one of: {', '.join(PROJECT_CATEGORIES)}")
-    
+            errors.append(
+                f"Invalid project category: {cat}. Must be one of: {', '.join(PROJECT_CATEGORIES)}"
+            )
+
     # Validate aspirationId exists if provided
     if "aspirationId" in data and valid_aspiration_ids is not None:
         if data["aspirationId"] not in valid_aspiration_ids:
-            errors.append(f"Project aspirationId '{data['aspirationId']}' does not reference a valid aspiration")
-    
+            errors.append(
+                f"Project aspirationId '{data['aspirationId']}' does not reference a valid aspiration"
+            )
+
     # Validate string fields
     string_fields = ["name", "description", "aspirationId", "updatedAt"]
     for field in string_fields:
         if field in data and not isinstance(data[field], str):
             errors.append(f"Project {field} must be a string")
-    
+
     # Validate dates if present
     if "startDate" in data and data["startDate"] is not None:
         if not isinstance(data["startDate"], str):
             errors.append("Project startDate must be a string or null")
-    
+
     # Validate links if present
     if "links" in data and data["links"] is not None:
         if not isinstance(data["links"], dict):
             errors.append("Project links must be an object or null")
-    
+
     return len(errors) == 0, errors

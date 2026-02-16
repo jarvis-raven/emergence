@@ -8,10 +8,10 @@ export default [
   {
     ignores: ['dist/**', 'node_modules/**', 'build/**', '*.min.js'],
   },
-  
+
   // Base config for all JavaScript files
   js.configs.recommended,
-  
+
   // React/JSX specific config
   {
     files: ['**/*.{js,jsx}'],
@@ -34,22 +34,19 @@ export default [
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
-      
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+
       // Code quality rules
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'prefer-const': 'error',
       'no-var': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
-      
+
       // Style consistency
-      'eqeqeq': ['error', 'always'],
+      eqeqeq: ['error', 'always'],
     },
   },
-  
+
   // Server-specific config (Node.js)
   {
     files: ['server/**/*.js'],

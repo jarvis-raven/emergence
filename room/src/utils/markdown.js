@@ -27,7 +27,10 @@ export function renderMarkdown(text) {
     // Italic
     line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
     // Links [text](url)
-    line = line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary hover:underline">$1</a>');
+    line = line.replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" class="text-primary hover:underline">$1</a>',
+    );
     return line;
   };
 

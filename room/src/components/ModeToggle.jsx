@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 /**
  * Awake/Asleep Mode Toggle
- * 
+ *
  * @param {object} props
  * @param {boolean} props.isAwake - Current mode state
  * @param {function} props.onToggle - Toggle callback
@@ -31,15 +31,16 @@ export function ModeToggle({ isAwake, onToggle, disabled = false }) {
         transition-all duration-300 ease-out
         shadow-lg hover:shadow-xl hover:scale-110 active:scale-95
         disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-        ${isAwake 
-          ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-500/30' 
-          : 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/30'
+        ${
+          isAwake
+            ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-500/30'
+            : 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/30'
         }
       `}
       title={isAwake ? 'Click to sleep' : 'Click to wake'}
       aria-label={isAwake ? 'Switch to asleep mode' : 'Switch to awake mode'}
     >
-      <span 
+      <span
         className={`
           text-2xl transition-transform duration-300
           ${isTransitioning ? 'scale-75 rotate-90' : 'scale-100 rotate-0'}
@@ -48,9 +49,9 @@ export function ModeToggle({ isAwake, onToggle, disabled = false }) {
       >
         {isAwake ? '☀️' : '🌙'}
       </span>
-      
+
       {/* Glow effect */}
-      <div 
+      <div
         className={`
           absolute inset-0 rounded-full blur-xl -z-10 opacity-50
           transition-colors duration-300

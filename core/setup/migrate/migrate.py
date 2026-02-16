@@ -19,16 +19,23 @@ import shutil
 import sqlite3
 import sys
 import tarfile
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Files that are part of agent identity/config and should be bundled
 IDENTITY_FILES = [
-    "SOUL.md", "SELF.md", "MEMORY.md", "USER.md", "TOOLS.md",
-    "AGENTS.md", "ASPIRATIONS.md", "INTERESTS.md", "DRIVES.md",
-    "HEARTBEAT.md", "BOOTSTRAP.md",
+    "SOUL.md",
+    "SELF.md",
+    "MEMORY.md",
+    "USER.md",
+    "TOOLS.md",
+    "AGENTS.md",
+    "ASPIRATIONS.md",
+    "INTERESTS.md",
+    "DRIVES.md",
+    "HEARTBEAT.md",
+    "BOOTSTRAP.md",
 ]
 
 CONFIG_FILES = [
@@ -50,8 +57,19 @@ BUNDLE_DIRS = [
 
 # File extensions that may contain absolute paths needing rewriting
 TEXT_EXTENSIONS = {
-    ".json", ".md", ".txt", ".yaml", ".yml", ".toml", ".cfg", ".ini",
-    ".sh", ".bash", ".zsh", ".conf", ".log",
+    ".json",
+    ".md",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".conf",
+    ".log",
 }
 
 # Files that should NEVER be modified
@@ -112,9 +130,7 @@ def scan_for_paths(
                     conn = sqlite3.connect(str(fpath))
                     cursor = conn.cursor()
                     # Get all tables
-                    cursor.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table'"
-                    )
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
                     for (table,) in cursor.fetchall():
                         cursor.execute(f"SELECT * FROM [{table}]")
                         for row in cursor:
@@ -198,10 +214,12 @@ def rewrite_openclaw_state(
                     fpath.write_text(new_content, encoding="utf-8")
                 stats["files_modified"] += 1
                 stats["replacements"] += count
-                stats["modified_files"].append({
-                    "path": str(fpath),
-                    "replacements": count,
-                })
+                stats["modified_files"].append(
+                    {
+                        "path": str(fpath),
+                        "replacements": count,
+                    }
+                )
             except (OSError, UnicodeDecodeError) as e:
                 stats["errors"].append(f"{fpath}: {e}")
 
@@ -268,10 +286,12 @@ def rewrite_paths(
 
                     stats["files_modified"] += 1
                     stats["replacements"] += count
-                    stats["modified_files"].append({
-                        "path": str(fpath.relative_to(workspace)),
-                        "replacements": count,
-                    })
+                    stats["modified_files"].append(
+                        {
+                            "path": str(fpath.relative_to(workspace)),
+                            "replacements": count,
+                        }
+                    )
                 except (OSError, UnicodeDecodeError) as e:
                     stats["errors"].append(f"{fpath}: {e}")
 
@@ -281,9 +301,7 @@ def rewrite_paths(
                 try:
                     conn = sqlite3.connect(str(fpath))
                     cursor = conn.cursor()
-                    cursor.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table'"
-                    )
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
                     tables = [row[0] for row in cursor.fetchall()]
 
                     db_modified = False
@@ -294,14 +312,14 @@ def rewrite_paths(
                         cursor.execute(f"PRAGMA table_info([{table}])")
                         columns = cursor.fetchall()
                         text_cols = [
-                            col[1] for col in columns
+                            col[1]
+                            for col in columns
                             if col[2].upper() in ("TEXT", "VARCHAR", "BLOB")
                         ]
 
                         for col in text_cols:
                             cursor.execute(
-                                f"SELECT rowid, [{col}] FROM [{table}] "
-                                f"WHERE [{col}] LIKE ?",
+                                f"SELECT rowid, [{col}] FROM [{table}] " f"WHERE [{col}] LIKE ?",
                                 (f"%{old_normalized}%",),
                             )
                             rows = cursor.fetchall()
@@ -311,8 +329,7 @@ def rewrite_paths(
                                     count = value.count(old_normalized)
                                     if not dry_run:
                                         cursor.execute(
-                                            f"UPDATE [{table}] SET [{col}] = ? "
-                                            f"WHERE rowid = ?",
+                                            f"UPDATE [{table}] SET [{col}] = ? " f"WHERE rowid = ?",
                                             (new_value, rowid),
                                         )
                                     db_modified = True
@@ -323,11 +340,13 @@ def rewrite_paths(
                             conn.commit()
                         stats["files_modified"] += 1
                         stats["replacements"] += db_count
-                        stats["modified_files"].append({
-                            "path": str(fpath.relative_to(workspace)),
-                            "replacements": db_count,
-                            "type": "sqlite",
-                        })
+                        stats["modified_files"].append(
+                            {
+                                "path": str(fpath.relative_to(workspace)),
+                                "replacements": db_count,
+                                "type": "sqlite",
+                            }
+                        )
                     conn.close()
                 except (sqlite3.Error, OSError) as e:
                     stats["errors"].append(f"{fpath}: {e}")
@@ -335,7 +354,10 @@ def rewrite_paths(
     # Also rewrite paths in OpenClaw state directory if specified
     if openclaw_root is not None:
         oc_stats = rewrite_openclaw_state(
-            openclaw_root, old_path, new_path, dry_run=dry_run,
+            openclaw_root,
+            old_path,
+            new_path,
+            dry_run=dry_run,
         )
         stats["files_scanned"] += oc_stats["files_scanned"]
         stats["files_modified"] += oc_stats["files_modified"]
@@ -477,6 +499,7 @@ def export_bundle(
         # Write manifest
         manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
         import io
+
         manifest_info = tarfile.TarInfo(name="__manifest__.json")
         manifest_info.size = len(manifest_bytes)
         tar.addfile(manifest_info, io.BytesIO(manifest_bytes))
@@ -588,12 +611,17 @@ def import_bundle(
     if old_home and new_home and old_home != new_home:
         if not dry_run:
             rewrite_stats = rewrite_paths(
-                workspace, old_home, new_home,
+                workspace,
+                old_home,
+                new_home,
                 openclaw_root=openclaw_root,
             )
         else:
             rewrite_stats = rewrite_paths(
-                workspace, old_home, new_home, dry_run=True,
+                workspace,
+                old_home,
+                new_home,
+                dry_run=True,
                 openclaw_root=openclaw_root,
             )
         result["rewrite_stats"] = rewrite_stats
@@ -659,9 +687,9 @@ def validate_workspace(workspace: Path) -> Dict[str, Any]:
                 if "//" in line:
                     in_string = False
                     for i, c in enumerate(line):
-                        if c == '"' and (i == 0 or line[i-1] != '\\'):
+                        if c == '"' and (i == 0 or line[i - 1] != "\\"):
                             in_string = not in_string
-                        if not in_string and line[i:i+2] == '//':
+                        if not in_string and line[i : i + 2] == "//":
                             line = line[:i]
                             break
                 lines.append(line)
@@ -717,7 +745,7 @@ def validate_workspace(workspace: Path) -> Dict[str, Any]:
                         warn(
                             "suspicious_path",
                             f"Found '{match}' in {fpath.relative_to(workspace)} "
-                            f"(current home is {Path.home()})"
+                            f"(current home is {Path.home()})",
                         )
             except (OSError, UnicodeDecodeError):
                 continue
@@ -739,6 +767,7 @@ def validate_workspace(workspace: Path) -> Dict[str, Any]:
 
 # --- CLI Interface ---
 
+
 def main(args: Optional[List[str]] = None):
     """CLI entry point for migration commands."""
     parser = argparse.ArgumentParser(
@@ -750,11 +779,17 @@ def main(args: Optional[List[str]] = None):
     # export
     p_export = sub.add_parser("export", help="Create a migration bundle")
     p_export.add_argument(
-        "--workspace", "-w", type=Path, default=Path("."),
+        "--workspace",
+        "-w",
+        type=Path,
+        default=Path("."),
         help="Agent workspace directory (default: current dir)",
     )
     p_export.add_argument(
-        "--output", "-o", type=Path, default=None,
+        "--output",
+        "-o",
+        type=Path,
+        default=None,
         help="Output bundle path (auto-generated if omitted)",
     )
 
@@ -762,56 +797,77 @@ def main(args: Optional[List[str]] = None):
     p_import = sub.add_parser("import", help="Import a migration bundle")
     p_import.add_argument("bundle", type=Path, help="Path to bundle .tar.gz")
     p_import.add_argument(
-        "--workspace", "-w", type=Path, default=Path("."),
+        "--workspace",
+        "-w",
+        type=Path,
+        default=Path("."),
         help="Destination workspace directory",
     )
     p_import.add_argument("--old-home", help="Override old home dir detection")
     p_import.add_argument("--new-home", help="Override new home dir (default: $HOME)")
     p_import.add_argument(
-        "--openclaw-state", type=Path, default=None,
+        "--openclaw-state",
+        type=Path,
+        default=None,
         help="OpenClaw state directory to also rewrite (default: ~/.openclaw)",
     )
     p_import.add_argument(
-        "--no-backup", action="store_true", help="Skip backup of existing workspace",
+        "--no-backup",
+        action="store_true",
+        help="Skip backup of existing workspace",
     )
     p_import.add_argument(
-        "--dry-run", action="store_true", help="Preview without changes",
+        "--dry-run",
+        action="store_true",
+        help="Preview without changes",
     )
 
     # rewrite-paths
-    p_rewrite = sub.add_parser(
-        "rewrite-paths", help="Rewrite absolute paths in-place"
-    )
+    p_rewrite = sub.add_parser("rewrite-paths", help="Rewrite absolute paths in-place")
     p_rewrite.add_argument("--old", required=True, help="Old path prefix")
     p_rewrite.add_argument("--new", required=True, help="New path prefix")
     p_rewrite.add_argument(
-        "--workspace", "-w", type=Path, default=Path("."),
+        "--workspace",
+        "-w",
+        type=Path,
+        default=Path("."),
         help="Workspace to scan",
     )
     p_rewrite.add_argument(
-        "--openclaw-state", type=Path, default=None,
+        "--openclaw-state",
+        type=Path,
+        default=None,
         help="Also rewrite paths in OpenClaw state dir (default: ~/.openclaw)",
     )
     p_rewrite.add_argument(
-        "--dry-run", action="store_true", help="Preview without changes",
+        "--dry-run",
+        action="store_true",
+        help="Preview without changes",
     )
 
     # scan
     p_scan = sub.add_parser("scan", help="Scan for occurrences of a path")
     p_scan.add_argument("path_to_find", help="Path string to search for")
     p_scan.add_argument(
-        "--workspace", "-w", type=Path, default=Path("."),
+        "--workspace",
+        "-w",
+        type=Path,
+        default=Path("."),
         help="Workspace to scan",
     )
     p_scan.add_argument(
-        "--include-binary", action="store_true",
+        "--include-binary",
+        action="store_true",
         help="Also scan SQLite databases",
     )
 
     # validate
     p_validate = sub.add_parser("validate", help="Validate workspace after migration")
     p_validate.add_argument(
-        "--workspace", "-w", type=Path, default=Path("."),
+        "--workspace",
+        "-w",
+        type=Path,
+        default=Path("."),
         help="Workspace to validate",
     )
 
@@ -829,7 +885,9 @@ def main(args: Optional[List[str]] = None):
             print()
             print("Next steps:")
             print(f"  1. Copy {bundle.name} to the destination machine")
-            print(f"  2. Run: emergence migrate import {bundle.name} --workspace /path/to/new/workspace")
+            print(
+                f"  2. Run: emergence migrate import {bundle.name} --workspace /path/to/new/workspace"
+            )
         except (FileNotFoundError, ValueError) as e:
             print(f"❌ Export failed: {e}", file=sys.stderr)
             sys.exit(1)
@@ -881,7 +939,9 @@ def main(args: Optional[List[str]] = None):
 
     elif parsed.subcommand == "rewrite-paths":
         stats = rewrite_paths(
-            parsed.workspace, parsed.old, parsed.new,
+            parsed.workspace,
+            parsed.old,
+            parsed.new,
             dry_run=parsed.dry_run,
             openclaw_root=parsed.openclaw_state,
         )

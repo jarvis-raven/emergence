@@ -33,6 +33,7 @@ register_recent_writes(hours=24)
 ```
 
 **Features:**
+
 - ✅ Async/sync modes (non-blocking by default)
 - ✅ Automatic gravity DB registration
 - ✅ Access logging with session context
@@ -41,6 +42,7 @@ register_recent_writes(hours=24)
 - ✅ Workspace-relative path handling
 
 **Integration hooks:**
+
 - `on_file_read(file_path, session_id)` - Hook for read events
 - `on_file_write(file_path, session_id)` - Hook for write events
 - `on_session_start(session_id, session_type)` - Session lifecycle hook
@@ -49,6 +51,7 @@ register_recent_writes(hours=24)
 ### Issue #66: Nightly Maintenance ✅
 
 **Files:**
+
 - `core/nautilus/nightly.py` - Maintenance pipeline
 - `core/drives/nightly_check.py` - Scheduler integration
 - `core/drives/daemon.py` - Daemon integration (updated)
@@ -64,6 +67,7 @@ python3 -m core.nautilus.nightly --verbose --register-recent
 ```
 
 **Steps executed:**
+
 1. **Register recent writes** - Files modified in last 24h
 2. **Classify chambers** - atrium → corridor → vault
 3. **Auto-tag contexts** - Apply semantic tags
@@ -72,6 +76,7 @@ python3 -m core.nautilus.nightly --verbose --register-recent
 6. **Link mirrors** - Multi-granularity indexing
 
 **Daemon integration:**
+
 - Checks preferred time window (±30 minutes)
 - Rate limiting (max once per 24 hours)
 - Error handling (won't crash daemon)
@@ -106,41 +111,41 @@ python3 -m core.nautilus.nightly --verbose --register-recent
 
 **Config options:**
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `enabled` | `true` | Master enable/disable |
-| `nightly_enabled` | `true` | Enable nightly maintenance |
-| `nightly_hour` | `2` | Preferred hour (0-23) |
-| `nightly_minute` | `30` | Preferred minute (0-59) |
-| `gravity_db` | `~/.openclaw/state/nautilus/gravity.db` | Database location |
-| `memory_dir` | `"memory"` | Memory directory (relative to workspace) |
-| `auto_classify` | `true` | Auto-classify into chambers |
-| `decay_interval_hours` | `168` | How often to run decay (weekly) |
+| Option                 | Default                                 | Description                              |
+| ---------------------- | --------------------------------------- | ---------------------------------------- |
+| `enabled`              | `true`                                  | Master enable/disable                    |
+| `nightly_enabled`      | `true`                                  | Enable nightly maintenance               |
+| `nightly_hour`         | `2`                                     | Preferred hour (0-23)                    |
+| `nightly_minute`       | `30`                                    | Preferred minute (0-59)                  |
+| `gravity_db`           | `~/.openclaw/state/nautilus/gravity.db` | Database location                        |
+| `memory_dir`           | `"memory"`                              | Memory directory (relative to workspace) |
+| `auto_classify`        | `true`                                  | Auto-classify into chambers              |
+| `decay_interval_hours` | `168`                                   | How often to run decay (weekly)          |
 
 ## Tests
 
 **File:** `tests/test_nautilus_integration.py`
 
 **Coverage:**
+
 - ✅ 18 new tests for v0.4.0 integration
 - ✅ 8 existing Nautilus tests still passing
 - ✅ **Total: 26 tests passing**
 
 **Test categories:**
+
 1. Session hooks (8 tests)
    - File read/write recording
    - Batch operations
    - Recent file registration
    - Non-markdown skip logic
    - Hook integration
-   
 2. Nightly integration (8 tests)
    - Maintenance pipeline
    - Scheduler logic
    - Rate limiting
    - Time window checking
    - State persistence
-   
 3. Daemon integration (2 tests)
    - Module imports
    - Cross-module compatibility
@@ -196,7 +201,7 @@ print(f"Should run: {should_run} - {reason}")
 if NAUTILUS_AVAILABLE:
     nightly_state = load_nightly_state(config)
     should_run, reason = should_run_nautilus_nightly(config, nightly_state)
-    
+
     if should_run:
         maint_result = run_nightly_maintenance(
             register_recent=True,
@@ -207,6 +212,7 @@ if NAUTILUS_AVAILABLE:
 ```
 
 **Behavior:**
+
 - Runs during daemon tick cycle (non-blocking)
 - Only runs if in preferred time window
 - Rate-limited to once per 24 hours
@@ -225,7 +231,7 @@ class SessionManager:
         content = self._read_file_impl(path)
         on_file_read(path, session_id=self.session_id)
         return content
-    
+
     def write_file(self, path, content):
         self._write_file_impl(path, content)
         on_file_write(path, session_id=self.session_id)
@@ -264,6 +270,7 @@ except Exception as e:
 ```
 
 **Philosophy:**
+
 - Errors are logged but don't stop the pipeline
 - Each step is independent and fault-tolerant
 - Daemon continues running even if Nautilus fails
@@ -271,12 +278,14 @@ except Exception as e:
 ## Performance
 
 **Session hooks:**
+
 - Async by default (non-blocking)
 - Batch operations for efficiency
 - Skip non-markdown files early
 - Lightweight DB operations
 
 **Nightly maintenance:**
+
 - Runs once per day (2:30 AM default)
 - Total runtime: ~10-30 seconds (depending on memory size)
 - Low CPU impact (background subprocess calls)
@@ -285,11 +294,13 @@ except Exception as e:
 ## Migration Notes
 
 **From standalone Nautilus:**
+
 - Database location changed: `tools/nautilus/gravity.db` → `~/.openclaw/state/nautilus/gravity.db`
 - Use `core.nautilus.migrate_db` for automatic migration
 - Old cron jobs can be replaced with daemon integration
 
 **From v0.3.x:**
+
 - Session hooks are new in v0.4.0
 - Nightly integration is new in v0.4.0
 - All existing Nautilus commands still work
@@ -300,7 +311,6 @@ except Exception as e:
 1. **OpenClaw session integration pending**
    - Hooks are ready but not yet called by OpenClaw
    - Manual registration via `register_recent_writes()` works as interim solution
-   
 2. **Chamber promotion not yet implemented**
    - Placeholder in pipeline (skipped gracefully)
    - Coming in future update
@@ -312,11 +322,13 @@ except Exception as e:
 ## Future Enhancements
 
 **v0.4.1 (planned):**
+
 - Chamber promotion logic (atrium → corridor → vault)
 - Configurable maintenance schedule (multiple times per day)
 - Session analytics dashboard
 
 **v0.5.0 (roadmap):**
+
 - OpenClaw direct integration (session lifecycle hooks)
 - Line-range tracking for large files
 - Smart batching for high-frequency accesses
@@ -327,6 +339,7 @@ except Exception as e:
 ### v0.4.0-beta (2026-02-14)
 
 **Added:**
+
 - Session hooks module (`session_hooks.py`)
 - Nightly maintenance pipeline (`nightly.py`)
 - Daemon scheduler integration (`nightly_check.py`)
@@ -334,11 +347,13 @@ except Exception as e:
 - Configuration options for scheduling
 
 **Changed:**
+
 - `daemon.py` now imports and runs Nautilus maintenance
 - `config.py` handles string/Path conversion
 - `gravity.py` adds `context` column to access_log
 
 **Fixed:**
+
 - Path expansion for `~` in config
 - String/Path compatibility in config loading
 

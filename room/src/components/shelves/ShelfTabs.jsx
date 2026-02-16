@@ -17,9 +17,10 @@ export default function ShelfTabs({ shelves, activeId, onSelect }) {
             className={`
               flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap
               transition-colors focus:outline-none
-              ${isActive
-                ? 'border-b-2 border-primary text-text font-medium'
-                : 'border-b-2 border-transparent text-textMuted hover:text-text'
+              ${
+                isActive
+                  ? 'border-b-2 border-primary text-text font-medium'
+                  : 'border-b-2 border-transparent text-textMuted hover:text-text'
               }
             `}
           >

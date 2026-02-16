@@ -5,10 +5,12 @@ Welcome to the project! This document outlines our development standards and PR 
 ## Development Setup
 
 ### Environments
+
 - **Development:** Local workspace at `~/.openclaw/workspace-kimi`
 - **Production:** Main OpenClaw installation
 
 ### Prerequisites
+
 - Python 3.9 or later
 - Node.js 18 or later (for JavaScript linting)
 - Git
@@ -22,6 +24,7 @@ Run the setup script to install all development tools:
 ```
 
 This script will:
+
 - Install Python tools (black, flake8, pytest, pre-commit)
 - Install Node.js tools (prettier, eslint)
 - Configure pre-commit hooks
@@ -32,23 +35,27 @@ This script will:
 If you prefer to set up manually:
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/jarvis-raven/emergence.git
    cd emergence
    ```
 
 2. **Install Python dependencies**
+
    ```bash
    pip install -e ".[dev]"
    pip install black flake8 pytest pytest-cov pre-commit
    ```
 
 3. **Install Node.js dependencies**
+
    ```bash
    npm install
    ```
 
 4. **Install pre-commit hooks**
+
    ```bash
    pre-commit install
    pre-commit install --hook-type commit-msg
@@ -91,6 +98,7 @@ npm run quality
 #### Pre-commit Hooks
 
 Pre-commit hooks run automatically before each commit. They will:
+
 - Format Python code with Black
 - Lint Python code with flake8
 - Format JavaScript/JSON/YAML with Prettier
@@ -99,6 +107,7 @@ Pre-commit hooks run automatically before each commit. They will:
 - Check for trailing whitespace and other common issues
 
 To bypass hooks temporarily (not recommended):
+
 ```bash
 git commit --no-verify
 ```
@@ -110,6 +119,7 @@ git commit --no-verify
 **Problem:** Pre-commit can't find black, flake8, or other tools.
 
 **Solution:** Ensure tools are installed in your active Python environment:
+
 ```bash
 which python3
 pip install black flake8 pytest pre-commit
@@ -121,6 +131,7 @@ pre-commit install --install-hooks
 **Problem:** Conflicts between formatters and linters.
 
 **Solution:** Our configuration aligns both to 100 characters. Update your tools:
+
 ```bash
 pip install --upgrade black flake8
 ```
@@ -130,6 +141,7 @@ pip install --upgrade black flake8
 **Problem:** `eslint` command fails with configuration errors.
 
 **Solution:** Reinstall Node dependencies:
+
 ```bash
 rm -rf node_modules package-lock.json
 npm install
@@ -140,6 +152,7 @@ npm install
 **Problem:** Pre-commit runs on every commit take too long.
 
 **Solution:** Pre-commit caches results. First run is slow; subsequent runs are fast. To speed up:
+
 ```bash
 # Only run on changed files
 git commit
@@ -153,11 +166,13 @@ pre-commit run --files <changed-files>
 **Problem:** Tests don't cover enough code.
 
 **Solution:** Add more tests! Focus on:
+
 - Uncovered lines (shown in terminal output)
 - Edge cases and error conditions
 - Critical business logic
 
 View detailed coverage report:
+
 ```bash
 npm run test:coverage
 open htmlcov/index.html  # macOS
@@ -169,6 +184,7 @@ xdg-open htmlcov/index.html  # Linux
 **Problem:** Pre-commit rejects your commit message.
 
 **Solution:** Follow Conventional Commits format:
+
 ```bash
 # Bad
 git commit -m "fix stuff"
@@ -183,6 +199,7 @@ git commit -m "feat(drives): add manual satisfaction controls"
 **Problem:** pytest can't import modules from `core`.
 
 **Solution:** Install the package in development mode:
+
 ```bash
 pip install -e ".[dev]"
 ```
@@ -195,14 +212,15 @@ All branches must follow these prefixes. PRs from invalid branch names will be r
 
 ### Valid Branch Prefixes
 
-| Prefix | Purpose | Requirements |
-|--------|---------|--------------|
-| `feature/` | New features | REQUIRES PR + Aurora review |
-| `fix/` | Bug fixes | REQUIRES PR + Aurora review |
-| `hotfix/` | Urgent production fixes | REQUIRES PR + immediate review |
-| `docs/` | Documentation only | Can skip some automated checks |
+| Prefix     | Purpose                 | Requirements                   |
+| ---------- | ----------------------- | ------------------------------ |
+| `feature/` | New features            | REQUIRES PR + Aurora review    |
+| `fix/`     | Bug fixes               | REQUIRES PR + Aurora review    |
+| `hotfix/`  | Urgent production fixes | REQUIRES PR + immediate review |
+| `docs/`    | Documentation only      | Can skip some automated checks |
 
 ### Examples
+
 - ✅ `feature/add-pr-template`
 - ✅ `fix/memory-leak-in-heartbeat`
 - ✅ `hotfix/security-patch-credentials`
@@ -228,18 +246,20 @@ All commits must follow the [Conventional Commits](https://www.conventionalcommi
 
 ### Valid Types
 
-| Type | Purpose | Example |
-|------|---------|---------|
-| `feat` | New feature | `feat: add PR template auto-population` |
-| `fix` | Bug fix | `fix: resolve heartbeat interval drift` |
-| `docs` | Documentation | `docs: update CONTRIBUTING.md` |
-| `chore` | Maintenance | `chore: clean up unused imports` |
-| `test` | Testing | `test: add unit tests for PR validation` |
-| `refactor` | Code refactoring | `refactor: extract validation logic` |
-| `ci` | CI/CD changes | `ci: add PR template validation workflow` |
+| Type       | Purpose          | Example                                   |
+| ---------- | ---------------- | ----------------------------------------- |
+| `feat`     | New feature      | `feat: add PR template auto-population`   |
+| `fix`      | Bug fix          | `fix: resolve heartbeat interval drift`   |
+| `docs`     | Documentation    | `docs: update CONTRIBUTING.md`            |
+| `chore`    | Maintenance      | `chore: clean up unused imports`          |
+| `test`     | Testing          | `test: add unit tests for PR validation`  |
+| `refactor` | Code refactoring | `refactor: extract validation logic`      |
+| `ci`       | CI/CD changes    | `ci: add PR template validation workflow` |
 
 ### Multi-Component Commits
+
 Use scope for clarity:
+
 ```
 feat(pr): add strict PR template
 docs(contributing): add contribution guidelines
@@ -247,6 +267,7 @@ fix(heartbeat): resolve token accumulation bug
 ```
 
 ### Rules
+
 - **BAD COMMIT = PR BLOCKED** — Non-conforming commits will fail CI checks
 - Use imperative mood: "add feature" not "added feature"
 - Keep first line under 72 characters
@@ -260,24 +281,27 @@ fix(heartbeat): resolve token accumulation bug
 
 **Hard limits** — exceeding these requires justification and approval:
 
-| File Type | Max Lines | Notes |
-|-----------|-----------|-------|
-| Python modules | 500 | Split into multiple modules if needed |
-| JavaScript components | 300 | Use composition for complex UIs |
-| Test files | 1000 | Comprehensive test suites allowed |
-| Config files | 200 | Keep configuration focused |
+| File Type             | Max Lines | Notes                                 |
+| --------------------- | --------- | ------------------------------------- |
+| Python modules        | 500       | Split into multiple modules if needed |
+| JavaScript components | 300       | Use composition for complex UIs       |
+| Test files            | 1000      | Comprehensive test suites allowed     |
+| Config files          | 200       | Keep configuration focused            |
 
 ### Directory Structure
 
 **Python:**
+
 - Use `snake_case.py` for all modules
 - Example: `pr_validator.py`, `review_checker.py`
 
 **JavaScript:**
+
 - Components: `PascalCase.jsx` (e.g., `PullRequestForm.jsx`)
 - Utilities: `camelCase.js` (e.g., `validateCommits.js`)
 
 **Tests:**
+
 - Python: `test_*.py` (e.g., `test_pr_validator.py`)
 - JavaScript: `*.test.js` (e.g., `PullRequestForm.test.js`)
 
@@ -293,16 +317,17 @@ export default function MyComponent({ prop1, prop2 }) {
   // 3. Hooks before event handlers
   const [state, setState] = useState(null);
   useEffect(() => { /* ... */ }, []);
-  
+
   // 4. Event handlers
   const handleClick = () => { /* ... */ };
-  
+
   // 5. Render
   return (/* JSX */);
 }
 ```
 
 **Rules:**
+
 - **Max 3 nesting levels** — deeper nesting indicates need for extraction
 - **Max 5 props** — use composition or context for more complex needs
 - Extract logic into custom hooks when appropriate
@@ -317,10 +342,10 @@ from typing import List, Dict  # Type hints mandatory
 def public_function(arg: str) -> bool:
     """
     Docstring for public functions.
-    
+
     Args:
         arg: Description
-        
+
     Returns:
         Description of return value
     """
@@ -333,6 +358,7 @@ def _private_helper(arg: str) -> bool:
 ```
 
 **Rules:**
+
 - **Type hints mandatory** for all function signatures
 - **Docstrings required** for all public functions and classes
 - **PEP 8 compliance** — enforced by linters
@@ -341,6 +367,7 @@ def _private_helper(arg: str) -> bool:
 ### Separation of Concerns
 
 **Clear boundaries:**
+
 - **Models** ≠ **Logic** ≠ **UI**
   - Models define data structures
   - Logic handles business rules
@@ -352,6 +379,7 @@ def _private_helper(arg: str) -> bool:
   - Data access abstracts storage
 
 **Example (Python):**
+
 ```python
 # ❌ BAD: Everything mixed together
 @app.route('/submit-pr')
@@ -377,6 +405,7 @@ def submit_pr():
 ### Comments Required For
 
 Always comment:
+
 - **Complex algorithms** — explain the approach
 - **Non-obvious decisions** — why this solution?
 - **Performance optimizations** — what was the bottleneck?
@@ -419,11 +448,13 @@ counter += 1
 ### 3. Review Process
 
 **Timeline:**
+
 - Aurora review: 24-48 hours
 - Dan final approval: 24-48 hours after Aurora
 - Hotfix: Same day (urgent only)
 
 **What reviewers check:**
+
 - Code quality and standards compliance
 - Test coverage
 - Documentation completeness
@@ -439,12 +470,14 @@ counter += 1
 ### 5. Examples
 
 **Good PRs to reference:**
+
 - [#80](../../pull/80) — Feature with comprehensive tests
 - [#81](../../pull/81) — Bug fix with clear reproduction steps
 - [#101](../../pull/101) — Documentation improvement
 - [#102](../../pull/102) — Refactoring with performance metrics
 
 **Bad PR example:**
+
 ```
 Title: "updates"
 Body: "changed some stuff"
@@ -458,16 +491,19 @@ Result: ❌ REJECTED
 ## Merge Strategies
 
 ### Default: Squash and Merge
+
 - Combines all commits into one
 - Keeps main branch history clean
 - Use for most PRs
 
 ### Rebase and Merge
+
 - Preserves individual commits
 - Use when commit history tells a story
 - Requires clean, conventional commits
 
 ### Regular Merge
+
 - Creates a merge commit
 - Rarely used (only for special cases)
 - Requires explicit approval

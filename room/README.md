@@ -22,6 +22,7 @@ npm run prod
 ### Environment Details
 
 #### Development Mode (port 3000)
+
 - **Command**: `npm run dev`
 - **Server**: Vite dev server with hot module reload
 - **State directory**: `.emergence-dev/` (auto-created)
@@ -30,6 +31,7 @@ npm run prod
 - **Use for**: Active development, UI iteration, testing changes
 
 #### Production Mode (port 8800)
+
 - **Command**: `npm run prod`
 - **Server**: Vite preview (optimized build)
 - **State directory**: `.emergence/` (standard)
@@ -55,15 +57,16 @@ npm run preview
 
 ### Port Reference
 
-| Environment | Port | Command |
-|-------------|------|---------|
-| Development | 3000 | `npm run dev` |
-| Production  | 8800 | `npm run prod` |
+| Environment | Port | Command          |
+| ----------- | ---- | ---------------- |
+| Development | 3000 | `npm run dev`    |
+| Production  | 8800 | `npm run prod`   |
 | API Server  | 8801 | `npm run server` |
 
 ### State Isolation
 
 Development and production environments use separate state directories:
+
 - **Dev**: `.emergence-dev/` (gitignored)
 - **Prod**: `.emergence/` (gitignored)
 
@@ -82,12 +85,14 @@ npm run dev:setup
 ```
 
 This will:
+
 - Copy `.emergence/` → `.emergence-dev/`
 - Preserve all state files (drives, nautilus.db, config)
 - Ask for confirmation before any changes
 - **Never modify production state**
 
 **Output:**
+
 ```
 📋 Copying production state to dev environment...
 ⚠️  This will create .emergence-dev/ from .emergence/
@@ -106,16 +111,19 @@ npm run dev:reset
 ```
 
 This will:
+
 - Delete `.emergence-dev/`
 - Re-copy fresh from `.emergence/`
 - Confirm before deleting
 
 **When to use:**
+
 - Your dev state is corrupted or in a bad state
 - You want to test with fresh production data
 - You've made experimental changes and want to start over
 
 **Dry run:**
+
 ```bash
 # See what would be reset without making changes
 ../scripts/reset-dev-state.sh --dry-run
@@ -124,9 +132,11 @@ This will:
 ### Troubleshooting Dev Environment
 
 #### "Production state not found"
+
 **Problem:** `.emergence/` doesn't exist yet.
 
 **Solution:** Run Emergence in production mode first:
+
 ```bash
 # From project root
 cd core
@@ -135,18 +145,22 @@ python -m emergence.main
 ```
 
 #### Dev state out of sync
+
 **Problem:** Dev state is old or missing new fields.
 
 **Solution:**
+
 ```bash
 cd room
 npm run dev:reset
 ```
 
 #### Both environments affecting each other
+
 **Problem:** Changes in dev appear in prod or vice versa.
 
 **Solution:** Verify correct state directories:
+
 ```bash
 # Dev should show .emergence-dev
 grep -r "emergence-dev" room/vite.config.js
@@ -156,9 +170,11 @@ npm run dev:build
 ```
 
 #### Nautilus/Library not rendering
+
 **Problem:** Dev state is empty or missing critical files.
 
 **Solution:**
+
 ```bash
 # Ensure production state has data
 ls -la ../.emergence/state/
@@ -172,18 +188,18 @@ npm run dev
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/health | Health check |
-| GET | /api/config | Agent configuration |
-| GET | /api/drives | Drive states |
-| POST | /api/drives/:name/satisfy | Satisfy a drive |
-| GET | /api/sessions | Recent sessions |
-| GET | /api/sessions/:filename | Session detail |
-| GET | /api/identity/:file | Identity files (soul, self, aspirations, interests) |
-| GET | /api/memory/stats | Memory statistics |
-| GET | /api/dreams | Recent dreams |
-| GET | /api/first-light | First Light progress |
+| Method | Path                      | Description                                         |
+| ------ | ------------------------- | --------------------------------------------------- |
+| GET    | /api/health               | Health check                                        |
+| GET    | /api/config               | Agent configuration                                 |
+| GET    | /api/drives               | Drive states                                        |
+| POST   | /api/drives/:name/satisfy | Satisfy a drive                                     |
+| GET    | /api/sessions             | Recent sessions                                     |
+| GET    | /api/sessions/:filename   | Session detail                                      |
+| GET    | /api/identity/:file       | Identity files (soul, self, aspirations, interests) |
+| GET    | /api/memory/stats         | Memory statistics                                   |
+| GET    | /api/dreams               | Recent dreams                                       |
+| GET    | /api/first-light          | First Light progress                                |
 
 ## Configuration
 
@@ -213,13 +229,13 @@ The Room has **core panels** (built-in, all agents get them) and **custom panels
 
 These ship with Emergence and appear for every agent:
 
-| Panel | Description |
-|-------|-------------|
-| Mirror | SELF.md and SOUL.md viewer |
-| Memory | Full memory browser with search, categories, embedding stats |
-| Journal | Session browser with drive filtering |
-| Aspirations | Dreams and linked projects |
-| Projects | Project status board |
+| Panel       | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| Mirror      | SELF.md and SOUL.md viewer                                   |
+| Memory      | Full memory browser with search, categories, embedding stats |
+| Journal     | Session browser with drive filtering                         |
+| Aspirations | Dreams and linked projects                                   |
+| Projects    | Project status board                                         |
 
 ### Adding Custom Panels
 
@@ -313,12 +329,15 @@ export const MyShelf = {
   },
   async resolveData(config) {
     // Read files, query APIs, compute stats
-    return { /* your data */ };
+    return {
+      /* your data */
+    };
   },
 };
 ```
 
 Register it in `room/server/shelves/index.js`:
+
 ```javascript
 import { MyShelf } from './builtins/MyShelf.js';
 registry.registerBuiltin(MyShelf);

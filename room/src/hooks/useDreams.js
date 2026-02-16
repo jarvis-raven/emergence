@@ -3,7 +3,7 @@ import useApi from './useApi.js';
 /**
  * Hook to fetch dream data
  * Auto-refreshes every 60 seconds (dreams change less frequently)
- * 
+ *
  * @param {object} options - Hook options
  * @param {boolean} options.enabled - Whether to fetch
  * @returns {object} { dreams, highlights, totalDreams, loading, error, refetch, lastUpdated }

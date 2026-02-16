@@ -20,6 +20,7 @@ Use this checklist to verify the branch cleanup automation works correctly.
 ```
 
 **Expected Result:**
+
 - Usage information displayed
 - All options explained
 - Examples shown
@@ -36,6 +37,7 @@ npm run cleanup:branches:dry-run
 ```
 
 **Expected Result:**
+
 - Script runs without errors
 - Shows "DRY RUN MODE" message
 - Lists branches but doesn't delete anything
@@ -56,6 +58,7 @@ git checkout main
 ```
 
 **Expected Result:**
+
 - `spike/test-spike` appears in "Protected Branches" section (green)
 - `release/v1.0` appears in "Protected Branches" section (green)
 - `main` does NOT appear in deletion lists
@@ -79,6 +82,7 @@ git merge test/merged-feature --no-ff -m "Merge test feature"
 ```
 
 **Expected Result:**
+
 - Merged branch identified correctly
 - If < 7 days old: not shown in deletion list (grace period)
 - If 7+ days old: appears in "Merged Branches" section (red)
@@ -95,6 +99,7 @@ git checkout -b test/current-branch
 ```
 
 **Expected Result:**
+
 - Current branch (`test/current-branch`) NOT in deletion lists
 - Protected by current branch safety check
 - Exit code: 0
@@ -107,6 +112,7 @@ git checkout -b test/current-branch
 ```
 
 **Expected Result:**
+
 - Shows branches to be deleted
 - Prompts for confirmation
 - User types "no"
@@ -125,6 +131,7 @@ git checkout -b test/current-branch
 ```
 
 **Expected Result:**
+
 - Shows branches to be deleted
 - Prompts for confirmation
 - User types "yes"
@@ -140,6 +147,7 @@ git checkout -b test/current-branch
 ```
 
 **Expected Result:**
+
 - Error message: "Force mode requires --yes flag"
 - Script exits without deletion
 - Exit code: 1
@@ -151,6 +159,7 @@ git checkout -b test/current-branch
 ```
 
 **Expected Result:**
+
 - No prompts shown
 - Eligible branches deleted automatically
 - Success message shown
@@ -164,6 +173,7 @@ git checkout -b test/current-branch
 ```
 
 **Expected Result:**
+
 - Message: "✓ No branches to clean up!"
 - Exit code: 0
 
@@ -176,6 +186,7 @@ npm run cleanup:branches:dry-run
 ```
 
 **Expected Result:**
+
 - Same as `./scripts/cleanup-branches.sh --dry-run`
 - Script executes successfully
 
@@ -186,6 +197,7 @@ npm run cleanup:branches
 ```
 
 **Expected Result:**
+
 - Same as `./scripts/cleanup-branches.sh --interactive`
 - Prompts for confirmation
 
@@ -196,6 +208,7 @@ npm run cleanup:branches:force
 ```
 
 **Expected Result:**
+
 - Same as `./scripts/cleanup-branches.sh --force --yes`
 - Deletes without prompting (if branches exist)
 
@@ -209,6 +222,7 @@ cat .github/workflows/cleanup-branches.yml | grep "schedule:" -A 1
 ```
 
 **Expected Result:**
+
 - Shows: `cron: '0 0 * * 0'` (Sunday at midnight UTC)
 - Valid YAML syntax
 
@@ -221,6 +235,7 @@ cat .github/workflows/cleanup-branches.yml | grep "schedule:" -A 1
 5. Click **Run workflow**
 
 **Expected Result:**
+
 - Workflow runs successfully
 - No branches deleted
 - Summary shows "Dry Run (Preview Only)"
@@ -234,6 +249,7 @@ cat .github/workflows/cleanup-branches.yml | grep "schedule:" -A 1
 4. Click **Run workflow**
 
 **Expected Result:**
+
 - Workflow runs successfully
 - Eligible branches deleted
 - Summary shows "Active Cleanup"
@@ -246,6 +262,7 @@ cat .github/workflows/cleanup-branches.yml | grep "schedule:" -A 1
 3. Run GitHub Action
 
 **Expected Result:**
+
 - Protected branches NOT deleted
 - Regular merged branches deleted (if 7+ days old)
 - Summary shows protected branches were skipped
@@ -257,6 +274,7 @@ cat .github/workflows/cleanup-branches.yml | grep "schedule:" -A 1
 3. Run GitHub Action
 
 **Expected Result:**
+
 - Branch with open PR NOT deleted
 - Other merged branches without open PRs deleted
 
@@ -269,6 +287,7 @@ cat .github/workflows/cleanup-branches.yml | grep "schedule:" -A 1
 ```
 
 **Expected Result:**
+
 - Output contains ANSI color codes:
   - `\033[0;32m` (green) for protected
   - `\033[0;31m` (red) for deletable
@@ -281,6 +300,7 @@ cat .github/workflows/cleanup-branches.yml | grep "schedule:" -A 1
 ```
 
 **Visual Inspection:**
+
 - Protected branches: green text
 - Merged branches: red text
 - Stale branches: yellow text
@@ -299,6 +319,7 @@ git remote -v
 ```
 
 **Expected Result:**
+
 - Script handles gracefully
 - No remote branch analysis
 - Local branches analyzed correctly
@@ -312,6 +333,7 @@ cd /tmp
 ```
 
 **Expected Result:**
+
 - Error: "Not a git repository"
 - Exit code: 1
 
@@ -328,7 +350,8 @@ git checkout main
 ```
 
 **Expected Result:**
-- All spike/* and release/* branches shown as protected
+
+- All spike/_ and release/_ branches shown as protected
 - None appear in deletion lists
 
 ## 6. Recovery Tests
@@ -348,6 +371,7 @@ git checkout -b test/deleted-branch a1b2c3d
 ```
 
 **Expected Result:**
+
 - Branch successfully restored
 - Commit history intact
 
@@ -364,6 +388,7 @@ git checkout test/remote-branch
 ```
 
 **Expected Result:**
+
 - Error (branch doesn't exist)
 - Documentation warns about this
 
@@ -382,6 +407,7 @@ time ./scripts/cleanup-branches.sh --dry-run
 ```
 
 **Expected Result:**
+
 - Script completes in reasonable time (< 10 seconds)
 - All branches analyzed correctly
 
@@ -393,6 +419,7 @@ time ./scripts/cleanup-branches.sh --dry-run
 ```
 
 **Expected Result:**
+
 - Script completes without hanging
 - No memory issues
 
@@ -402,10 +429,13 @@ time ./scripts/cleanup-branches.sh --dry-run
 ## Branch Cleanup Automation - Test Results
 
 ### Date: YYYY-MM-DD
+
 ### Tester: [Name]
+
 ### Environment: [OS, Git version]
 
 #### Script Tests
+
 - [ ] Help output: PASS / FAIL
 - [ ] Dry-run mode: PASS / FAIL
 - [ ] Protected branches: PASS / FAIL
@@ -414,30 +444,36 @@ time ./scripts/cleanup-branches.sh --dry-run
 - [ ] Force mode: PASS / FAIL
 
 #### npm Scripts
+
 - [ ] cleanup:branches:dry-run: PASS / FAIL
 - [ ] cleanup:branches: PASS / FAIL
 - [ ] cleanup:branches:force: PASS / FAIL
 
 #### GitHub Action
+
 - [ ] Workflow file valid: PASS / FAIL
 - [ ] Manual trigger (dry-run): PASS / FAIL
 - [ ] Manual trigger (active): PASS / FAIL
 - [ ] Protected branch enforcement: PASS / FAIL
 
 #### Visual/Output
+
 - [ ] Color codes work: PASS / FAIL
 - [ ] Clear messaging: PASS / FAIL
 - [ ] Undo instructions: PASS / FAIL
 
 #### Edge Cases
+
 - [ ] Non-git directory: PASS / FAIL
 - [ ] No branches to clean: PASS / FAIL
 - [ ] Current branch protection: PASS / FAIL
 
 ### Issues Found:
+
 [List any issues or bugs discovered]
 
 ### Screenshots:
+
 - [ ] Dry-run output attached
 - [ ] GitHub Action summary attached
 - [ ] GitHub repository setting attached

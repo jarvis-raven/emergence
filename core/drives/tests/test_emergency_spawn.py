@@ -4,13 +4,12 @@ Tests the emergency spawn feature that auto-spawns drives at 200%+ pressure
 even when manual_mode is enabled, as a safety valve against complete neglect.
 """
 
-import json
 import pytest
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from core.drives.daemon import _check_emergency_spawns, run_tick_cycle, write_log
+from core.drives.daemon import _check_emergency_spawns
 
 
 def make_state(drives=None, triggered_drives=None):
@@ -50,7 +49,9 @@ def make_drive(name="TEST", pressure=0.0, threshold=20.0, last_emergency_spawn=N
     return drive
 
 
-def make_config(manual_mode=True, emergency_spawn=True, emergency_threshold=2.0, emergency_cooldown_hours=6):
+def make_config(
+    manual_mode=True, emergency_spawn=True, emergency_threshold=2.0, emergency_cooldown_hours=6
+):
     """Create a minimal config for testing."""
     return {
         "drives": {
@@ -216,7 +217,9 @@ class TestEmergencySpawnConfig:
     def test_custom_cooldown(self, mock_record, mock_spawn):
         """Custom cooldown period works."""
         three_hours_ago = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
-        drive = make_drive("CREATIVE", pressure=50.0, threshold=20.0, last_emergency_spawn=three_hours_ago)
+        drive = make_drive(
+            "CREATIVE", pressure=50.0, threshold=20.0, last_emergency_spawn=three_hours_ago
+        )
         state = make_state(drives={"CREATIVE": drive})
         result = {"triggered": []}
 
@@ -262,8 +265,8 @@ class TestDashboardWarning:
         # This tests the logic used in the dashboard
         drives = {
             "CREATIVE": {"pressure": 36.0, "threshold": 20.0},  # 180%
-            "SOCIAL": {"pressure": 30.0, "threshold": 20.0},    # 150%
-            "CARE": {"pressure": 44.0, "threshold": 20.0},      # 220%
+            "SOCIAL": {"pressure": 30.0, "threshold": 20.0},  # 150%
+            "CARE": {"pressure": 44.0, "threshold": 20.0},  # 220%
         }
 
         warnings = []
@@ -275,14 +278,14 @@ class TestDashboardWarning:
         assert len(warnings) == 2
         warning_names = {w["name"] for w in warnings}
         assert "CREATIVE" in warning_names  # 180% - at threshold
-        assert "CARE" in warning_names      # 220% - above
+        assert "CARE" in warning_names  # 220% - above
         assert "SOCIAL" not in warning_names  # 150% - below
 
     def test_emergency_active_distinction(self):
         """Distinguish between approaching (180-199%) and active (200%+) emergency."""
         drives = [
             {"name": "CREATIVE", "ratio": 1.85},  # Approaching
-            {"name": "CARE", "ratio": 2.20},       # Active
+            {"name": "CARE", "ratio": 2.20},  # Active
         ]
 
         approaching = [d for d in drives if 1.80 <= d["ratio"] < 2.0]
@@ -310,7 +313,9 @@ class TestEmergencySpawnEdgeCases:
     @patch("core.drives.spawn.record_trigger")
     def test_invalid_last_emergency_timestamp(self, mock_record, mock_spawn):
         """Invalid last_emergency_spawn timestamp allows spawn."""
-        drive = make_drive("CREATIVE", pressure=50.0, threshold=20.0, last_emergency_spawn="not-a-date")
+        drive = make_drive(
+            "CREATIVE", pressure=50.0, threshold=20.0, last_emergency_spawn="not-a-date"
+        )
         state = make_state(drives={"CREATIVE": drive})
         result = {"triggered": []}
 
@@ -336,6 +341,7 @@ class TestModelDefaults:
     def test_ensure_drive_defaults_adds_field(self):
         """ensure_drive_defaults adds last_emergency_spawn=None."""
         from core.drives.models import ensure_drive_defaults
+
         drive = {"name": "TEST", "threshold": 20.0, "rate_per_hour": 1.0}
         ensure_drive_defaults(drive)
         assert "last_emergency_spawn" in drive
@@ -348,14 +354,17 @@ class TestConfigDefaults:
     def test_default_config_has_emergency_spawn(self):
         """Default config should have emergency_spawn=True."""
         from core.drives.config import DEFAULT_CONFIG
+
         assert DEFAULT_CONFIG["drives"]["emergency_spawn"] is True
 
     def test_default_config_has_emergency_threshold(self):
         """Default config should have emergency_threshold=2.0."""
         from core.drives.config import DEFAULT_CONFIG
+
         assert DEFAULT_CONFIG["drives"]["emergency_threshold"] == 2.0
 
     def test_default_config_has_emergency_cooldown(self):
         """Default config should have emergency_cooldown_hours=6."""
         from core.drives.config import DEFAULT_CONFIG
+
         assert DEFAULT_CONFIG["drives"]["emergency_cooldown_hours"] == 6

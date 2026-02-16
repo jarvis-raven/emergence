@@ -1,6 +1,6 @@
 /**
  * BudgetTransparencyShelf — Built-in shelf for budget transparency
- * 
+ *
  * Shows daily spend vs limit with color warnings (75% yellow, 90% red)
  * Data from drives.json
  */
@@ -25,26 +25,26 @@ export const BudgetTransparencyShelf = {
     try {
       // Resolve state path properly
       const workspace = config?._configDir || process.cwd();
-      const stateDir = config?.paths?.state 
+      const stateDir = config?.paths?.state
         ? resolve(workspace, config.paths.state)
         : `${process.env.HOME}/.openclaw/state`;
       const drivesPath = `${stateDir}/drives.json`;
-      
+
       if (!existsSync(drivesPath)) {
         console.log('Budget shelf: drives.json not found at', drivesPath);
         return null;
       }
-      
+
       const content = readFileSync(drivesPath, 'utf-8');
       const data = JSON.parse(content);
       const drives = data?.drives || {};
-      
-      const dailyLimit = config?.budget?.daily_limit || 50.00;
-      const costPerTrigger = config?.budget?.cost_per_trigger || 2.50;
-      
+
+      const dailyLimit = config?.budget?.daily_limit || 50.0;
+      const costPerTrigger = config?.budget?.cost_per_trigger || 2.5;
+
       const today = new Date().toISOString().split('T')[0];
       let dailyTriggers = 0;
-      
+
       for (const drive of Object.values(drives)) {
         const events = drive.satisfaction_events || [];
         for (const event of events) {
@@ -53,15 +53,15 @@ export const BudgetTransparencyShelf = {
           }
         }
       }
-      
+
       const dailySpend = dailyTriggers * costPerTrigger;
       const dailyPercent = dailyLimit > 0 ? (dailySpend / dailyLimit) * 100 : 0;
-      
+
       const allEvents = [];
       for (const drive of Object.values(drives)) {
         allEvents.push(...(drive.satisfaction_events || []));
       }
-      
+
       let avgTriggersPerDay = 0;
       if (allEvents.length > 0) {
         allEvents.sort();
@@ -70,9 +70,9 @@ export const BudgetTransparencyShelf = {
         const daysElapsed = Math.max(1, (lastEvent - firstEvent) / (1000 * 60 * 60 * 24));
         avgTriggersPerDay = allEvents.length / daysElapsed;
       }
-      
+
       const projectedMonthly = avgTriggersPerDay * costPerTrigger * 30;
-      
+
       let warningLevel = 'normal';
       let warningIcon = '✅';
       if (dailyPercent >= 90) {
@@ -82,10 +82,12 @@ export const BudgetTransparencyShelf = {
         warningLevel = 'warning';
         warningIcon = '🟡';
       }
-      
-      const activeDrives = Object.values(drives).filter(d => d.status !== 'latent' && !d.aspect_of).length;
-      const latentDrives = Object.values(drives).filter(d => d.status === 'latent').length;
-      
+
+      const activeDrives = Object.values(drives).filter(
+        (d) => d.status !== 'latent' && !d.aspect_of,
+      ).length;
+      const latentDrives = Object.values(drives).filter((d) => d.status === 'latent').length;
+
       return {
         title: `${warningIcon} Budget Status`,
         banner: true,

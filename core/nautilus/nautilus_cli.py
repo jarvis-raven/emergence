@@ -22,13 +22,10 @@ Usage:
 
 import json
 import sys
-import os
 import subprocess
-from pathlib import Path
 from datetime import datetime, timezone
 
-from . import gravity, chambers, doors, mirrors
-from .config import get_workspace, get_nautilus_config
+from .config import get_workspace
 
 
 def cmd_search(args):
@@ -73,7 +70,7 @@ def cmd_search(args):
     try:
         context = json.loads(result.stdout)
         context_tags = context.get("context_tags", [])
-    except:
+    except BaseException:
         context_tags = []
 
     if verbose:
@@ -118,7 +115,7 @@ def cmd_search(args):
             results = reranked
         else:
             results = raw_results
-    except:
+    except BaseException:
         results = raw_results
 
     if verbose:
@@ -173,7 +170,7 @@ def cmd_search(args):
             mir = json.loads(mirror_result.stdout)
             if mir.get("mirrors"):
                 mirror_info[path] = mir
-        except:
+        except BaseException:
             pass
 
     # Truncate and output
@@ -218,17 +215,17 @@ def cmd_status(args):
 
     try:
         gravity_stats = json.loads(grav_result.stdout)
-    except:
+    except BaseException:
         gravity_stats = {"error": "Failed to load gravity stats"}
 
     try:
         chambers_stats = json.loads(cham_result.stdout)
-    except:
+    except BaseException:
         chambers_stats = {"error": "Failed to load chambers stats"}
 
     try:
         mirrors_stats = json.loads(mir_result.stdout)
-    except:
+    except BaseException:
         mirrors_stats = {"error": "Failed to load mirrors stats"}
 
     # Quick tag stats
@@ -306,7 +303,7 @@ def cmd_maintain(args):
     try:
         classify = json.loads(classify_result.stdout)
         print(f"   {json.dumps(classify.get('classified', {}))}", file=sys.stderr)
-    except:
+    except BaseException:
         print("   Chamber classification failed", file=sys.stderr)
         classify = {}
 
@@ -317,7 +314,7 @@ def cmd_maintain(args):
     try:
         tags = json.loads(tags_result.stdout)
         print(f"   {tags.get('files_tagged', 0)} files tagged", file=sys.stderr)
-    except:
+    except BaseException:
         print("   Auto-tagging failed", file=sys.stderr)
         tags = {}
 
@@ -328,7 +325,7 @@ def cmd_maintain(args):
     try:
         decay = json.loads(decay_result.stdout)
         print(f"   {decay.get('decayed', 0)} chunks decayed", file=sys.stderr)
-    except:
+    except BaseException:
         print("   Gravity decay failed", file=sys.stderr)
         decay = {}
 
@@ -339,7 +336,7 @@ def cmd_maintain(args):
     try:
         mir = json.loads(mirrors_result.stdout)
         print(f"   {mir.get('linked', 0)} mirrors linked", file=sys.stderr)
-    except:
+    except BaseException:
         print("   Mirror linking failed", file=sys.stderr)
         mir = {}
 

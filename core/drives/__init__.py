@@ -6,7 +6,7 @@ is the "felt needs" layer that gives agents genuine motivation.
 
 Example usage:
     >>> from core.drives import load_config, load_state, tick_with_spawning
-    >>> 
+    >>>
     >>> config = load_config()
     >>> state = load_state(config)
     >>> state = tick_with_spawning(config, state)
@@ -23,7 +23,7 @@ Modules:
 
 CLI Usage:
     python3 -m core.drives [command] [options]
-    
+
     Commands:
         status (default)  Show all drives with pressure bars
         satisfy <name>    Reduce pressure after addressing

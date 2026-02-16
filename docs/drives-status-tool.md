@@ -45,7 +45,7 @@ if update:
 ## Features
 
 1. **Tool-based introspection** - Agent calls when they want to know
-2. **Automatic polling** - Periodic updates during long sessions  
+2. **Automatic polling** - Periodic updates during long sessions
 3. **Change detection** - Only reports significant changes (>2.0 pressure)
 4. **Natural formatting** - Human-readable descriptions, not raw data
 5. **Threshold alerts** - Special notification when drives trigger

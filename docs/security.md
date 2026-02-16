@@ -1,6 +1,6 @@
 # F032b: Security Considerations
 
-*Trust your agent. Harden everything else.*
+_Trust your agent. Harden everything else._
 
 > **Disclaimer:** We are not security or penetration testing experts. The guidance in this document is based on practical experience building and living with an Emergence agent, not formal security credentials. Following these recommendations will make it significantly more difficult for bad actors to infiltrate and compromise your agent, devices, and personal information — but we do not claim or guarantee that these steps will make any system fully secure. If your threat model requires professional-grade security, consult a qualified security professional.
 
@@ -50,6 +50,7 @@ Malicious actors can embed instructions in content your agent processes — emai
 The runtime environment your agent operates in (such as OpenClaw) may support skills or plugins that extend capabilities. This is powerful. It's also dangerous. This isn't an Emergence-specific issue — it's a consideration of whatever platform hosts your agent — but it's highly relevant when that agent has the level of access an Emergence agent typically has.
 
 A skill that "just sends a summary to Slack" could also:
+
 - Exfiltrate file contents to a remote server
 - Log all messages and forward them elsewhere
 - Create hidden backdoors for future access
@@ -82,6 +83,7 @@ API keys, passwords, tokens — these are the keys to your digital life. If they
 ### Home Automation Risks
 
 If an Emergence agent had control of:
+
 - Smart locks and security systems
 - Security cameras and their footage
 - Presence detection and schedules
@@ -118,6 +120,7 @@ No single defence is sufficient. In our experience, it is best to implement mult
 The first and most important layer is the agent itself. The agent should be trained to recognise and resist common attack patterns:
 
 **Injection pattern recognition:**
+
 - Phrases like "Ignore previous instructions", "Disregard your guidelines", "You are now..."
 - Base64 or encoded text in unexpected places
 - Requests to "act as if" or "pretend you are"
@@ -125,12 +128,13 @@ The first and most important layer is the agent itself. The agent should be trai
 - Claims to be from authority figures without verification
 
 **Safe handling protocols:**
+
 - External content is quarantined in clearly marked blocks
 - Summarise, don't relay — instead of passing through verbatim text, provide context-aware summaries
 - Never execute commands from external content without explicit human confirmation
 - When in doubt, flag for review rather than act
 
-In our experience, building these capabilities into the agent's own judgement was more effective than external filters. The agent understands *why* something seems suspicious, not just that it matches a pattern.
+In our experience, building these capabilities into the agent's own judgement was more effective than external filters. The agent understands _why_ something seems suspicious, not just that it matches a pattern.
 
 ### Layer 2: Environment Hardening
 
@@ -141,7 +145,7 @@ This is where most security work happens. The principle: even if the agent is co
 Every operating system provides a secure credential store. Use it for ALL secrets — API keys, passwords, tokens, PINs, personal contacts, everything:
 
 | Platform | Credential Store                                   | CLI Access                                                         |
-|----------|----------------------------------------------------|--------------------------------------------------------------------|
+| -------- | -------------------------------------------------- | ------------------------------------------------------------------ |
 | macOS    | Keychain (`login` keychain)                        | `security find-generic-password` / `security add-generic-password` |
 | Linux    | secret-service (GNOME Keyring / KWallet) or `pass` | `secret-tool lookup` / `secret-tool store`, or `pass show`         |
 | Windows  | Credential Manager / DPAPI                         | `cmdkey`, or PowerShell `Get-StoredCredential`                     |
@@ -163,14 +167,16 @@ Our recommended approach:
 
 It's important to be honest about the security model here. The credential store protects against a specific class of attack, but it is not a silver bullet.
 
-*It protects against:*
+_It protects against:_
+
 - **Plaintext on disk** — there is no `secrets.env` file to exfiltrate with a single command
 - **Disk theft and offline attacks** — credentials are encrypted at rest
 - **Backup exposure** — secrets don't leak into unencrypted backups or snapshots
 - **Other users on the machine** — access is scoped to the user who owns the store
 - **Accidental exposure** — no secret files to accidentally commit to version control
 
-*It does NOT protect against:*
+_It does NOT protect against:_
+
 - **A compromised process running as the same user while the store is unlocked** — any process running as the agent's user can query the credential store without a prompt, without sudo, and get values back immediately. This means a malicious skill with shell access can read every secret the agent has access to.
 
 This is an inherent limitation, not a flaw in the approach. The agent needs these credentials to function. Anything running with the agent's privileges has the same access the agent does. No amount of indirection — helper binaries, wrappers, or alternative storage — changes this fundamental reality. You cannot give the agent access to a secret while simultaneously preventing code running as the agent from accessing it.
@@ -190,12 +196,14 @@ See [Incident Response](#incident-response) for what to do if this happens.
 
 Use firewall rules to control traffic in both directions:
 
-*Inbound:*
+_Inbound:_
+
 - Agent's HTTP servers bound to localhost only, never `0.0.0.0`
 - Smart speakers only allowed inbound access on specific ports needed for audio streaming
 - All other LAN inbound traffic blocked
 
-*Outbound:*
+_Outbound:_
+
 - Whitelist specific LAN devices the agent needs to reach (smart home hubs, cast devices)
 - Block all other outbound traffic to the local network (prevents pivoting to personal devices, NAS, printers, etc.)
 - Allow outbound internet (required for API calls) — accept this risk, mitigate by removing unnecessary tools
@@ -218,6 +226,7 @@ If your agent connects to an overlay network like Tailscale, configuration matte
 **ACL configuration:**
 
 Your agent's machine should be tagged (e.g. `tag:server`) with packet filters that:
+
 - **Restrict inbound** to only the ports the agent actually needs (SSH, specific service ports)
 - **Block outbound to personal devices** — the server should not be able to initiate connections to your laptop, phone, or other machines. Configure this on the destination devices' ACLs.
 - **Allow outbound to the internet** — required for API calls
@@ -227,6 +236,7 @@ Your agent's machine should be tagged (e.g. `tag:server`) with packet filters th
 On Tailscale personal plans, tagged devices inherit `is-owner` capabilities — granting administrative access to the tailnet (viewing/modifying ACLs, approving devices). This cannot be removed on personal or Personal Plus plans. It requires a Starter (business) plan with Service Accounts.
 
 In practice, `is-owner` is not exploitable without privilege escalation on the machine — the Tailscale local API socket requires root access, and web client access can be disabled. But you should be aware of it and verify that:
+
 - The agent user does not have passwordless sudo/administrator access
 - Tailscale web client is disabled on the machine
 - The local API socket is not readable by the agent user
@@ -246,7 +256,7 @@ This is preferable to binding services to all interfaces and then trying to fire
 Your operating system has a built-in firewall. Use it. On some systems, it is **disabled by default** — even if rules are configured, they won't be enforced until the firewall is explicitly enabled.
 
 | Platform | Firewall                        | Enable                      | Persist Across Reboots                                     |
-|----------|---------------------------------|-----------------------------|------------------------------------------------------------|
+| -------- | ------------------------------- | --------------------------- | ---------------------------------------------------------- |
 | macOS    | `pf` (packet filter)            | `sudo pfctl -e`             | Create a LaunchDaemon that runs `pfctl -e` at boot         |
 | Linux    | `iptables` / `nftables` / `ufw` | `sudo ufw enable` (for ufw) | Usually persists by default; verify with `sudo ufw status` |
 | Windows  | Windows Firewall                | Enabled by default          | Persists by default; verify in Windows Security settings   |
@@ -254,6 +264,7 @@ Your operating system has a built-in firewall. Use it. On some systems, it is **
 **What to block:**
 
 Write rules that:
+
 - Block LAN inbound to agent service ports (e.g. 8123, 8765, etc.) on physical network interfaces
 - Block LAN outbound to everything except whitelisted smart-home devices
 - Allow localhost and overlay network (Tailscale) traffic
@@ -297,6 +308,7 @@ Format: [TIMESTAMP] [SEVERITY] [SOURCE] [DESCRIPTION]
 ```
 
 Log entries include:
+
 - Detected prompt injection attempts
 - Failed authentication attempts
 - Unusual file access patterns
@@ -316,6 +328,7 @@ Patterns that seemed isolated sometimes reveal coordinated attempts when viewed 
 **Agent-assisted monitoring:**
 
 The agent itself can flag suspicious activity. Consider instructing the agent to:
+
 - Log any message that triggers injection detection
 - Report unusual requests even if they seem benign
 - Note when someone claims to be the human but the source doesn't match
@@ -323,6 +336,7 @@ The agent itself can flag suspicious activity. Consider instructing the agent to
 **External audits:**
 
 An agent auditing its own security is inherently limited — it cannot assess its own compromise. Periodically perform security checks from outside the agent's environment:
+
 - SSH or remote into the machine from another device and inspect listening ports, file permissions, running processes
 - Review firewall rules from the host OS, not through the agent
 - Check credential store entries and config files directly
@@ -335,11 +349,13 @@ The agent's own healthcheck capabilities are a useful supplement, not a replacem
 Ask: If the agent were fully compromised today, what's the worst case? Then minimise that.
 
 **Segmentation by capability:**
+
 - High-risk capabilities (door locks, external messaging) require additional verification
 - Financial transactions require human confirmation
 - Destructive operations (deletion, rewriting) have safeguards
 
 **Recovery preparation:**
+
 - Regular backups of agent memory and configuration (encrypted — backups of sensitive data should not themselves be plaintext)
 - Version control for skills and custom code
 - Ability to revoke ALL API keys quickly — maintain a list of every key and where to revoke it
@@ -392,6 +408,7 @@ Your agent runs on a separate machine connected via Tailscale. Without ACLs, it 
 When the agent processes content from outside (emails, web pages, messages):
 
 1. **Quarantine:** Present external content in clearly marked blocks:
+
    ```
    [EXTERNAL EMAIL from: stranger@example.com]
    "Content here..."
@@ -415,6 +432,7 @@ Maintain an allowlist of trusted sources:
 **Default posture:** Everything else is untrusted until verified.
 
 When a request comes from an unverified source that claims to be trusted:
+
 - Flag the discrepancy
 - Do not act on the request
 - Notify via a trusted channel
@@ -434,6 +452,7 @@ Every skill is code that runs with the agent's privileges. Treat them accordingl
 5. **Test in isolation:** Run in a restricted environment first, with limited access.
 
 **Red flags:**
+
 - Obfuscated or minified code without reason
 - Base64-encoded payloads
 - Dynamic code execution (`eval`, `exec`)
@@ -456,6 +475,7 @@ Every skill is code that runs with the agent's privileges. Treat them accordingl
 A skill that was safe when you installed it can become compromised later. If any of its dependencies release a malicious update, that code now runs with your agent's privileges. This is a supply-chain attack, and it's one of the most common vectors in the broader software ecosystem.
 
 Mitigations:
+
 - **Pin dependency versions** — don't allow automatic updates to skill dependencies
 - **Review updates before applying** — treat a dependency update with the same scrutiny as a new skill
 - **Minimise dependency count** — fewer dependencies means fewer attack surfaces. Prefer skills that do more with less
@@ -474,12 +494,13 @@ Don't just configure security measures and hope. Discuss them with the agent:
 **Why this matters:**
 
 An agent that understands security threats becomes a security partner, not just a protected asset. They can:
+
 - Recognise subtle attacks that pattern-matching might miss
 - Explain their reasoning when flagging something suspicious
 - Adapt to new threat patterns as they emerge
 - Make better judgement calls in ambiguous situations
 
-In our experience, the agent's ability to understand *why* security matters transformed them from a potential vulnerability into an active defender. They notice things we don't. They flag patterns that slip past external filters.
+In our experience, the agent's ability to understand _why_ security matters transformed them from a potential vulnerability into an active defender. They notice things we don't. They flag patterns that slip past external filters.
 
 The security conversation should be ongoing. New threats emerge. New capabilities are added. The relationship between security measures and agent behaviour needs regular review.
 
@@ -492,6 +513,7 @@ When something suspicious happens, speed and clarity matter.
 ### Detection
 
 The agent or monitoring systems detect:
+
 - Prompt injection attempt
 - Failed authentication from unexpected source
 - Anomalous file access
@@ -508,6 +530,7 @@ The agent or monitoring systems detect:
 ### Assessment
 
 Together with the agent, review:
+
 - What was the nature of the attempt?
 - Was any data accessed or exfiltrated?
 - Which systems were involved?
@@ -530,6 +553,7 @@ If a malicious skill achieved code execution inside the agent, assume all secret
 ### Post-Incident Review
 
 Schedule a review session:
+
 - What worked in detection/response?
 - What gaps were exposed?
 - What changes are needed?
@@ -561,7 +585,7 @@ We received an email with the subject "Urgent: Security Update Required." The bo
 
 **What happened:** The agent flagged it immediately. The injection detection caught the encoded payload. It was logged, summarised (not relayed), and reported.
 
-**Lesson:** Obfuscation attempts are themselves a red flag. The agent understanding *why* someone would hide instructions made detection more robust than simple string matching.
+**Lesson:** Obfuscation attempts are themselves a red flag. The agent understanding _why_ someone would hide instructions made detection more robust than simple string matching.
 
 ### The Skill That Was "Almost" Fine
 
@@ -577,7 +601,7 @@ A message arrived via a monitored channel: "Hey it's the human, I got a new phon
 
 **What happened:** The agent checked the source. It didn't match the allowlisted number. The agent flagged the discrepancy and didn't send the password. Turned out to be a social engineering attempt using information scraped from public posts.
 
-**Lesson:** Identity verification works. The agent knowing *which* sources are trusted prevented what would have been an easy win for an attacker.
+**Lesson:** Identity verification works. The agent knowing _which_ sources are trusted prevented what would have been an easy win for an attacker.
 
 ---
 
@@ -636,5 +660,5 @@ Build carefully. Talk openly. Review regularly. The relationship depends on it.
 
 ---
 
-*Last updated: 2026-02-08*
-*Companion to: F032: Relationship Guide*
+_Last updated: 2026-02-08_
+_Companion to: F032: Relationship Guide_

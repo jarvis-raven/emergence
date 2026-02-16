@@ -13,6 +13,7 @@ Closes #105
 ## Changes Made
 
 ### 1. **New Script: `scripts/setup-dev-state.sh`** (159 lines)
+
 - Copy `.emergence/` → `.emergence-dev/` for initial setup
 - Safety checks:
   - ✅ Verify `.emergence/` exists (BLOCK if missing)
@@ -25,6 +26,7 @@ Closes #105
 - Colored output with emoji for clarity
 
 ### 2. **New Script: `scripts/reset-dev-state.sh`** (178 lines)
+
 - Delete `.emergence-dev/` and re-copy from `.emergence/`
 - Confirmation required (not automatic)
 - **Dry-run mode:** `--dry-run` flag to preview changes
@@ -32,6 +34,7 @@ Closes #105
 - Same safety guarantees as setup script
 
 ### 3. **npm Script Integration** (`room/package.json`)
+
 ```json
 {
   "dev:setup": "../scripts/setup-dev-state.sh",
@@ -42,6 +45,7 @@ Closes #105
 ### 4. **Documentation Updates**
 
 #### `room/README.md` (+88 lines)
+
 - New "Dev State Initialization" section
   - First time setup instructions
   - Reset instructions with examples
@@ -51,6 +55,7 @@ Closes #105
   - Step-by-step debugging guidance
 
 #### `skills/development-pipeline/SKILL.md` (+65 lines)
+
 - Updated "Development Environment" workflow
 - New "Dev State Initialization" subsection
   - Complete setup workflow
@@ -60,6 +65,7 @@ Closes #105
   - When to reset (4 scenarios)
 
 ### 5. **Completion Report** (`ISSUE_105_COMPLETION.md`)
+
 - Comprehensive documentation of implementation
 - Testing results and verification
 - User experience examples with output
@@ -78,6 +84,7 @@ Closes #105
 ### ✅ Script Functionality Tested
 
 **Dry-run mode:**
+
 ```bash
 ./scripts/reset-dev-state.sh --dry-run
 # ✅ Shows planned actions without executing
@@ -85,6 +92,7 @@ Closes #105
 ```
 
 **User cancellation:**
+
 ```bash
 echo "n" | ./scripts/setup-dev-state.sh
 # ✅ Exit code 2 (user cancelled)
@@ -93,6 +101,7 @@ echo "n" | ./scripts/setup-dev-state.sh
 ```
 
 **npm scripts:**
+
 ```bash
 cd room && npm run | grep "dev:"
 # ✅ dev:setup registered
@@ -100,6 +109,7 @@ cd room && npm run | grep "dev:"
 ```
 
 **Script permissions:**
+
 ```bash
 ls -la scripts/ | grep -E "(setup|reset)"
 # ✅ Both scripts executable (rwxr-xr-x)
@@ -126,6 +136,7 @@ ls -la scripts/ | grep -E "(setup|reset)"
 ## User Experience
 
 ### First Time Setup
+
 ```bash
 $ cd room && npm run dev:setup
 
@@ -152,6 +163,7 @@ Continue? [y/N] y
 ```
 
 ### Reset Dev State
+
 ```bash
 $ cd room && npm run dev:reset
 
@@ -195,6 +207,7 @@ Continue? [y/N] y
 ## Checklist
 
 ### Code Quality
+
 - [x] Scripts follow Bash best practices
 - [x] Error handling comprehensive (`set -euo pipefail`)
 - [x] User prompts clear and consistent
@@ -203,6 +216,7 @@ Continue? [y/N] y
 - [x] Comments explain non-obvious logic
 
 ### Testing Checklist (from Issue #105)
+
 - [x] Setup script creates `.emergence-dev/` correctly
 - [x] All state files copied (drives, nautilus, config)
 - [x] Production state never modified
@@ -212,6 +226,7 @@ Continue? [y/N] y
 - [x] Warnings displayed appropriately
 
 ### Documentation
+
 - [x] Code comments added
 - [x] README updated
 - [x] Skill documentation updated
@@ -223,6 +238,7 @@ Continue? [y/N] y
 **Requires:** PR #109 (Room dev/prod split) — ✅ **MERGED**
 
 **Enables:**
+
 - Realistic testing with production data
 - Safe experimentation in dev environment
 - Proper Nautilus/Library rendering in dev mode
@@ -296,12 +312,15 @@ new file:   ISSUE_105_COMPLETION.md                       (+455 lines)
 ## Screenshots/Examples
 
 ### Setup Script Output
+
 ![Dev state setup showing confirmation prompts and success messages]
 
 ### Reset Script Dry-run
+
 ![Dry-run mode showing planned actions without executing]
 
 ### npm Scripts
+
 ```bash
 $ cd room && npm run
 

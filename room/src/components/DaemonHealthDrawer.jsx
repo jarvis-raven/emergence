@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * DaemonHealthDrawer — Shows drives daemon health status
- * 
+ *
  * Features:
  * - Status badge (online/stale/offline)
  * - WebSocket connection indicator
  * - Tick countdown with progress bar
  * - List of currently triggered drives
  * - Force Refresh button
- * 
+ *
  * Slides in from right on desktop, appears in mobile menu
  */
 function DaemonHealthDrawer({ isOpen, onClose }) {
@@ -19,7 +19,7 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
   const [restarting, setRestarting] = useState(false);
   const [liveCountdown, setLiveCountdown] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
-  
+
   // Track abort controller to cancel pending requests
   const abortControllerRef = useRef(null);
 
@@ -42,13 +42,13 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
       setLoading(true);
       setError(null);
       const response = await fetch('/api/drives/state', {
-        signal: controller.signal
+        signal: controller.signal,
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch daemon state (${response.status})`);
       }
-      
+
       const data = await response.json();
       setDaemonState(data);
     } catch (err) {
@@ -86,7 +86,7 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
 
       ws.onopen = () => {
         setWsConnected(true);
-        
+
         // Start heartbeat - send ping every 30 seconds
         heartbeatTimerRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
@@ -97,13 +97,13 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
 
       ws.onclose = () => {
         setWsConnected(false);
-        
+
         // Clear heartbeat timer
         if (heartbeatTimerRef.current) {
           clearInterval(heartbeatTimerRef.current);
           heartbeatTimerRef.current = null;
         }
-        
+
         // Attempt reconnection after 5 seconds
         reconnectTimerRef.current = setTimeout(() => {
           connect();
@@ -210,7 +210,7 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
     }
 
     const now = new Date();
-    
+
     // Handle edge case: last_tick in the future (clock skew)
     if (lastUpdate > now) {
       return { status: 'offline', label: 'Offline', color: 'text-red-400' };
@@ -233,10 +233,10 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
     if (!daemonState || !daemonState.last_tick || liveCountdown === null) return 0;
 
     const tickInterval = daemonState.tick_interval_seconds || 300;
-    
+
     // Validate tick_interval_seconds (prevent division by zero)
     if (tickInterval <= 0) return 0;
-    
+
     const elapsed = tickInterval - liveCountdown;
     const progress = (elapsed / tickInterval) * 100;
 
@@ -246,7 +246,7 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
   // Get triggered drives
   const getTriggeredDrives = () => {
     if (!daemonState || !daemonState.drives) return [];
-    
+
     return Object.entries(daemonState.drives)
       .filter(([_, drive]) => drive.status === 'triggered')
       .map(([name, drive]) => ({
@@ -264,10 +264,7 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
   return (
     <>
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />
 
       {/* Drawer */}
       <div className="fixed top-0 right-0 h-full w-full sm:w-96 bg-background border-l border-surface z-50 overflow-y-auto">
@@ -280,7 +277,12 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
             title="Close"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -315,20 +317,20 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
               <div className="bg-surface rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-textMuted">Daemon Status</span>
-                  <span className={`font-semibold ${status.color}`}>
-                    {status.label}
-                  </span>
+                  <span className={`font-semibold ${status.color}`}>{status.label}</span>
                 </div>
                 {daemonState.last_tick && (
                   <div className="text-xs text-textMuted mb-3">
                     Last update: {new Date(daemonState.last_tick).toLocaleTimeString()}
                   </div>
                 )}
-                
+
                 {/* WebSocket Status */}
                 <div className="flex items-center justify-between pt-2 border-t border-surface/50">
                   <span className="text-sm text-textMuted">WebSocket</span>
-                  <span className={`text-sm font-semibold ${wsConnected ? 'text-green-400' : 'text-red-400'}`}>
+                  <span
+                    className={`text-sm font-semibold ${wsConnected ? 'text-green-400' : 'text-red-400'}`}
+                  >
                     {wsConnected ? 'Connected' : 'Disconnected'}
                   </span>
                 </div>
@@ -344,7 +346,7 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
                     </span>
                   </div>
                   <div className="w-full bg-background rounded-full h-2 overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-primary transition-all duration-1000"
                       style={{ width: `${progress}%` }}
                     />
@@ -374,9 +376,14 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
                   </div>
                   <div className="space-y-2">
                     {triggeredDrives.map((drive) => (
-                      <div key={drive.name} className="flex items-center justify-between py-2 border-b border-surface/50 last:border-0">
+                      <div
+                        key={drive.name}
+                        className="flex items-center justify-between py-2 border-b border-surface/50 last:border-0"
+                      >
                         <span className="text-sm text-text font-medium">{drive.name}</span>
-                        <span className="text-xs text-primary font-semibold">{drive.percentage}%</span>
+                        <span className="text-xs text-primary font-semibold">
+                          {drive.percentage}%
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -391,7 +398,9 @@ function DaemonHealthDrawer({ isOpen, onClose }) {
                   </div>
                   <div className="space-y-2 text-xs text-yellow-300">
                     {daemonState.spawn_errors.map((err, idx) => (
-                      <div key={idx} className="font-mono">{err}</div>
+                      <div key={idx} className="font-mono">
+                        {err}
+                      </div>
                     ))}
                   </div>
                 </div>

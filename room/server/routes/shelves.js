@@ -21,7 +21,7 @@ export default function createShelvesRouter(shelfRegistry) {
     try {
       const shelves = shelfRegistry.getAll();
       res.json({
-        shelves: shelves.map(s => ({
+        shelves: shelves.map((s) => ({
           id: s.manifest.id,
           name: s.manifest.name,
           icon: s.manifest.icon,
@@ -49,18 +49,18 @@ export default function createShelvesRouter(shelfRegistry) {
   router.get('/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       const shelf = shelfRegistry.get(id);
       if (!shelf) {
         return res.status(404).json({ error: 'Shelf not found', id });
       }
-      
+
       const config = loadConfig();
-      
+
       let data = null;
       let status = 'ok';
       let error = null;
-      
+
       try {
         data = await shelfRegistry.resolveData(id, config);
         if (data === null) {
@@ -72,7 +72,7 @@ export default function createShelvesRouter(shelfRegistry) {
         status = 'error';
         error = err.message;
       }
-      
+
       const response = {
         status,
         shelf: {
@@ -85,11 +85,11 @@ export default function createShelvesRouter(shelfRegistry) {
         data,
         updatedAt: new Date().toISOString(),
       };
-      
+
       if (error) {
         response.error = error;
       }
-      
+
       res.json(response);
     } catch (err) {
       console.error('Shelf data route error:', err);

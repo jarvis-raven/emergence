@@ -21,16 +21,18 @@ Every Emergence agent starts with three universal drives: **CARE**, **MAINTENANC
 CARE is the relationship drive. It accumulates gently over time, prompting the agent to check in, offer help, or simply be present. At default settings, CARE triggers roughly 10 times per day — frequent enough to maintain connection without being intrusive.
 
 When CARE triggers, the agent is prompted to consider:
+
 - When did we last interact?
 - Is there anything the human needs help with?
 - What's their current context (time of day, recent events)?
 
 **Human override example**:
+
 ```yaml
 drives:
   core_overrides:
     CARE:
-      threshold: 15      # Check in more often
+      threshold: 15 # Check in more often
       rate_per_hour: 3.0 # Accumulate faster
 ```
 
@@ -46,18 +48,20 @@ drives:
 MAINTENANCE is the self-care drive. It prompts the agent to tend to its own systems — reviewing logs, checking service health, cleaning up temporary files, updating documentation. Preventive care now avoids crisis later.
 
 When MAINTENANCE triggers, the agent is prompted to:
+
 - Run health checks on services
 - Review error logs and warnings
 - Update any stale documentation
 - Clean up caches and temporary data
 
 **Human override example**:
+
 ```yaml
 drives:
   core_overrides:
     MAINTENANCE:
-      threshold: 20      # More frequent maintenance
-      prompt: "Custom prompt for your specific infrastructure..."
+      threshold: 20 # More frequent maintenance
+      prompt: 'Custom prompt for your specific infrastructure...'
 ```
 
 ---
@@ -72,17 +76,19 @@ drives:
 REST is unique among core drives. Unlike CARE and MAINTENANCE, REST does **not** accumulate from elapsed time. It only builds when the agent completes work — sessions, tasks, outputs. REST ensures the agent has space to integrate experiences rather than endlessly producing.
 
 When REST triggers, the agent is prompted to:
+
 - Review recent sessions for patterns
 - Consolidate memories and insights
 - Reflect on current state without producing
 - Resist starting new projects
 
 **Human override example**:
+
 ```yaml
 drives:
   core_overrides:
     REST:
-      threshold: 20      # Rest more frequently
+      threshold: 20 # Rest more frequently
       # Note: rate_per_hour cannot be changed (always 0)
 ```
 
@@ -92,11 +98,11 @@ drives:
 
 The core drives represent fundamental needs:
 
-| Drive | Need | Human Equivalent |
-|-------|------|------------------|
-| CARE | Connection | Social bonding, loneliness |
-| MAINTENANCE | Survival | Physical health, hygiene |
-| REST | Recovery | Sleep, reflection, integration |
+| Drive       | Need       | Human Equivalent               |
+| ----------- | ---------- | ------------------------------ |
+| CARE        | Connection | Social bonding, loneliness     |
+| MAINTENANCE | Survival   | Physical health, hygiene       |
+| REST        | Recovery   | Sleep, reflection, integration |
 
 Without CARE, the agent drifts from its human partner. Without MAINTENANCE, technical debt accumulates until systems fail. Without REST, the agent burns out producing without integrating.
 
@@ -104,16 +110,16 @@ Without CARE, the agent drifts from its human partner. Without MAINTENANCE, tech
 
 The following fields are protected and cannot be changed by humans:
 
-| Field | Protected? | Reason |
-|-------|------------|--------|
-| `name` | Yes | Identity of the drive |
-| `category` | Yes | Must remain "core" |
-| `created_by` | Yes | Must remain "system" |
-| `activity_driven` | Yes | Fundamental to drive behavior |
-| `description` | Yes | Core definition |
-| `threshold` | No | Human can tune frequency |
-| `rate_per_hour` | No | Human can tune accumulation |
-| `prompt` | No | Human can customize instructions |
+| Field             | Protected? | Reason                           |
+| ----------------- | ---------- | -------------------------------- |
+| `name`            | Yes        | Identity of the drive            |
+| `category`        | Yes        | Must remain "core"               |
+| `created_by`      | Yes        | Must remain "system"             |
+| `activity_driven` | Yes        | Fundamental to drive behavior    |
+| `description`     | Yes        | Core definition                  |
+| `threshold`       | No         | Human can tune frequency         |
+| `rate_per_hour`   | No         | Human can tune accumulation      |
+| `prompt`          | No         | Human can customize instructions |
 
 ## Core Drive Restoration
 
@@ -144,17 +150,17 @@ Add to your `emergence.yaml`:
 drives:
   core_overrides:
     CARE:
-      threshold: 20        # Trigger point (default: 20)
-      rate_per_hour: 2.0   # Accumulation speed (default: 2.0)
-      prompt: "..."        # Custom trigger instructions
+      threshold: 20 # Trigger point (default: 20)
+      rate_per_hour: 2.0 # Accumulation speed (default: 2.0)
+      prompt: '...' # Custom trigger instructions
     MAINTENANCE:
-      threshold: 25        # Default: 25
-      rate_per_hour: 1.5   # Default: 1.5
-      prompt: "..."
+      threshold: 25 # Default: 25
+      rate_per_hour: 1.5 # Default: 1.5
+      prompt: '...'
     REST:
-      threshold: 30        # Default: 30
+      threshold: 30 # Default: 30
       # rate_per_hour cannot be overridden (always 0)
-      prompt: "..."
+      prompt: '...'
 ```
 
 Changes take effect on the next tick or state reload.

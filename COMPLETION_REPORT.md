@@ -25,6 +25,7 @@ Successfully integrated Nautilus memory system into Emergence's runtime with aut
 - [x] 8 tests covering all functionality
 
 **API:**
+
 ```python
 record_access("file.md", access_type="read", async_mode=True)
 batch_record_accesses(["f1.md", "f2.md"], access_type="read")
@@ -46,9 +47,10 @@ on_file_write("file.md", session_id="...")
 - [x] 8 tests covering scheduling and execution
 
 **Pipeline:**
+
 1. Register recent writes (24h)
 2. Classify chambers
-3. Auto-tag contexts  
+3. Auto-tag contexts
 4. Apply gravity decay
 5. Promote memories
 6. Link mirrors
@@ -91,6 +93,7 @@ tests/test_nautilus_integration.py ..................                    [100%]
 ```
 
 **Breakdown:**
+
 - Original Nautilus tests: 8/8 passing ✅
 - Session hooks tests: 8/8 passing ✅
 - Nightly integration tests: 8/8 passing ✅
@@ -101,6 +104,7 @@ tests/test_nautilus_integration.py ..................                    [100%]
 ## Files Created/Modified
 
 **New Files (5):**
+
 1. `core/nautilus/session_hooks.py` - Session tracking hooks
 2. `core/nautilus/nightly.py` - Maintenance pipeline
 3. `core/drives/nightly_check.py` - Scheduler logic
@@ -108,12 +112,14 @@ tests/test_nautilus_integration.py ..................                    [100%]
 5. `docs/nautilus-v0.4.0-integration.md` - Integration guide
 
 **Modified Files (4):**
+
 1. `core/drives/daemon.py` - Added Nautilus integration
 2. `core/nautilus/__init__.py` - Version bump, new exports
 3. `core/nautilus/config.py` - Path handling improvements
 4. `core/nautilus/gravity.py` - Added context column
 
 **Documentation (3):**
+
 1. `docs/nautilus-quickstart.md` - Quick start guide
 2. `INTEGRATION_SUMMARY.md` - Executive summary
 3. `COMPLETION_REPORT.md` - This file
@@ -144,6 +150,7 @@ tests/test_nautilus_integration.py ..................                    [100%]
 ## Key Features
 
 ### Session Hooks
+
 - ✅ Async/non-blocking by default
 - ✅ Automatic gravity DB registration
 - ✅ Session context tracking
@@ -151,6 +158,7 @@ tests/test_nautilus_integration.py ..................                    [100%]
 - ✅ Auto-skip non-markdown files
 
 ### Nightly Maintenance
+
 - ✅ Preferred time window (±30 min)
 - ✅ Rate limiting (once per 24h)
 - ✅ Error-tolerant (won't crash daemon)
@@ -158,6 +166,7 @@ tests/test_nautilus_integration.py ..................                    [100%]
 - ✅ Configurable schedule
 
 ### Integration
+
 - ✅ Clean daemon integration
 - ✅ No breaking changes
 - ✅ Config-driven (no hardcoded paths)
@@ -186,16 +195,19 @@ python3 -c "from core.nautilus.session_hooks import record_access; print('OK')"
 ## What's Next
 
 **Immediate next steps:**
+
 1. ✅ Task complete - ready for main agent review
 2. Optional: Test in production environment
 3. Optional: Add to README changelog
 
 **Future enhancements (v0.4.1):**
+
 - Chamber promotion logic (atrium → corridor → vault)
 - Session analytics dashboard
 - Multiple daily maintenance windows
 
 **Long-term (v0.5.0):**
+
 - Direct OpenClaw session integration
 - Line-range tracking
 - Smart batching
@@ -206,11 +218,13 @@ python3 -c "from core.nautilus.session_hooks import record_access; print('OK')"
 ## Performance Metrics
 
 **Session hooks:**
+
 - Overhead: < 1ms per file access
 - Mode: Async by default (non-blocking)
 - Memory: < 1 MB
 
 **Nightly maintenance:**
+
 - Runtime: 10-30 seconds
 - Frequency: Once per day
 - CPU impact: Low (background processes)
@@ -219,15 +233,15 @@ python3 -c "from core.nautilus.session_hooks import record_access; print('OK')"
 
 ## Production Readiness
 
-| Aspect | Status | Notes |
-|--------|--------|-------|
-| Code quality | ✅ | Fully documented, typed |
-| Test coverage | ✅ | 26 tests, 100% passing |
-| Error handling | ✅ | Graceful degradation |
-| Performance | ✅ | Async, low overhead |
-| Documentation | ✅ | Complete guides |
-| Config | ✅ | Fully configurable |
-| Breaking changes | ✅ | None |
+| Aspect           | Status | Notes                   |
+| ---------------- | ------ | ----------------------- |
+| Code quality     | ✅     | Fully documented, typed |
+| Test coverage    | ✅     | 26 tests, 100% passing  |
+| Error handling   | ✅     | Graceful degradation    |
+| Performance      | ✅     | Async, low overhead     |
+| Documentation    | ✅     | Complete guides         |
+| Config           | ✅     | Fully configurable      |
+| Breaking changes | ✅     | None                    |
 
 **Verdict:** ✅ **PRODUCTION READY**
 
@@ -249,21 +263,25 @@ python3 -c "from core.nautilus.session_hooks import record_access; print('OK')"
 ## Quick Reference
 
 **Enable/disable:**
+
 ```json
-{"nautilus": {"enabled": true}}
+{ "nautilus": { "enabled": true } }
 ```
 
 **Change schedule:**
+
 ```json
-{"nautilus": {"nightly_hour": 3, "nightly_minute": 0}}
+{ "nautilus": { "nightly_hour": 3, "nightly_minute": 0 } }
 ```
 
 **Manual maintenance:**
+
 ```bash
 python3 -m core.nautilus.nightly --verbose --register-recent
 ```
 
 **Check status:**
+
 ```bash
 python3 -m core.nautilus.nautilus_cli status
 ```

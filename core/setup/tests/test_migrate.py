@@ -2,7 +2,6 @@
 """Tests for emergence migrate module."""
 
 import json
-import os
 import sqlite3
 import tempfile
 import unittest
@@ -25,6 +24,7 @@ class TestScanForPaths(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def test_finds_paths_in_json(self):
@@ -36,9 +36,7 @@ class TestScanForPaths(unittest.TestCase):
         self.assertIn("/home/dan", matches[0][2])
 
     def test_finds_paths_in_markdown(self):
-        (self.workspace / "SOUL.md").write_text(
-            "My home is /home/dan/emergence\n"
-        )
+        (self.workspace / "SOUL.md").write_text("My home is /home/dan/emergence\n")
         matches = scan_for_paths(self.workspace, "/home/dan")
         self.assertEqual(len(matches), 1)
 
@@ -58,9 +56,7 @@ class TestScanForPaths(unittest.TestCase):
         db_path = self.workspace / "sessions.db"
         conn = sqlite3.connect(str(db_path))
         conn.execute("CREATE TABLE sessions (id INTEGER, path TEXT)")
-        conn.execute(
-            "INSERT INTO sessions VALUES (1, '/home/dan/.openclaw/sessions/abc.json')"
-        )
+        conn.execute("INSERT INTO sessions VALUES (1, '/home/dan/.openclaw/sessions/abc.json')")
         conn.commit()
         conn.close()
 
@@ -68,10 +64,14 @@ class TestScanForPaths(unittest.TestCase):
         self.assertEqual(len(matches), 1)
 
     def test_multiple_matches_same_file(self):
-        (self.workspace / "config.json").write_text(json.dumps({
-            "path1": "/home/dan/a",
-            "path2": "/home/dan/b",
-        }))
+        (self.workspace / "config.json").write_text(
+            json.dumps(
+                {
+                    "path1": "/home/dan/a",
+                    "path2": "/home/dan/b",
+                }
+            )
+        )
         matches = scan_for_paths(self.workspace, "/home/dan")
         # JSON is on one line typically, but our dump might be multi-line
         self.assertGreaterEqual(len(matches), 1)
@@ -84,13 +84,18 @@ class TestRewritePaths(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def test_rewrites_json(self):
         path = self.workspace / "emergence.json"
-        path.write_text(json.dumps({
-            "paths": {"workspace": "/home/dan/aurora"},
-        }))
+        path.write_text(
+            json.dumps(
+                {
+                    "paths": {"workspace": "/home/dan/aurora"},
+                }
+            )
+        )
         stats = rewrite_paths(self.workspace, "/home/dan", "/home/aurora")
         self.assertEqual(stats["files_modified"], 1)
         self.assertEqual(stats["replacements"], 1)
@@ -100,8 +105,7 @@ class TestRewritePaths(unittest.TestCase):
     def test_rewrites_multiple_occurrences(self):
         """Simulates the Aurora sessions.json bug — many paths in one file."""
         sessions = {
-            f"session_{i}": f"/home/dan/.openclaw/sessions/sess_{i}.json"
-            for i in range(279)
+            f"session_{i}": f"/home/dan/.openclaw/sessions/sess_{i}.json" for i in range(279)
         }
         path = self.workspace / "sessions.json"
         path.write_text(json.dumps(sessions))
@@ -175,16 +179,21 @@ class TestExportImport(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def _setup_workspace(self):
         """Create a minimal emergence workspace."""
         (self.source / "SOUL.md").write_text("# Aurora\nI am Aurora.\n")
         (self.source / "SELF.md").write_text("# Self\nPath: /home/dan/aurora\n")
-        (self.source / "emergence.json").write_text(json.dumps({
-            "agent": {"name": "Aurora"},
-            "paths": {"workspace": "/home/dan/aurora"},
-        }))
+        (self.source / "emergence.json").write_text(
+            json.dumps(
+                {
+                    "agent": {"name": "Aurora"},
+                    "paths": {"workspace": "/home/dan/aurora"},
+                }
+            )
+        )
         mem = self.source / "memory" / "daily"
         mem.mkdir(parents=True)
         (mem / "2026-02-13.md").write_text("# Today\nDid stuff at /home/dan/aurora\n")
@@ -212,7 +221,8 @@ class TestExportImport(unittest.TestCase):
         bundle = export_bundle(self.source, Path(self.tmpdir) / "bundle.tar.gz")
 
         result = import_bundle(
-            bundle, self.dest,
+            bundle,
+            self.dest,
             old_home="/home/dan",
             new_home="/home/aurora",
         )
@@ -257,8 +267,10 @@ class TestExportImport(unittest.TestCase):
         bundle = export_bundle(self.source, Path(self.tmpdir) / "bundle.tar.gz")
 
         result = import_bundle(
-            bundle, self.dest,
-            old_home="/home/dan", new_home="/home/aurora",
+            bundle,
+            self.dest,
+            old_home="/home/dan",
+            new_home="/home/aurora",
             dry_run=True,
         )
         # Dest should not have extracted files (may exist as empty dir)
@@ -268,7 +280,9 @@ class TestExportImport(unittest.TestCase):
 
     def test_import_rejects_path_traversal(self):
         """Security: reject bundles with .. in paths."""
-        import tarfile, io
+        import tarfile
+        import io
+
         bad_bundle = Path(self.tmpdir) / "bad.tar.gz"
         with tarfile.open(str(bad_bundle), "w:gz") as tar:
             info = tarfile.TarInfo(name="../../../etc/passwd")
@@ -286,14 +300,19 @@ class TestValidateWorkspace(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def test_valid_workspace(self):
         (self.workspace / "SOUL.md").write_text("# Soul\n")
-        (self.workspace / "emergence.json").write_text(json.dumps({
-            "agent": {"name": "Test"},
-            "paths": {"workspace": "."},
-        }))
+        (self.workspace / "emergence.json").write_text(
+            json.dumps(
+                {
+                    "agent": {"name": "Test"},
+                    "paths": {"workspace": "."},
+                }
+            )
+        )
         results = validate_workspace(self.workspace)
         self.assertTrue(results["valid"])
 
@@ -341,12 +360,15 @@ class TestRewriteOpenClawState(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def test_rewrites_sessions_json(self):
         """The core Aurora bug: sessions.json paths must be rewritten."""
         stats = rewrite_openclaw_state(
-            self.oc_root, "/home/dan", "/home/aurora",
+            self.oc_root,
+            "/home/dan",
+            "/home/aurora",
         )
         self.assertEqual(stats["files_modified"], 1)
         self.assertGreater(stats["replacements"], 0)
@@ -359,7 +381,10 @@ class TestRewriteOpenClawState(unittest.TestCase):
     def test_dry_run_no_changes(self):
         original = self.sessions_file.read_text()
         stats = rewrite_openclaw_state(
-            self.oc_root, "/home/dan", "/home/aurora", dry_run=True,
+            self.oc_root,
+            "/home/dan",
+            "/home/aurora",
+            dry_run=True,
         )
         self.assertGreater(stats["replacements"], 0)
         self.assertTrue(stats["dry_run"])
@@ -370,12 +395,18 @@ class TestRewriteOpenClawState(unittest.TestCase):
         other_dir = self.oc_root / "agents" / "aurora" / "sessions"
         other_dir.mkdir(parents=True)
         other_file = other_dir / "sessions.json"
-        other_file.write_text(json.dumps({
-            "s1": "/home/dan/.openclaw/agents/aurora/sessions/s1.json",
-        }))
+        other_file.write_text(
+            json.dumps(
+                {
+                    "s1": "/home/dan/.openclaw/agents/aurora/sessions/s1.json",
+                }
+            )
+        )
 
         stats = rewrite_openclaw_state(
-            self.oc_root, "/home/dan", "/home/aurora",
+            self.oc_root,
+            "/home/dan",
+            "/home/aurora",
         )
         self.assertEqual(stats["files_modified"], 2)
 
@@ -384,7 +415,9 @@ class TestRewriteOpenClawState(unittest.TestCase):
 
     def test_handles_missing_openclaw_root(self):
         stats = rewrite_openclaw_state(
-            Path("/nonexistent"), "/home/dan", "/home/aurora",
+            Path("/nonexistent"),
+            "/home/dan",
+            "/home/aurora",
         )
         self.assertEqual(stats["files_modified"], 0)
         self.assertGreater(len(stats["errors"]), 0)
@@ -396,7 +429,9 @@ class TestRewriteOpenClawState(unittest.TestCase):
         (workspace / "test.json").write_text('{"p": "/home/dan/stuff"}')
 
         stats = rewrite_paths(
-            workspace, "/home/dan", "/home/aurora",
+            workspace,
+            "/home/dan",
+            "/home/aurora",
             openclaw_root=self.oc_root,
         )
         # Should have modified both workspace file and sessions.json
@@ -411,12 +446,12 @@ class TestRewriteOpenClawState(unittest.TestCase):
         # Need config dir too
         config_dir = self.oc_root / "config"
         config_dir.mkdir(exist_ok=True)
-        (config_dir / "settings.json").write_text(
-            json.dumps({"root": "/home/dan/.openclaw"})
-        )
+        (config_dir / "settings.json").write_text(json.dumps({"root": "/home/dan/.openclaw"}))
 
         stats = rewrite_openclaw_state(
-            self.oc_root, "/home/dan", "/home/aurora",
+            self.oc_root,
+            "/home/dan",
+            "/home/aurora",
         )
         # sessions.json + config.json + config/settings.json
         self.assertGreaterEqual(stats["files_modified"], 2)
@@ -430,16 +465,22 @@ class TestManifestRelativePaths(unittest.TestCase):
         self.source = Path(self.tmpdir) / "source"
         self.source.mkdir()
         (self.source / "SOUL.md").write_text("# Test\n")
-        (self.source / "emergence.json").write_text(json.dumps({
-            "agent": {"name": "Test"},
-        }))
+        (self.source / "emergence.json").write_text(
+            json.dumps(
+                {
+                    "agent": {"name": "Test"},
+                }
+            )
+        )
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmpdir)
 
     def test_manifest_contains_relative_paths(self):
         import tarfile
+
         bundle = export_bundle(self.source, Path(self.tmpdir) / "b.tar.gz")
         with tarfile.open(str(bundle), "r:gz") as tar:
             f = tar.extractfile("__manifest__.json")
@@ -457,11 +498,13 @@ class TestCLI(unittest.TestCase):
 
     def test_help_exits(self):
         from core.setup.migrate.migrate import main
+
         with self.assertRaises(SystemExit):
             main(["--help"])
 
     def test_no_subcommand_exits(self):
         from core.setup.migrate.migrate import main
+
         with self.assertRaises(SystemExit):
             main([])
 

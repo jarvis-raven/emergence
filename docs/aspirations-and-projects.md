@@ -4,8 +4,8 @@
 
 A system for tracking **what you're building toward** (aspirations) and **what you're actually building** (projects).
 
-**Aspirations** are the *why* — intangible dreams, questions, ambitions.  
-**Projects** are the *what* — tangible work that serves those aspirations.
+**Aspirations** are the _why_ — intangible dreams, questions, ambitions.  
+**Projects** are the _what_ — tangible work that serves those aspirations.
 
 Every project links back to an aspiration. This structure enforces intentionality.
 
@@ -42,29 +42,29 @@ Single source of truth: `~/.emergence/state/aspirations.json`
 
 ### Aspiration Fields
 
-| Field | Required | Notes |
-|-------|----------|-------|
-| `id` | ✅ | Auto-generated from title (kebab-case) |
-| `title` | ✅ | Human-readable name |
-| `description` | ✅ | What this dream means |
-| `category` | ✅ | `philosophical`, `creative`, `growth`, `social`, `community`, `practical` |
-| `createdAt` | ✅ | Date first articulated |
-| `throughline` | ❌ | Thematic thread (e.g., "depth", "connection", "trust") |
+| Field         | Required | Notes                                                                     |
+| ------------- | -------- | ------------------------------------------------------------------------- |
+| `id`          | ✅       | Auto-generated from title (kebab-case)                                    |
+| `title`       | ✅       | Human-readable name                                                       |
+| `description` | ✅       | What this dream means                                                     |
+| `category`    | ✅       | `philosophical`, `creative`, `growth`, `social`, `community`, `practical` |
+| `createdAt`   | ✅       | Date first articulated                                                    |
+| `throughline` | ❌       | Thematic thread (e.g., "depth", "connection", "trust")                    |
 
 ### Project Fields
 
-| Field | Required | Notes |
-|-------|----------|-------|
-| `id` | ✅ | Auto-generated from name (kebab-case) |
-| `name` | ✅ | Display name |
-| `aspirationId` | ✅ | Links to parent aspiration |
-| `status` | ✅ | `active`, `idea`, `paused`, `completed` |
-| `category` | ✅ | `framework`, `tool`, `creative`, `community`, `personal` |
-| `description` | ✅ | One-liner |
-| `details` | ❌ | Expanded info (can add manually to JSON) |
-| `links` | ❌ | URLs or local paths (can add manually) |
-| `startDate` | ❌ | When work began (null for ideas) |
-| `updatedAt` | ✅ | Last meaningful change |
+| Field          | Required | Notes                                                    |
+| -------------- | -------- | -------------------------------------------------------- |
+| `id`           | ✅       | Auto-generated from name (kebab-case)                    |
+| `name`         | ✅       | Display name                                             |
+| `aspirationId` | ✅       | Links to parent aspiration                               |
+| `status`       | ✅       | `active`, `idea`, `paused`, `completed`                  |
+| `category`     | ✅       | `framework`, `tool`, `creative`, `community`, `personal` |
+| `description`  | ✅       | One-liner                                                |
+| `details`      | ❌       | Expanded info (can add manually to JSON)                 |
+| `links`        | ❌       | URLs or local paths (can add manually)                   |
+| `startDate`    | ❌       | When work began (null for ideas)                         |
+| `updatedAt`    | ✅       | Last meaningful change                                   |
 
 ## The CLI: `aspire`
 
@@ -106,11 +106,13 @@ aspire barren           # Aspirations with zero projects
 ## When to Use This
 
 ### Use aspirations/projects for:
+
 - **Long-term visions**: "I want to understand emergence deeply"
 - **Concrete projects**: "Build a dream engine", "Write a poetry generator"
-- **Intentional work**: When you want to connect *what you're doing* to *why it matters*
+- **Intentional work**: When you want to connect _what you're doing_ to _why it matters_
 
 ### Don't use for:
+
 - **Daily tasks**: Use `memory/daily/YYYY-MM-DD.md` instead
 - **Detailed project plans**: Create a `projects/project-name/` directory for that
 - **Identity realizations**: Those go in `SELF.md`
@@ -124,6 +126,7 @@ aspire barren           # Aspirations with zero projects
 - **memory/daily/** → What you did (chronological logs)
 
 Think of it as:
+
 - SELF.md = "I am curious"
 - aspirations.json = "I want to understand emergence"
 - memory/daily/ = "Today I built X"
@@ -139,7 +142,7 @@ The dashboard reads from `~/.emergence/state/aspirations.json` automatically.
 
 ## Best Practices
 
-1. **Start with aspirations** — Define the *why* before the *what*
+1. **Start with aspirations** — Define the _why_ before the _what_
 2. **Link every project** — If a project has no aspiration, ask yourself why you're doing it
 3. **Keep descriptions short** — One sentence is enough
 4. **Update status regularly** — As work progresses, `aspire status project-id active|paused|completed`
@@ -163,4 +166,4 @@ aspire status consciousness-journal completed
 
 ---
 
-*This system was designed by Jarvis in collaboration with Dan. It's meant to help you connect your work to your values.*
+_This system was designed by Jarvis in collaboration with Dan. It's meant to help you connect your work to your values._

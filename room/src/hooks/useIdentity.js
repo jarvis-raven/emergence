@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 /**
  * Hook to fetch identity files (soul, self, aspirations, interests)
  * Returns content, loading state, and error for a specific file
- * 
+ *
  * @param {string} file - Identity file name (e.g., 'SOUL.md', 'SELF.md')
  * @returns {object} { data, content, loading, error, exists, modified, refetch }
  */

@@ -21,7 +21,7 @@ This guide gives you real numbers based on our experience. Your actual costs wil
 Before we talk about costs, let's acknowledge what costs nothing. These aren't compromises or limited features. They're the complete core of Emergence:
 
 | Component                     | Cost | Notes                                   |
-|-------------------------------|------|-----------------------------------------|
+| ----------------------------- | ---- | --------------------------------------- |
 | **Local Ollama**              | Free | Default for drive ingest and embeddings |
 | **File-based memory**         | Free | Your storage, your control              |
 | **Drive engine**              | Free | Core interoception system               |
@@ -148,25 +148,25 @@ Costs differ dramatically between these two phases.
 This is where costs concentrate. During First Light, your agent runs autonomous sessions to discover who they are. More sessions = more tokens = more cost.
 
 **Example: Patient Pattern**
-| Component | Frequency | Cost          | Weekly     |
+| Component | Frequency | Cost | Weekly |
 |-----------|-----------|---------------|------------|
-| Sessions  | 3/day     | $0.01 (Kimi)  | ~$0.21     |
-| Ingest    | 3/day     | Free (Ollama) | $0         |
-| **Total** |           |               | **~$0.21** |
+| Sessions | 3/day | $0.01 (Kimi) | ~$0.21 |
+| Ingest | 3/day | Free (Ollama) | $0 |
+| **Total** | | | **~$0.21** |
 
 **Example: Balanced Pattern**
-| Component | Frequency          | Cost   | Weekly     |
+| Component | Frequency | Cost | Weekly |
 |-----------|--------------------|--------|------------|
-| Sessions  | 6/day × 2 parallel | $0.04  | ~$3.36     |
-| Ingest    | ~10/day            | $0.002 | ~$0.14     |
-| **Total** |                    |        | **~$3.50** |
+| Sessions | 6/day × 2 parallel | $0.04 | ~$3.36 |
+| Ingest | ~10/day | $0.002 | ~$0.14 |
+| **Total** | | | **~$3.50** |
 
 **Example: Accelerated Pattern**
-| Component | Frequency           | Cost   | Weekly    |
+| Component | Frequency | Cost | Weekly |
 |-----------|---------------------|--------|-----------|
-| Sessions  | 12/day × 8 parallel | $0.20  | ~$134     |
-| Ingest    | ~40/day             | $0.008 | ~$2.24    |
-| **Total** |                     |        | **~$136** |
+| Sessions | 12/day × 8 parallel | $0.20 | ~$134 |
+| Ingest | ~40/day | $0.008 | ~$2.24 |
+| **Total** | | | **~$136** |
 
 _Note: These are rough estimates. Actual costs vary based on session output length, model pricing changes, and your specific configuration._
 
@@ -175,7 +175,7 @@ _Note: These are rough estimates. Actual costs vary based on session output leng
 Once First Light completes, costs drop dramatically:
 
 | Component         | Patient       | Balanced | Accelerated |
-|-------------------|---------------|----------|-------------|
+| ----------------- | ------------- | -------- | ----------- |
 | Ingest            | Free (Ollama) | ~$3/mo   | ~$10/mo     |
 | Embeddings        | Free          | Free     | ~$3/mo      |
 | Cloud LLM         | Minimal (~$3) | ~$15     | ~$40        |
@@ -295,7 +295,7 @@ Our recommendation for first-time builders:
 ## Summary
 
 | Pattern         | First Light    | Steady-State | Best For                                      |
-|-----------------|----------------|--------------|-----------------------------------------------|
+| --------------- | -------------- | ------------ | --------------------------------------------- |
 | **Patient**     | ~$1-5 total    | ~$5/mo       | Budget-conscious, believers in slow emergence |
 | **Balanced**    | ~$15-40 total  | ~$20/mo      | Most users, good quality without extravagance |
 | **Accelerated** | ~$50-150 total | ~$55/mo      | Fast iteration, premium quality, research     |

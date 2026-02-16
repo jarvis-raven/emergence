@@ -28,14 +28,14 @@ function useWebSocket(url, options = {}) {
 
   const connect = useCallback(() => {
     if (!enabled || !url) return;
-    
+
     // Close existing connection
     if (wsRef.current) {
       wsRef.current.close();
     }
 
     setConnectionStatus('connecting');
-    
+
     try {
       const ws = new WebSocket(url);
       wsRef.current = ws;
@@ -72,9 +72,11 @@ function useWebSocket(url, options = {}) {
         if (enabled) {
           reconnectAttemptsRef.current++;
           const delay = getReconnectDelay();
-          console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+          console.log(
+            `[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`,
+          );
           setConnectionStatus('reconnecting');
-          
+
           reconnectTimeoutRef.current = setTimeout(() => {
             if (mountedRef.current) {
               connect();
@@ -107,7 +109,7 @@ function useWebSocket(url, options = {}) {
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     if (enabled) {
       connect();
     } else {
@@ -134,8 +136,8 @@ function transformDrivesData(rawData) {
     name,
     ...drive,
     percentage: Math.round((drive.pressure / drive.threshold) * 100),
-    isTriggered: (drive.pressure / drive.threshold) >= 1,
-    isHigh: (drive.pressure / drive.threshold) >= 0.7,
+    isTriggered: drive.pressure / drive.threshold >= 1,
+    isHigh: drive.pressure / drive.threshold >= 0.7,
   }));
 
   // Sort by percentage descending
@@ -154,7 +156,7 @@ function transformDrivesData(rawData) {
 /**
  * Hook to fetch and manage drive data
  * Uses WebSocket for live updates with polling as fallback
- * 
+ *
  * @param {object} options - Hook options
  * @param {boolean} options.enabled - Whether to fetch
  * @returns {object} { drives, triggeredDrives, loading, error, refetch, satisfyDrive, lastUpdated, wsConnected, wsStatus }
@@ -164,13 +166,13 @@ export function useDrives(options = {}) {
   const [wsData, setWsData] = useState(null);
 
   // Use API polling as fallback (60s interval since WebSocket is primary)
-  const { 
-    data: apiData, 
-    loading, 
-    error, 
-    refetch, 
-    lastUpdated, 
-    isStale 
+  const {
+    data: apiData,
+    loading,
+    error,
+    refetch,
+    lastUpdated,
+    isStale,
   } = useApi('/api/drives', {
     refreshInterval: 60000, // 60 seconds (fallback only)
     enabled,
@@ -180,7 +182,7 @@ export function useDrives(options = {}) {
   // Determine WebSocket URL
   const wsUrl = useCallback(() => {
     if (WS_URL) return WS_URL;
-    
+
     // Derive from current location
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
@@ -196,23 +198,23 @@ export function useDrives(options = {}) {
   }, []);
 
   // WebSocket connection
-  const { connected: wsConnected, connectionStatus: wsStatus } = useWebSocket(
-    wsUrl(),
-    {
-      onMessage: handleWsMessage,
-      enabled,
-    }
-  );
+  const { connected: wsConnected, connectionStatus: wsStatus } = useWebSocket(wsUrl(), {
+    onMessage: handleWsMessage,
+    enabled,
+  });
 
   // Use WebSocket data if available, otherwise fall back to API data
   const data = wsData || apiData;
 
   // Satisfy a drive by name
-  const satisfyDrive = useCallback(async (driveName) => {
-    await postApi(`/api/drives/${encodeURIComponent(driveName)}/satisfy`);
-    // Refetch to get updated state (will also trigger WebSocket update)
-    await refetch();
-  }, [refetch]);
+  const satisfyDrive = useCallback(
+    async (driveName) => {
+      await postApi(`/api/drives/${encodeURIComponent(driveName)}/satisfy`);
+      // Refetch to get updated state (will also trigger WebSocket update)
+      await refetch();
+    },
+    [refetch],
+  );
 
   // Clear WebSocket data when disabled
   useEffect(() => {

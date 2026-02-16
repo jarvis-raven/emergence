@@ -1,4 +1,5 @@
 # Phase 3 Testing & Validation Report
+
 ## Issue #58: Consolidate Session Tracking (Breadcrumb → JSONL)
 
 **Date:** 2026-02-14  
@@ -12,6 +13,7 @@
 Phase 3 successfully removes breadcrumb files and implements JSONL-based session tracking. All 506 tests pass (20 skipped), with 18 new comprehensive Phase 3 tests validating the new architecture.
 
 ### Key Changes
+
 - ✅ Removed `_write_spawn_breadcrumb()` and breadcrumb filesystem scanning
 - ✅ Added `session_key` and `session_status` fields to trigger-log.jsonl
 - ✅ Implemented JSONL-based session lifecycle tracking
@@ -23,6 +25,7 @@ Phase 3 successfully removes breadcrumb files and implements JSONL-based session
 ## 1. Functional Testing Results
 
 ### 1.1 Session Spawn Creates JSONL Entry ✅
+
 ```python
 # Test: test_creates_jsonl_file
 log_trigger_event("CARE", 25.0, 20.0, True, session_key="test:123")
@@ -31,12 +34,14 @@ log_trigger_event("CARE", 25.0, 20.0, True, session_key="test:123")
 ```
 
 **Verified:**
+
 - JSONL file created automatically
 - Entry includes `drive`, `pressure`, `threshold`, `timestamp`
 - Entry includes `session_key` and `session_status="spawned"`
 - Append-only format (no data loss)
 
 ### 1.2 Daemon Detects Completed Sessions from JSONL ✅
+
 ```python
 # Test: test_detects_completed_sessions
 update_session_status("test:123", "completed")
@@ -46,12 +51,14 @@ check_completed_sessions(state, config)
 ```
 
 **Verified:**
+
 - `get_active_sessions()` queries JSONL correctly
 - `update_session_status()` modifies existing entries
 - `check_completed_sessions()` processes completions
 - No filesystem scanning required
 
 ### 1.3 Session Status Updates Correctly ✅
+
 ```python
 # Test: test_updates_existing_session
 session_status transitions:
@@ -61,11 +68,13 @@ session_status transitions:
 ```
 
 **Verified:**
+
 - All status transitions work correctly
 - `completed_at` timestamp added on completion
 - Timeout detection based on age calculation
 
 ### 1.4 Satisfaction Triggers Correctly ✅
+
 ```python
 # Test: test_handles_timeout
 # Result: Timeout sessions trigger reduced satisfaction
@@ -73,6 +82,7 @@ session_status transitions:
 ```
 
 **Verified:**
+
 - Completed sessions trigger satisfaction
 - Timeout sessions trigger shallow satisfaction
 - Pressure reduction calculated correctly
@@ -82,6 +92,7 @@ session_status transitions:
 ## 2. Regression Testing Results
 
 ### 2.1 Full Test Suite ✅
+
 ```
 Total Tests: 506
 Passed: 506
@@ -91,17 +102,20 @@ Success Rate: 100%
 ```
 
 ### 2.2 Manual Satisfaction Flow ✅
+
 - `satisfy_manual()` unchanged and working
 - Satisfaction history logging to JSONL functional
 - Band-based satisfaction depths (shallow/moderate/deep/full) preserved
 
 ### 2.3 Daemon Tick Cycle ✅
+
 - Tick cycle completes without filesystem scanning
 - `check_completed_sessions()` now uses JSONL queries
 - Emergency spawn detection works correctly
 - Drive selection and cooldown logic preserved
 
 ### 2.4 No Session Tracking Gaps ✅
+
 - All spawned sessions recorded in JSONL
 - Session completion detection working
 - Timeout handling functional
@@ -112,6 +126,7 @@ Success Rate: 100%
 ## 3. Edge Case Testing Results
 
 ### 3.1 Multiple Sessions for Same Drive ✅
+
 ```python
 # Test: test_jsonl_is_single_source_of_truth
 Multiple concurrent sessions tracked independently
@@ -119,11 +134,13 @@ Multiple concurrent sessions tracked independently
 ```
 
 **Verified:**
+
 - Each session gets unique `session_key`
 - Multiple active sessions for same drive tracked separately
 - Completion of one doesn't affect others
 
 ### 3.2 Session Timeout Handling ✅
+
 ```python
 # Test: test_handles_timeout
 Sessions older than timeout_seconds marked as timeout
@@ -131,11 +148,13 @@ Sessions older than timeout_seconds marked as timeout
 ```
 
 **Verified:**
+
 - Age calculation from timestamp accurate
 - Timeout sessions filtered from active list
 - Reduced satisfaction applied on timeout
 
 ### 3.3 Daemon Restart Mid-Session ✅
+
 ```python
 # Test: JSONL persistence verified
 JSONL file persists across daemon restarts
@@ -143,11 +162,13 @@ JSONL file persists across daemon restarts
 ```
 
 **Verified:**
+
 - JSONL file durable (disk-based)
 - Active sessions recovered after restart
 - No data loss on daemon restart
 
 ### 3.4 Empty/Corrupted JSONL Handling ✅
+
 ```python
 # Test: Implicit in all tests
 Empty file → returns empty list
@@ -156,6 +177,7 @@ Corrupted lines → skipped gracefully
 ```
 
 **Verified:**
+
 - Empty JSONL returns empty list (no crash)
 - JSON decode errors handled gracefully
 - Partial corruption doesn't lose all data
@@ -166,15 +188,16 @@ Corrupted lines → skipped gracefully
 
 ### 4.1 Daemon Tick Time Comparison
 
-| Metric | Before (Breadcrumb) | After (JSONL) | Improvement |
-|--------|---------------------|---------------|-------------|
-| Session Check | O(n) filesystem scan | O(n) JSONL read | Comparable |
-| File Operations | 2+ per session (create/check) | 1 append | ~50% reduction |
-| Cleanup | Delete files individually | Update in-place | Simpler |
+| Metric          | Before (Breadcrumb)           | After (JSONL)   | Improvement    |
+| --------------- | ----------------------------- | --------------- | -------------- |
+| Session Check   | O(n) filesystem scan          | O(n) JSONL read | Comparable     |
+| File Operations | 2+ per session (create/check) | 1 append        | ~50% reduction |
+| Cleanup         | Delete files individually     | Update in-place | Simpler        |
 
 **Note:** Quantitative benchmarking requires production-like load. Initial testing shows comparable or better performance due to reduced file operations.
 
 ### 4.2 JSONL Query Performance ✅
+
 ```python
 # Tested with 1000 entries
 get_active_sessions() latency: <10ms
@@ -183,6 +206,7 @@ update_session_status() latency: <50ms (full file rewrite)
 ```
 
 **Analysis:**
+
 - JSONL append: O(1)
 - JSONL read (all): O(n)
 - Status update (rewrite): O(n) where n = total entries
@@ -191,14 +215,17 @@ update_session_status() latency: <50ms (full file rewrite)
 ### 4.3 Memory vs Filesystem Trade-offs
 
 **Phase 2 (Before):**
+
 - Trigger log: In-memory (100 entries max)
 - Breadcrumbs: Filesystem
 
 **Phase 3 (After):**
+
 - Trigger log: JSONL (unlimited)
 - Session tracking: Same JSONL file
 
 **Benefits:**
+
 - Complete session history preserved
 - No arbitrary 100-entry limit
 - Single source of truth
@@ -208,6 +235,7 @@ update_session_status() latency: <50ms (full file rewrite)
 ## 5. New Phase 3 Test Coverage
 
 ### 5.1 New Test File: `test_phase3_jsonl_tracking.py`
+
 ```
 18 tests covering:
 - Log trigger event functionality (4 tests)
@@ -221,6 +249,7 @@ All 18 tests: PASSED
 ```
 
 ### 5.2 Updated Test Files
+
 - `test_spawn.py`: Updated 4 tests for JSONL-based trigger recording
 - `test_satisfaction_bands.py`: Updated 3 tests for proper test isolation
 
@@ -229,6 +258,7 @@ All 18 tests: PASSED
 ## 6. Implementation Details
 
 ### 6.1 Files Modified
+
 ```
 core/drives/history.py
   + log_trigger_event()
@@ -254,6 +284,7 @@ core/drives/__init__.py
 ```
 
 ### 6.2 New JSONL Schema
+
 ```json
 {
   "drive": "CARE",
@@ -268,6 +299,7 @@ core/drives/__init__.py
 ```
 
 ### 6.3 Session Status Lifecycle
+
 ```
 spawned → active → completed
    ↓
@@ -278,25 +310,27 @@ timeout
 
 ## 7. Acceptance Criteria Verification
 
-| Criteria | Status | Evidence |
-|----------|--------|----------|
-| Breadcrumb files removed | ✅ | `_write_spawn_breadcrumb()` deleted, no filesystem scanning |
-| Session spawn/complete tracked in JSONL | ✅ | `log_trigger_event()` and `update_session_status()` functional |
-| Session status field added | ✅ | `session_status` field present in all session entries |
-| check_completed_sessions() queries JSONL | ✅ | Implementation uses `get_active_sessions()` |
-| No functionality regression | ✅ | 506 tests passing |
-| Tests updated | ✅ | 18 new tests + 7 updated tests |
+| Criteria                                 | Status | Evidence                                                       |
+| ---------------------------------------- | ------ | -------------------------------------------------------------- |
+| Breadcrumb files removed                 | ✅     | `_write_spawn_breadcrumb()` deleted, no filesystem scanning    |
+| Session spawn/complete tracked in JSONL  | ✅     | `log_trigger_event()` and `update_session_status()` functional |
+| Session status field added               | ✅     | `session_status` field present in all session entries          |
+| check_completed_sessions() queries JSONL | ✅     | Implementation uses `get_active_sessions()`                    |
+| No functionality regression              | ✅     | 506 tests passing                                              |
+| Tests updated                            | ✅     | 18 new tests + 7 updated tests                                 |
 
 ---
 
 ## 8. Migration Notes
 
 ### For Existing Installations
+
 1. **Automatic:** Old breadcrumb files ignored (no sessions_ingest directory needed)
 2. **No Action Required:** New sessions automatically use JSONL tracking
 3. **Cleanup:** Old sessions_ingest directory can be manually removed if desired
 
 ### Backward Compatibility
+
 - `trigger_log` in state dict no longer maintained (deprecated)
 - Satisfaction history still in separate `satisfaction_history.jsonl`
 - All CLI commands unchanged
@@ -308,6 +342,7 @@ timeout
 **Phase 3 Implementation: SUCCESS**
 
 All acceptance criteria met:
+
 - ✅ Breadcrumb files removed
 - ✅ JSONL-based session tracking functional
 - ✅ Complete test coverage (506 tests passing)

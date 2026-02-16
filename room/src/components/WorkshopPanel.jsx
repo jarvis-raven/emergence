@@ -10,9 +10,18 @@ const API_URL = import.meta.env.VITE_API_URL || '';
  * Drive emoji mapping
  */
 const DRIVE_EMOJI = {
-  CARE: '💚', CURIOSITY: '🔍', CREATIVE: '🎨', SOCIAL: '💬',
-  MAINTENANCE: '🔧', REST: '😴', LEARNING: '📚', PLAY: '🎮',
-  EMBODIMENT: '👁️', READING: '📖', ANXIETY: '😰', WANDER: '🌿',
+  CARE: '💚',
+  CURIOSITY: '🔍',
+  CREATIVE: '🎨',
+  SOCIAL: '💬',
+  MAINTENANCE: '🔧',
+  REST: '😴',
+  LEARNING: '📚',
+  PLAY: '🎮',
+  EMBODIMENT: '👁️',
+  READING: '📖',
+  ANXIETY: '😰',
+  WANDER: '🌿',
 };
 
 const DRIVE_COLORS = {
@@ -78,13 +87,14 @@ export default function WorkshopPanel() {
 
   // Filtered sessions
   const filteredSessions = useMemo(() => {
-    let list = selectedDrive ? sessions.filter(s => s.drive === selectedDrive) : sessions;
+    let list = selectedDrive ? sessions.filter((s) => s.drive === selectedDrive) : sessions;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(s =>
-        (s.summary || '').toLowerCase().includes(q) ||
-        (s.drive || '').toLowerCase().includes(q) ||
-        (s.filename || '').toLowerCase().includes(q)
+      list = list.filter(
+        (s) =>
+          (s.summary || '').toLowerCase().includes(q) ||
+          (s.drive || '').toLowerCase().includes(q) ||
+          (s.filename || '').toLowerCase().includes(q),
       );
     }
     return list;
@@ -144,7 +154,9 @@ export default function WorkshopPanel() {
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-textMuted hover:text-text text-xs"
-              >✕</button>
+              >
+                ✕
+              </button>
             )}
           </div>
 
@@ -159,7 +171,10 @@ export default function WorkshopPanel() {
               }`}
             >
               {selectedDrive ? (
-                <><span>{getDriveEmoji(selectedDrive)}</span><span>{selectedDrive}</span></>
+                <>
+                  <span>{getDriveEmoji(selectedDrive)}</span>
+                  <span>{selectedDrive}</span>
+                </>
               ) : (
                 <span>All drives</span>
               )}
@@ -169,9 +184,14 @@ export default function WorkshopPanel() {
             {filterOpen && (
               <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-surface rounded-xl shadow-2xl py-1 z-50 max-h-64 overflow-y-auto">
                 <button
-                  onClick={() => { setSelectedDrive(null); setFilterOpen(false); }}
+                  onClick={() => {
+                    setSelectedDrive(null);
+                    setFilterOpen(false);
+                  }}
                   className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
-                    !selectedDrive ? 'bg-accent/15 text-accent' : 'text-textMuted hover:text-text hover:bg-background/50'
+                    !selectedDrive
+                      ? 'bg-accent/15 text-accent'
+                      : 'text-textMuted hover:text-text hover:bg-background/50'
                   }`}
                 >
                   <span>All drives</span>
@@ -180,9 +200,14 @@ export default function WorkshopPanel() {
                 {driveCategories.map(({ drive, count }) => (
                   <button
                     key={drive}
-                    onClick={() => { setSelectedDrive(drive); setFilterOpen(false); }}
+                    onClick={() => {
+                      setSelectedDrive(drive);
+                      setFilterOpen(false);
+                    }}
                     className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
-                      selectedDrive === drive ? 'bg-accent/15 text-accent' : 'text-textMuted hover:text-text hover:bg-background/50'
+                      selectedDrive === drive
+                        ? 'bg-accent/15 text-accent'
+                        : 'text-textMuted hover:text-text hover:bg-background/50'
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
@@ -211,15 +236,15 @@ export default function WorkshopPanel() {
           </div>
         )}
 
-        {error && (
-          <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{error}</div>
-        )}
+        {error && <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{error}</div>}
 
         {!loading && !error && filteredSessions.length === 0 && (
           <div className="flex flex-col items-center justify-center text-center p-6 h-40">
             <span className="text-3xl mb-3 opacity-50">📓</span>
             <p className="text-textMuted text-sm">
-              {searchQuery || selectedDrive ? 'No matching sessions' : `${agentName} hasn't explored yet`}
+              {searchQuery || selectedDrive
+                ? 'No matching sessions'
+                : `${agentName} hasn't explored yet`}
             </p>
           </div>
         )}
@@ -238,12 +263,16 @@ export default function WorkshopPanel() {
                     <span className="text-sm font-medium text-text">
                       {formatRelativeTime(session.timestamp)}
                     </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${getDriveColor(session.drive)}`}>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${getDriveColor(session.drive)}`}
+                    >
                       {session.drive || 'Unknown'}
                     </span>
                   </div>
                   {session.pressure && (
-                    <span className="text-xs text-textMuted/60 shrink-0">⚡ {session.pressure}</span>
+                    <span className="text-xs text-textMuted/60 shrink-0">
+                      ⚡ {session.pressure}
+                    </span>
                   )}
                 </div>
                 {session.summary && (
@@ -273,7 +302,9 @@ export default function WorkshopPanel() {
  */
 function SessionModal({ session, body, loading, onClose }) {
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
@@ -292,14 +323,18 @@ function SessionModal({ session, body, loading, onClose }) {
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-lg">{getDriveEmoji(session.drive)}</span>
             <h3 className="text-base font-semibold text-text">{session.drive} Session</h3>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${getDriveColor(session.drive)}`}>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${getDriveColor(session.drive)}`}
+            >
               {session.drive}
             </span>
           </div>
           <button
             onClick={onClose}
             className="text-textMuted hover:text-text text-2xl leading-none p-1 ml-2"
-          >×</button>
+          >
+            ×
+          </button>
         </div>
 
         {/* Meta */}

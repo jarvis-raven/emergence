@@ -31,6 +31,7 @@ Previously, all drive data was stored in `drives.json`:
 ```
 
 **Problems:**
+
 - Runtime state (pressure, triggered_drives) mixed with static config
 - File changes every daemon tick even if config unchanged
 - Harder to version control (git diffs show state changes)
@@ -41,6 +42,7 @@ Previously, all drive data was stored in `drives.json`:
 Now separated into two files:
 
 **drives.json** (static configuration):
+
 ```json
 {
   "version": "1.1",
@@ -60,6 +62,7 @@ Now separated into two files:
 ```
 
 **drives-state.json** (runtime state):
+
 ```json
 {
   "version": "1.1",
@@ -81,6 +84,7 @@ Now separated into two files:
 ### Issue #55: Separate Static Config from Runtime State
 
 **Static config fields** (in drives.json):
+
 - `name`, `description`, `prompt`
 - `threshold`, `thresholds`, `rate_per_hour`, `max_rate`
 - `category`, `created_by`, `created_at`
@@ -89,6 +93,7 @@ Now separated into two files:
 - `gated_until`
 
 **Runtime state fields** (in drives-state.json):
+
 - `pressure`, `status`
 - `satisfaction_events`, `last_triggered`
 - `valence`, `thwarting_count`
@@ -97,6 +102,7 @@ Now separated into two files:
 ### Issue #59: Move triggered_drives to Runtime State
 
 The `triggered_drives` list moves from `drives.json` to `drives-state.json` because:
+
 - Changes every time a drive triggers or is satisfied
 - Not part of static configuration
 - Runtime state that tracks current trigger queue
@@ -104,6 +110,7 @@ The `triggered_drives` list moves from `drives.json` to `drives-state.json` beca
 ### Issue #60: Move last_tick to Runtime State
 
 The `last_tick` (formerly `last_updated`) timestamp moves to `drives-state.json` because:
+
 - Updated every daemon tick
 - Pure runtime state, not configuration
 - No reason to pollute config file with timestamp updates
@@ -119,6 +126,7 @@ The `last_tick` (formerly `last_updated`) timestamp moves to `drives-state.json`
 ## Size Impact
 
 Typical reduction (3-drive example):
+
 - Original drives.json: 1,838 bytes
 - New drives.json: 1,558 bytes (85% of original, **280 bytes saved**)
 - New drives-state.json: 384 bytes
@@ -140,6 +148,7 @@ python3 scripts/migrate_phase1_state_separation.py .emergence/state
 ```
 
 The script:
+
 1. Creates a backup: `drives.json.pre-phase1-migration`
 2. Splits drives.json into drives.json + drives-state.json
 3. Preserves all existing data
@@ -148,11 +157,13 @@ The script:
 ### Backward Compatibility
 
 The code automatically handles both formats:
+
 - **New format**: Loads from drives.json + drives-state.json
 - **Legacy format**: Loads from drives.json alone (if drives-state.json missing)
 - **Save**: Always saves to split format
 
 This means:
+
 - Existing installations work without migration
 - Migration is non-breaking
 - Can roll back by deleting drives-state.json and restoring backup

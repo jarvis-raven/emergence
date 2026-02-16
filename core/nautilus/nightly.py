@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .config import get_workspace, get_nautilus_config, get_gravity_db_path
+from .config import get_workspace, get_nautilus_config
 from .session_hooks import register_recent_writes
 
 

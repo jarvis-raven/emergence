@@ -1,9 +1,11 @@
 # Nautilus Integration Plan - Emergence v0.3.0
 
 ## Overview
+
 Move Nautilus memory architecture from `tools/nautilus/` into Emergence core module.
 
 ## Goals
+
 1. ✅ Make Nautilus a first-class Emergence component
 2. ✅ Portable - no hardcoded paths (works for all agents)
 3. ✅ Nightly build covers all current functionality
@@ -12,6 +14,7 @@ Move Nautilus memory architecture from `tools/nautilus/` into Emergence core mod
 ## File Structure
 
 ### Current (tools/nautilus/)
+
 ```
 tools/nautilus/
 ├── nautilus.py      # Main CLI
@@ -23,6 +26,7 @@ tools/nautilus/
 ```
 
 ### Target (core/nautilus/)
+
 ```
 core/nautilus/
 ├── __init__.py      # Module exports
@@ -38,12 +42,14 @@ core/nautilus/
 ## Hardcoded Path Audit
 
 ### Current state:
+
 - ✅ nautilus.py, chambers.py, doors.py, mirrors.py - Already use `OPENCLAW_WORKSPACE` env variable
 - ❌ gravity.py - **CRITICAL**: `DB_PATH = Path(__file__).parent / "gravity.db"` (hardcoded next to script)
 
 ### Changes needed:
 
 **gravity.py (CRITICAL):**
+
 ```python
 # OLD (hardcoded next to script)
 DB_PATH = Path(__file__).parent / "gravity.db"
@@ -54,6 +60,7 @@ DB_PATH = get_state_dir() / "nautilus" / "gravity.db"
 ```
 
 **All other files:**
+
 ```python
 # Already good! Uses env variable:
 WORKSPACE = Path(os.environ.get('OPENCLAW_WORKSPACE', str(Path(__file__).parent.parent.parent)))
@@ -66,6 +73,7 @@ WORKSPACE = get_workspace()
 ## Configuration (emergence.json)
 
 Add nautilus section:
+
 ```json
 {
   "nautilus": {
@@ -81,6 +89,7 @@ Add nautilus section:
 ## CLI Integration
 
 ### New commands:
+
 ```bash
 emergence nautilus search <query>       # Full pipeline search
 emergence nautilus status               # System status
@@ -90,6 +99,7 @@ emergence nautilus gravity <file>       # Show gravity score
 ```
 
 ### Implementation:
+
 ```python
 # core/nautilus/cli.py
 def cmd_search(args):
@@ -104,7 +114,9 @@ def cmd_maintain(args):
 ## Nightly Build Updates
 
 ### Current setup (Jarvis):
+
 **2:30am Nautilus maintenance cron:**
+
 ```bash
 # Register new/modified files
 find memory/ -name '*.md' -mtime -1 -type f | \
@@ -115,12 +127,14 @@ python3 tools/nautilus/nautilus.py maintain
 ```
 
 **3:00am Overnight Maintenance cron:**
+
 - Does NOT currently call nautilus (runs separately at 2:30)
 - Could be consolidated
 
 ### New setup (post-integration):
 
 **Option A: Keep separate 2:30am cron**
+
 ```bash
 # Simplified - emergence handles everything
 cd ~/.openclaw/workspace/projects/emergence && \
@@ -129,6 +143,7 @@ python3 -m core.cli nautilus maintain --register-recent
 
 **Option B: Consolidate into 3:00am cron**
 Add to the "Overnight Maintenance" message:
+
 ```
 3a. NAUTILUS MAINTENANCE
    - Run: emergence nautilus maintain --register-recent
@@ -136,11 +151,13 @@ Add to the "Overnight Maintenance" message:
 ```
 
 **Recommendation:** Option A (keep separate) because:
+
 - Nautilus maintenance can be heavy (shouldn't delay other nightly tasks)
 - Clear separation of concerns
 - 2:30am runs before 3:00am (nautilus prepares, nightly build uses)
 
 ### Cron update command for Jarvis:
+
 ```bash
 openclaw cron update 7eed0170-6ca5-4d3d-88b4-f2a995897a44 \
   --message "NAUTILUS MAINTENANCE (nightly, 2:30am)
@@ -156,6 +173,7 @@ Reply NO_REPLY unless there's an error."
 ## Migration Steps
 
 ### Phase 1: Code Migration
+
 1. Create `core/nautilus/` directory
 2. Copy all .py files from `tools/nautilus/`
 3. Add `__init__.py` with exports
@@ -163,35 +181,41 @@ Reply NO_REPLY unless there's an error."
 5. Create `config.py` with path resolution
 
 ### Phase 2: Path Portability
+
 1. Audit each file for hardcoded paths
 2. Replace with config-based resolution
 3. Add fallback logic for backward compatibility
 4. Test with different workspace locations
 
 ### Phase 3: CLI Wiring
+
 1. Add `nautilus` subcommand to `core/cli.py`
 2. Wire up all nautilus commands
 3. Add help text and examples
 4. Test all commands
 
 ### Phase 4: Nightly Build Integration
+
 1. Update nightly maintenance cron message
 2. Test maintenance runs correctly
 3. Verify gravity.db location handling
 4. Check chamber classification works
 
 ### Phase 5: Database Migration
+
 1. Move gravity.db to `~/.openclaw/state/nautilus/`
 2. Add migration logic for existing databases
 3. Update all references to new location
 
 ### Phase 6: Testing
+
 1. Test on clean install (no existing nautilus)
 2. Test with existing nautilus setup (migration)
 3. Verify all commands work
 4. Check nightly maintenance completes
 
 ### Phase 7: Documentation
+
 1. Update README with nautilus commands
 2. Add migration guide for existing users
 3. Document configuration options
@@ -200,11 +224,13 @@ Reply NO_REPLY unless there's an error."
 ## Breaking Changes
 
 ### For existing Jarvis installation:
+
 - Nautilus cron job needs update (2:30am job)
 - gravity.db will move location (auto-migrate on first run)
 - `tools/nautilus/` becomes deprecated (but keep for safety)
 
 ### Migration notice:
+
 ```
 ⚠️ Nautilus has been integrated into Emergence v0.3.0
 
@@ -230,16 +256,19 @@ Old tools/nautilus/ is safe to remove after v0.3.0 install.
 ## Timeline
 
 **v0.3.0-alpha** (2-3 days):
+
 - Code migration
 - Path portability fixes
 - Basic CLI working
 
 **v0.3.0-beta** (2-3 days):
+
 - Nightly build integration
 - Database migration
 - Testing
 
 **v0.3.0** (1 day):
+
 - Documentation
 - Release to PyPI
 - Update my installation

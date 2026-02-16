@@ -1,18 +1,18 @@
 /**
  * Memory Routes — GET /api/memory/stats
- * 
+ *
  * Returns file counts, total size, date range for memory directories
  */
 
 import { Router } from 'express';
 import { join } from 'path';
 import { loadConfig, getMemoryPath, getWorkspacePath } from '../utils/configLoader.js';
-import { 
-  listFiles, 
-  countFiles, 
-  getDirectorySize, 
+import {
+  listFiles,
+  countFiles,
+  getDirectorySize,
   getFileStats,
-  readTextFile 
+  readTextFile,
 } from '../utils/fileReader.js';
 
 const router = Router();
@@ -35,43 +35,44 @@ function formatBytes(bytes) {
 router.get('/stats', (req, res) => {
   try {
     const config = loadConfig();
-    
+
     // Memory directories to scan
     const memoryDir = getMemoryPath(config);
     const sessionsDir = getMemoryPath(config, 'sessions');
     const dreamsDir = getMemoryPath(config, 'dreams');
     const selfHistoryDir = getMemoryPath(config, 'self-history');
     const workspace = getWorkspacePath(config);
-    
+
     // Daily memory files (YYYY-MM-DD.md)
     const dailyFiles = listFiles(memoryDir, /^\d{4}-\d{2}-\d{2}\.md$/);
     const dailySize = dailyFiles.reduce((sum, f) => {
       const stats = getFileStats(join(memoryDir, f));
       return sum + (stats?.size || 0);
     }, 0);
-    
+
     // Session files
     const sessionFiles = listFiles(sessionsDir, /^\d{4}-\d{2}-\d{2}-\d{4}-.+\.md$/);
     const sessionSize = sessionFiles.reduce((sum, f) => {
       const stats = getFileStats(join(sessionsDir, f));
       return sum + (stats?.size || 0);
     }, 0);
-    
+
     // Dream files
     const dreamFiles = listFiles(dreamsDir, /^\d{4}-\d{2}-\d{2}\.json$/);
     const dreamSize = dreamFiles.reduce((sum, f) => {
       const stats = getFileStats(join(dreamsDir, f));
       return sum + (stats?.size || 0);
     }, 0);
-    
+
     // Self history files
     const selfHistoryFiles = listFiles(selfHistoryDir, /^SELF-\d{4}-\d{2}-\d{2}\.md$/);
-    
+
     // Calculate date range from daily files
     const sortedDaily = dailyFiles.sort();
     const firstDate = sortedDaily.length > 0 ? sortedDaily[0].replace('.md', '') : null;
-    const lastDate = sortedDaily.length > 0 ? sortedDaily[sortedDaily.length - 1].replace('.md', '') : null;
-    
+    const lastDate =
+      sortedDaily.length > 0 ? sortedDaily[sortedDaily.length - 1].replace('.md', '') : null;
+
     // Calculate days since first memory
     let daysActive = 0;
     if (firstDate) {
@@ -79,16 +80,16 @@ router.get('/stats', (req, res) => {
       const now = new Date();
       daysActive = Math.floor((now - first) / (1000 * 60 * 60 * 24)) + 1;
     }
-    
+
     // Recent files (last 7 days)
-    const recentFiles = sortedDaily.slice(-7).map(f => ({
+    const recentFiles = sortedDaily.slice(-7).map((f) => ({
       date: f.replace('.md', ''),
       size: formatBytes(getFileStats(join(memoryDir, f))?.size || 0),
     }));
-    
+
     // Total memory size
     const totalSize = dailySize + sessionSize + dreamSize;
-    
+
     res.json({
       daily: {
         count: dailyFiles.length,
@@ -109,7 +110,8 @@ router.get('/stats', (req, res) => {
         count: selfHistoryFiles.length,
       },
       total: {
-        files: dailyFiles.length + sessionFiles.length + dreamFiles.length + selfHistoryFiles.length,
+        files:
+          dailyFiles.length + sessionFiles.length + dreamFiles.length + selfHistoryFiles.length,
         size: formatBytes(totalSize),
       },
       recent: recentFiles,

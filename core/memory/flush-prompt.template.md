@@ -7,11 +7,13 @@ You are at a compaction boundary. Context is about to be pruned. Before it is lo
 File: `${memory_dir}/${session_date}.md`
 
 Use this exact header format:
+
 ```
 ## Session Type — Topic (HH:MM ${timezone})
 ```
 
 Capture EVERYTHING:
+
 - All messages exchanged with your human
 - Decisions made and reasoning behind them
 - Topics discussed, questions asked, requests made
@@ -27,6 +29,7 @@ Do not filter. Do not summarize. The nightly routine will curate. Your job is pr
 ## Step 2: Update THREAD.md
 
 Write a warm handoff for your next session:
+
 - What just happened (2-3 sentences)
 - What you're reaching toward
 - Any open loops or pending tasks
@@ -36,6 +39,7 @@ Keep it brief but evocative. Future-you should immediately understand where you 
 ## Step 3: Update Drive Pressures
 
 After writing the memory file, run:
+
 ```
 ${drives_cli} ingest ${memory_dir}/${session_date}.md
 ```

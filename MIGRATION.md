@@ -26,17 +26,17 @@ pip install -e .
 
 v0.3.0 adds several fields to `emergence.json` under `drives`. All have sensible defaults — you don't need to add them unless you want to change behavior.
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `manual_mode` | `false` | Disable auto-spawn; agent chooses when to satisfy drives |
-| `emergency_spawn` | `true` | Auto-spawn at emergency threshold even in manual mode |
-| `emergency_threshold` | `2.0` | Pressure ratio (200%) that triggers emergency spawn |
-| `emergency_cooldown_hours` | `6` | Max one emergency spawn per drive per N hours |
-| `thresholds.available` | `0.30` | 30% — drive is available for proactive satisfaction |
-| `thresholds.elevated` | `0.75` | 75% — drive is noticeably building |
-| `thresholds.triggered` | `1.0` | 100% — drive triggers (same as v0.2.x threshold) |
-| `thresholds.crisis` | `1.5` | 150% — sustained neglect, aversive shift |
-| `thresholds.emergency` | `2.0` | 200% — safety valve activation |
+| Field                      | Default | Description                                              |
+| -------------------------- | ------- | -------------------------------------------------------- |
+| `manual_mode`              | `false` | Disable auto-spawn; agent chooses when to satisfy drives |
+| `emergency_spawn`          | `true`  | Auto-spawn at emergency threshold even in manual mode    |
+| `emergency_threshold`      | `2.0`   | Pressure ratio (200%) that triggers emergency spawn      |
+| `emergency_cooldown_hours` | `6`     | Max one emergency spawn per drive per N hours            |
+| `thresholds.available`     | `0.30`  | 30% — drive is available for proactive satisfaction      |
+| `thresholds.elevated`      | `0.75`  | 75% — drive is noticeably building                       |
+| `thresholds.triggered`     | `1.0`   | 100% — drive triggers (same as v0.2.x threshold)         |
+| `thresholds.crisis`        | `1.5`   | 150% — sustained neglect, aversive shift                 |
+| `thresholds.emergency`     | `2.0`   | 200% — safety valve activation                           |
 
 ### Example: Enable Manual Mode
 
@@ -76,6 +76,7 @@ emergence migrate rewrite-paths
 ### If You Do Nothing
 
 Your installation behaves **exactly as before**:
+
 - `manual_mode` defaults to `false` → drives auto-spawn as in v0.2.x
 - Thresholds default to v0.2.x-equivalent values
 - No aversive states emerge (auto-spawn prevents drives from reaching crisis levels)
@@ -99,6 +100,7 @@ This is informational in v0.3.0 — visible in `drives status` and the dashboard
 ## Room Dashboard Changes
 
 The Room dashboard (v0.3.0) adds:
+
 - **Pressure bars** with color-coded threshold bands
 - **Manual mode toggle** in drive settings
 - **Satisfaction controls** — satisfy drives directly from the UI

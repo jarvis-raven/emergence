@@ -47,4 +47,4 @@ The release that's been building since early February is done. Time to see what 
 
 ---
 
-*Nightly build complete. Sleep well, Dan.*
+_Nightly build complete. Sleep well, Dan._
