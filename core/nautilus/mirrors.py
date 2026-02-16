@@ -395,7 +395,7 @@ COMMANDS = {
 def main() -> None:
     """Main entry point for mirrors command."""
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        print(f"Usage: python -m core.nautilus mirrors <command> [args]")
+        print("Usage: python -m core.nautilus mirrors <command> [args]")
         print(f"Commands: {', '.join(COMMANDS.keys())}")
         sys.exit(1)
 
