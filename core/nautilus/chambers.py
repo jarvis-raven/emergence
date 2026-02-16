@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# Suppress runpy import warning
-import warnings as _w; _w.filterwarnings("ignore", category=RuntimeWarning, module="runpy"); del _w
 """
 Nautilus Chambers — Phase 2
 Temporal memory layers with automatic promotion.
@@ -22,20 +20,24 @@ Usage:
   python -m core.nautilus chambers status
 """
 
-import sqlite3
 import json
-import sys
-import re
-import subprocess
 import logging
+import re
+import sqlite3
+import subprocess
+import sys
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from . import config
+from .db_utils import commit_with_retry
 from .gravity import get_db as get_gravity_db, now_iso
 from .logging_config import get_logger
-from .db_utils import commit_with_retry
+
+# Suppress runpy import warning when run as module
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
 
 # Setup logging
 logger = get_logger("chambers")
@@ -358,12 +360,13 @@ def _check_crystallization_candidate(
     if not match:
         return None
 
-    # Check age of original file
-    original_path = memory_dir / f"{match.group(1)}.md"
-    if not original_path.exists():
+    # Calculate age from date in filename (no need to find original file)
+    try:
+        file_date = datetime.strptime(match.group(1), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - file_date).days
+    except ValueError:
         return None
 
-    age = file_age_days(f"memory/{match.group(1)}.md")
     if age <= CORRIDOR_MAX_AGE_DAYS:
         return None
 
@@ -483,6 +486,54 @@ def _crystallize_single_file(candidate: Dict[str, Any]) -> Optional[Dict[str, An
     return {"source": c["path"], "vault": c["vault_rel"], "lessons_size": len(lessons)}
 
 
+# === OpenClaw Integration ===
+
+
+def index_to_openclaw(paths: list[str]) -> bool:
+    """
+    Index files into OpenClaw's memory search system.
+
+    Runs `openclaw memory index` to update the search index with new/changed files.
+    Since the CLI does incremental indexing (skips unchanged files), this is safe
+    to call after each batch of promotions/crystallizations.
+
+    Args:
+        paths: List of file paths that were created/updated (for logging).
+
+    Returns:
+        True if indexing succeeded, False otherwise.
+    """
+    if not paths:
+        return True
+
+    logger.info(f"Indexing {len(paths)} file(s) to OpenClaw: {paths}")
+
+    try:
+        result = subprocess.run(
+            ["openclaw", "memory", "index"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+        if result.returncode != 0:
+            logger.warning(f"OpenClaw indexing failed (code {result.returncode}): {result.stderr}")
+            return False
+
+        logger.info(f"OpenClaw indexing complete: {result.stdout.strip()}")
+        return True
+
+    except subprocess.TimeoutExpired:
+        logger.warning("OpenClaw indexing timed out (120s)")
+        return False
+    except FileNotFoundError:
+        logger.warning("openclaw CLI not found — skipping index")
+        return False
+    except Exception as e:
+        logger.warning(f"OpenClaw indexing error: {e}")
+        return False
+
+
 # === Commands ===
 
 
@@ -596,9 +647,21 @@ def cmd_promote(args: List[str]) -> Dict[str, Any]:
         if result:
             promoted.append(result)
 
-    result = {"promoted": len(promoted), "details": promoted, "timestamp": now_iso()}
+    # Index newly created corridor summaries into OpenClaw
+    if promoted:
+        new_paths = [p["summary"] for p in promoted]
+        indexed = index_to_openclaw(new_paths)
+    else:
+        indexed = True
 
-    logger.info(f"Promoted {len(promoted)} files to corridor")
+    result = {
+        "promoted": len(promoted),
+        "details": promoted,
+        "indexed": indexed,
+        "timestamp": now_iso(),
+    }
+
+    logger.info(f"Promoted {len(promoted)} files to corridor (indexed={indexed})")
     print(json.dumps(result, indent=2))
     return result
 
@@ -649,13 +712,21 @@ def cmd_crystallize(args: List[str]) -> Dict[str, Any]:
         if result:
             crystallized.append(result)
 
+    # Index newly created vault lessons into OpenClaw
+    if crystallized:
+        new_paths = [p["vault"] for p in crystallized]
+        indexed = index_to_openclaw(new_paths)
+    else:
+        indexed = True
+
     result = {
         "crystallized": len(crystallized),
         "details": crystallized,
+        "indexed": indexed,
         "timestamp": now_iso(),
     }
 
-    logger.info(f"Crystallized {len(crystallized)} files to vault")
+    logger.info(f"Crystallized {len(crystallized)} files to vault (indexed={indexed})")
     print(json.dumps(result, indent=2))
     return result
 
@@ -759,8 +830,9 @@ def main() -> None:
 if __name__ == "__main__":
     # Suppress runpy warning about module already in sys.modules
     import warnings
+
     warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
-    
+
     # Configure logging if running as main
     logging.basicConfig(
         level=logging.INFO,
