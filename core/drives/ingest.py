@@ -21,7 +21,7 @@ import re
 import sys
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timezone
 from glob import glob
 from pathlib import Path
 from typing import Optional
@@ -65,8 +65,85 @@ DRIVE_KEYWORDS = {
 }
 
 
+def get_ingest_state_path(config: dict) -> Path:
+    """Get path to ingest state file.
+
+    Args:
+        config: Configuration dict
+
+    Returns:
+        Path to ingest_state.json
+
+    Examples:
+        >>> config = {"paths": {"workspace": ".", "state": ".emergence/state"}}
+        >>> path = get_ingest_state_path(config)
+        >>> "ingest_state.json" in str(path)
+        True
+    """
+    state_dir = config.get("paths", {}).get("state", ".emergence/state")
+    workspace = config.get("paths", {}).get("workspace", ".")
+    return Path(workspace) / state_dir / "ingest_state.json"
+
+
+def load_ingest_state(config: dict) -> dict:
+    """Load last ingest timestamp from state file.
+
+    Args:
+        config: Configuration dict
+
+    Returns:
+        Dict with 'last_ingest' ISO timestamp and optional 'processed_files'
+
+    Examples:
+        >>> config = {"paths": {"workspace": ".", "state": ".emergence/state"}}
+        >>> state = load_ingest_state(config)
+        >>> "last_ingest" in state
+        True
+    """
+    state_file = get_ingest_state_path(config)
+    if state_file.exists():
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {"last_ingest": None, "processed_files": {}}
+
+
+def save_ingest_state(config: dict, timestamp: Optional[datetime] = None) -> None:
+    """Save ingest timestamp after successful run.
+
+    Args:
+        config: Configuration dict
+        timestamp: Timestamp to save (defaults to now)
+
+    Examples:
+        >>> config = {"paths": {"workspace": ".", "state": ".emergence/state"}}
+        >>> save_ingest_state(config)
+    """
+    if timestamp is None:
+        timestamp = datetime.now(timezone.utc)
+
+    state_file = get_ingest_state_path(config)
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+
+    state = {
+        "last_ingest": timestamp.isoformat(),
+        "processed_files": {},
+    }
+
+    try:
+        with open(state_file, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+    except IOError as e:
+        print(f"⚠ Failed to save ingest state: {e}", file=sys.stderr)
+
+
 def load_experience_content(
-    file_path: Optional[Path] = None, recent: bool = False, config: Optional[dict] = None
+    file_path: Optional[Path] = None,
+    recent: bool = False,
+    config: Optional[dict] = None,
+    since: Optional[datetime] = None,
 ) -> str:
     """Load experience content from memory files.
 
@@ -74,6 +151,7 @@ def load_experience_content(
         file_path: Specific file to load (optional)
         recent: If True, load today's memory files
         config: Configuration dict for path resolution (required if recent=True)
+        since: Only include files modified after this timestamp (for deduplication)
 
     Returns:
         String containing loaded content
@@ -85,6 +163,11 @@ def load_experience_content(
         >>>
         >>> # Load today's files
         >>> content = load_experience_content(recent=True, config=config)
+        >>>
+        >>> # Load only new files since last ingest
+        >>> from datetime import datetime, timezone
+        >>> since = datetime.now(timezone.utc)
+        >>> content = load_experience_content(recent=True, config=config, since=since)
     """
     if file_path:
         try:
@@ -115,6 +198,22 @@ def load_experience_content(
         session_dir = config.get("memory", {}).get("session_dir", "memory/sessions")
         session_pattern = Path(workspace) / session_dir / f"{today}*.md"
         files.extend(glob(str(session_pattern)))
+
+        if not files:
+            return ""
+
+        # Filter files by modification time if `since` is provided
+        if since is not None:
+            since_timestamp = since.timestamp()
+            filtered_files = []
+            for f in files:
+                try:
+                    mtime = os.path.getmtime(f)
+                    if mtime > since_timestamp:
+                        filtered_files.append(f)
+                except OSError:
+                    continue
+            files = filtered_files
 
         if not files:
             return ""

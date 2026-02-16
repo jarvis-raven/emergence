@@ -1340,6 +1340,8 @@ def cmd_ingest(args) -> int:
         load_experience_content,
         analyze_content,
         apply_impacts,
+        load_ingest_state,
+        save_ingest_state,
     )
 
     state, config, state_path = get_state_and_config(args)
@@ -1347,7 +1349,24 @@ def cmd_ingest(args) -> int:
     dry_run = getattr(args, "dry_run", False)
     verbose = getattr(args, "verbose", False)
     recent = getattr(args, "recent", False)
+    force = getattr(args, "force", False)
     file_path = getattr(args, "file", None)
+
+    # Load deduplication state (only for --recent mode)
+    since_timestamp = None
+    if recent and not force:
+        ingest_state = load_ingest_state(config)
+        last_ingest_str = ingest_state.get("last_ingest")
+        if last_ingest_str:
+            try:
+                since_timestamp = datetime.fromisoformat(last_ingest_str)
+                if verbose:
+                    print(
+                        f"ℹ Loading content modified after {since_timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+                    )
+            except (ValueError, TypeError):
+                if verbose:
+                    print("⚠ Could not parse last ingest timestamp, loading all content")
 
     # Load content
     if file_path:
@@ -1357,10 +1376,14 @@ def cmd_ingest(args) -> int:
             return EXIT_ERROR
         source = Path(file_path).name
     elif recent:
-        content = load_experience_content(recent=True, config=config)
+        content = load_experience_content(recent=True, config=config, since=since_timestamp)
         if not content:
-            print("ℹ No recent memory files found", file=sys.stderr)
-            return EXIT_SUCCESS
+            if since_timestamp and not force:
+                print("ℹ No new content since last ingest", file=sys.stderr)
+                return EXIT_SUCCESS
+            else:
+                print("ℹ No recent memory files found", file=sys.stderr)
+                return EXIT_SUCCESS
         source = "today's memory files"
     else:
         print("✗ Usage: drives ingest <file> or drives ingest --recent", file=sys.stderr)
@@ -1430,6 +1453,12 @@ def cmd_ingest(args) -> int:
             save_state(state_path, new_state)
 
         print(f"\n✓ State updated ({len(impacts)} impact(s) applied)")
+
+        # Update ingest timestamp (only for --recent mode)
+        if recent:
+            save_ingest_state(config)
+            if verbose:
+                print(f"  Ingest timestamp updated")
 
     return EXIT_SUCCESS
 
@@ -2530,6 +2559,11 @@ Exit codes:
         "--dry-run", action="store_true", help="Preview without applying changes"
     )
     ingest_parser.add_argument("--verbose", action="store_true", help="Show analysis progress")
+    ingest_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-processing of all content (ignore deduplication)",
+    )
 
     # daemon command
     daemon_parser = subparsers.add_parser("daemon", help="Control the background daemon")
