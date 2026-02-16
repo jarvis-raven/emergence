@@ -24,7 +24,9 @@ const CATEGORY_STYLES = {
  */
 function ProjectModal({ project, aspiration, onClose }) {
   useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
@@ -44,7 +46,12 @@ function ProjectModal({ project, aspiration, onClose }) {
           className="absolute top-4 right-4 text-textMuted hover:text-text transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
 
@@ -52,10 +59,14 @@ function ProjectModal({ project, aspiration, onClose }) {
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-text mb-2">{project.name}</h2>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[project.status] || STATUS_STYLES.idea}`}>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[project.status] || STATUS_STYLES.idea}`}
+            >
               {STATUS_LABELS[project.status] || project.status}
             </span>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${CATEGORY_STYLES[project.category] || CATEGORY_STYLES.personal}`}>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full ${CATEGORY_STYLES[project.category] || CATEGORY_STYLES.personal}`}
+            >
               {project.category}
             </span>
           </div>
@@ -86,8 +97,12 @@ function ProjectModal({ project, aspiration, onClose }) {
         {project.links && Object.keys(project.links).length > 0 && (
           <div className="space-y-1 mb-4">
             {project.links.repo && (
-              <a href={project.links.repo} target="_blank" rel="noopener noreferrer"
-                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1">
+              <a
+                href={project.links.repo}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+              >
                 🔗 Repository
               </a>
             )}
@@ -95,8 +110,12 @@ function ProjectModal({ project, aspiration, onClose }) {
               <p className="text-sm text-textMuted">📁 {project.links.local}</p>
             )}
             {project.links.url && (
-              <a href={project.links.url} target="_blank" rel="noopener noreferrer"
-                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1">
+              <a
+                href={project.links.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+              >
                 🌐 Link
               </a>
             )}
@@ -105,12 +124,8 @@ function ProjectModal({ project, aspiration, onClose }) {
 
         {/* Dates */}
         <div className="flex items-center gap-4 text-xs text-textMuted/60">
-          {project.startDate && (
-            <span>Started: {project.startDate}</span>
-          )}
-          {project.updatedAt && (
-            <span>Updated: {project.updatedAt}</span>
-          )}
+          {project.startDate && <span>Started: {project.startDate}</span>}
+          {project.updatedAt && <span>Updated: {project.updatedAt}</span>}
         </div>
       </div>
     </div>
@@ -150,11 +165,11 @@ export default function ProjectsPanel() {
   // Get aspiration for a project
   const getAspiration = (aspirationId) => {
     if (!data?.aspirations) return null;
-    return data.aspirations.find(a => a.id === aspirationId) || null;
+    return data.aspirations.find((a) => a.id === aspirationId) || null;
   };
 
   // Get selected project details
-  const selectedProject = selected ? (data?.projects || []).find(p => p.id === selected) : null;
+  const selectedProject = selected ? (data?.projects || []).find((p) => p.id === selected) : null;
   const selectedAspiration = selectedProject ? getAspiration(selectedProject.aspirationId) : null;
 
   // Group by status
@@ -185,9 +200,7 @@ export default function ProjectsPanel() {
           </div>
         )}
 
-        {error && (
-          <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{error}</div>
-        )}
+        {error && <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{error}</div>}
 
         {!loading && !error && projects.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
@@ -197,51 +210,59 @@ export default function ProjectsPanel() {
           </div>
         )}
 
-        {!loading && !error && STATUS_ORDER.map(status => {
-          const items = grouped[status];
-          if (!items || items.length === 0) return null;
-          return (
-            <section key={status}>
-              <h3 className="text-xs font-medium text-textMuted/70 uppercase tracking-wider mb-2">
-                {STATUS_LABELS[status]} ({items.length})
-              </h3>
-              <div className="space-y-1.5">
-                {items.map((project) => {
-                  const aspiration = getAspiration(project.aspirationId);
-                  return (
-                    <button
-                      key={project.id}
-                      onClick={() => setSelected(project.id)}
-                      className="w-full text-left p-3 bg-background/50 rounded-lg hover:bg-background/80 transition-colors group"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-text truncate">{project.name}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${CATEGORY_STYLES[project.category] || CATEGORY_STYLES.personal}`}>
-                              {project.category}
-                            </span>
+        {!loading &&
+          !error &&
+          STATUS_ORDER.map((status) => {
+            const items = grouped[status];
+            if (!items || items.length === 0) return null;
+            return (
+              <section key={status}>
+                <h3 className="text-xs font-medium text-textMuted/70 uppercase tracking-wider mb-2">
+                  {STATUS_LABELS[status]} ({items.length})
+                </h3>
+                <div className="space-y-1.5">
+                  {items.map((project) => {
+                    const aspiration = getAspiration(project.aspirationId);
+                    return (
+                      <button
+                        key={project.id}
+                        onClick={() => setSelected(project.id)}
+                        className="w-full text-left p-3 bg-background/50 rounded-lg hover:bg-background/80 transition-colors group"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-text truncate">
+                                {project.name}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${CATEGORY_STYLES[project.category] || CATEGORY_STYLES.personal}`}
+                              >
+                                {project.category}
+                              </span>
+                            </div>
+                            {project.description && (
+                              <p className="text-xs text-textMuted mt-0.5 truncate">
+                                {project.description}
+                              </p>
+                            )}
+                            {aspiration && (
+                              <p className="text-[10px] text-textMuted/60 mt-1">
+                                ✦ {aspiration.title}
+                              </p>
+                            )}
                           </div>
-                          {project.description && (
-                            <p className="text-xs text-textMuted mt-0.5 truncate">{project.description}</p>
-                          )}
-                          {aspiration && (
-                            <p className="text-[10px] text-textMuted/60 mt-1">
-                              ✦ {aspiration.title}
-                            </p>
-                          )}
+                          <span className="text-textMuted/40 group-hover:text-textMuted transition-colors flex-shrink-0">
+                            ›
+                          </span>
                         </div>
-                        <span className="text-textMuted/40 group-hover:text-textMuted transition-colors flex-shrink-0">
-                          ›
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
       </div>
 
       {/* Modal */}

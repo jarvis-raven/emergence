@@ -2,14 +2,14 @@ import { useState } from 'react';
 
 /**
  * Get insight score color
- * 
+ *
  * @param {number} score - Insight score (0-10 or 0-100)
  * @returns {string} Tailwind color class
  */
 function getInsightColor(score) {
   // Normalize to 0-10 scale
   const normalized = score > 10 ? score / 10 : score;
-  
+
   if (normalized >= 8) return 'text-purple-400';
   if (normalized >= 6) return 'text-cyan-400';
   return 'text-textMuted';
@@ -17,13 +17,13 @@ function getInsightColor(score) {
 
 /**
  * Format dream date
- * 
+ *
  * @param {string|number} dateValue - Date value
  * @returns {string} Formatted date string
  */
 function formatDreamDate(dateValue) {
   if (!dateValue) return 'Unknown time';
-  
+
   try {
     const date = new Date(dateValue);
     const now = new Date();
@@ -34,10 +34,10 @@ function formatDreamDate(dateValue) {
     if (diffDays === 1) return 'Night before last';
     if (diffDays < 7) return `${diffDays} nights ago`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
     });
   } catch {
     return String(dateValue);
@@ -46,7 +46,7 @@ function formatDreamDate(dateValue) {
 
 /**
  * Individual dream card
- * 
+ *
  * @param {object} props
  * @param {object} props.dream - Dream data
  * @param {boolean} props.expanded - Whether card is expanded
@@ -58,7 +58,7 @@ function DreamCard({ dream, expanded, onToggle }) {
   const date = dream.date || dream.timestamp;
 
   return (
-    <div 
+    <div
       className={`
         bg-surface/50 rounded-lg p-4 cursor-pointer
         border border-transparent
@@ -70,21 +70,25 @@ function DreamCard({ dream, expanded, onToggle }) {
     >
       <div className="flex items-start gap-3">
         {/* Dream icon */}
-        <span className="text-purple-400/60 text-lg shrink-0" aria-hidden="true">💭</span>
-        
+        <span className="text-purple-400/60 text-lg shrink-0" aria-hidden="true">
+          💭
+        </span>
+
         <div className="flex-1 min-w-0">
           {/* Dream content */}
-          <p className={`
+          <p
+            className={`
             text-text text-sm leading-relaxed
             ${expanded ? '' : 'line-clamp-2'}
-          `}>
+          `}
+          >
             {content}
           </p>
-          
+
           {/* Metadata */}
           <div className="flex items-center gap-4 mt-3">
             {/* Insight score - subtle */}
-            <span 
+            <span
               className={`
                 text-xs font-mono ${getInsightColor(score)}
               `}
@@ -92,13 +96,9 @@ function DreamCard({ dream, expanded, onToggle }) {
             >
               insight {score}/10
             </span>
-            
+
             {/* Date */}
-            {date && (
-              <span className="text-xs text-textMuted">
-                {formatDreamDate(date)}
-              </span>
-            )}
+            {date && <span className="text-xs text-textMuted">{formatDreamDate(date)}</span>}
           </div>
         </div>
       </div>
@@ -109,7 +109,7 @@ function DreamCard({ dream, expanded, onToggle }) {
 /**
  * Dream View component for asleep mode
  * Displays dreams from the Dream Engine
- * 
+ *
  * @param {object} props
  * @param {Array} props.dreams - Array of dream objects
  * @param {Array} props.highlights - Array of highlight objects
@@ -145,13 +145,14 @@ export function DreamView({ dreams, highlights, totalDreams, loading }) {
     return (
       <div className="text-center py-12">
         {/* Moon/stars visual */}
-        <div className="text-4xl mb-4 opacity-60" aria-hidden="true">🌙✨</div>
-        
-        <h3 className="text-lg text-text font-medium mb-2">
-          No dreams yet
-        </h3>
+        <div className="text-4xl mb-4 opacity-60" aria-hidden="true">
+          🌙✨
+        </div>
+
+        <h3 className="text-lg text-text font-medium mb-2">No dreams yet</h3>
         <p className="text-sm text-textMuted max-w-xs mx-auto">
-          Dreams come from the Dream Engine. They appear after rest periods when the agent processes memories.
+          Dreams come from the Dream Engine. They appear after rest periods when the agent processes
+          memories.
         </p>
       </div>
     );

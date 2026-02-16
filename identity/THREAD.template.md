@@ -1,6 +1,6 @@
 # THREAD.md — Session Continuity
 
-*Warm handoff between sessions. What you were reaching toward.*
+_Warm handoff between sessions. What you were reaching toward._
 
 ## Last Session
 
@@ -15,15 +15,11 @@ PROMPT: What was happening? What's the thread to pick up?
 2-3 sentences max.
 -->
 
-
-
 ## Reaching Toward
 
 <!--
 PROMPT: What was next? What were you figuring out?
 -->
-
-
 
 ## In Progress
 
@@ -36,8 +32,6 @@ PROMPT: What was next? What were you figuring out?
 PROMPT: Anything urgent, interesting, or easily forgotten?
 -->
 
-
-
 ---
 
-*This file updates at every compaction flush. Keep it brief — it's a pointer, not a dump.*
+_This file updates at every compaction flush. Keep it brief — it's a pointer, not a dump._

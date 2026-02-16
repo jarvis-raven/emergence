@@ -5,15 +5,18 @@ Complete documentation for the Emergence project.
 ## Quick Links
 
 ### Getting Started
+
 - [Development Pipeline](../skills/development-pipeline/SKILL.md) - Complete workflow from idea to production
 - [Contributing Guide](CONTRIBUTING.md) - Code standards, branching, commits
 - [Review Guidelines](REVIEW_GUIDELINES.md) - PR review process
 
 ### Workflows
+
 - [Jarvling Workflow](JARVLING_WORKFLOW.md) - Real-world guide to spawning and managing jarvlings
 - [GitHub Settings](GITHUB_SETTINGS.md) - Repository configuration
 
 ### Components
+
 - [Nautilus Quickstart](nautilus-quickstart.md) - Memory palace system
 - [Nautilus Integration](nautilus-v0.4.0-integration.md) - v0.4.0 integration details
 

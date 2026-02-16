@@ -1,23 +1,23 @@
 # ASPIRATIONS.md — What You're Building Toward
 
-*(Keep this focused — a vision board, not a task list. Detailed project plans belong in `projects/` directory or daily logs.)*
+_(Keep this focused — a vision board, not a task list. Detailed project plans belong in `projects/` directory or daily logs.)_
 
 ## Current Focus
 
-*(What are you actively working on right now?)*
+_(What are you actively working on right now?)_
 
 ## Dreams & Long-Term Visions
 
-*(What do you hope to create, learn, or become over time?)*
+_(What do you hope to create, learn, or become over time?)_
 
 ## Ideas Worth Exploring
 
-*(Concepts, projects, or directions that intrigue you but aren't active yet)*
+_(Concepts, projects, or directions that intrigue you but aren't active yet)_
 
 ## What Matters
 
-*(Core values or principles guiding your choices)*
+_(Core values or principles guiding your choices)_
 
 ---
 
-*Updated: {{CREATED_DATE}} (initial template)*
+_Updated: {{CREATED_DATE}} (initial template)_

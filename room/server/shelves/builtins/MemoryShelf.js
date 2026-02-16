@@ -1,6 +1,6 @@
 /**
  * MemoryShelf — Built-in shelf for memory statistics
- * 
+ *
  * Displays memory stats using the same logic as /api/memory/stats
  */
 
@@ -31,7 +31,7 @@ function getEmbeddingStats() {
   try {
     const result = execSync(
       `sqlite3 "${dbPath}" "SELECT (SELECT COUNT(*) FROM chunks) as chunks, (SELECT COUNT(*) FROM files) as files;"`,
-      { timeout: 3000, encoding: 'utf-8' }
+      { timeout: 3000, encoding: 'utf-8' },
     ).trim();
     const [chunks, files] = result.split('|').map(Number);
 
@@ -40,7 +40,7 @@ function getEmbeddingStats() {
     try {
       const rows = execSync(
         `sqlite3 "${dbPath}" "SELECT CASE WHEN path LIKE 'memory/daily/%' THEN 'daily' WHEN path LIKE 'memory/sessions/%' THEN 'sessions' WHEN path LIKE 'memory/changelog/%' THEN 'changelog' WHEN path LIKE 'memory/correspondence/%' THEN 'correspondence' WHEN path LIKE 'memory/creative/%' THEN 'creative' WHEN path LIKE 'memory/dreams/%' THEN 'dreams' WHEN path LIKE 'memory/archive/%' THEN 'archive' ELSE 'other' END as cat, COUNT(DISTINCT path) as files, COUNT(*) as chunks FROM chunks GROUP BY cat ORDER BY chunks DESC;"`,
-        { timeout: 3000, encoding: 'utf-8' }
+        { timeout: 3000, encoding: 'utf-8' },
       ).trim();
       for (const row of rows.split('\n').filter(Boolean)) {
         const [category, fileCount, chunkCount] = row.split('|');
@@ -74,7 +74,7 @@ export const MemoryShelf = {
     const sessionsDir = getMemoryPath(config, 'sessions');
     const dreamsDir = getMemoryPath(config, 'dreams');
     const selfHistoryDir = getMemoryPath(config, 'self-history');
-    
+
     // Daily memory files — check both memory/ and memory/daily/
     let dailyFiles = listFiles(dailyDir, /^\d{4}-\d{2}-\d{2}\.md$/);
     let dailyBasePath = dailyDir;
@@ -86,42 +86,43 @@ export const MemoryShelf = {
       const stats = getFileStats(join(dailyBasePath, f));
       return sum + (stats?.size || 0);
     }, 0);
-    
+
     // Session files
     const sessionFiles = listFiles(sessionsDir, /^\d{4}-\d{2}-\d{2}-\d{4}-.+\.md$/);
     const sessionSize = sessionFiles.reduce((sum, f) => {
       const stats = getFileStats(join(sessionsDir, f));
       return sum + (stats?.size || 0);
     }, 0);
-    
+
     // Dream files
     const dreamFiles = listFiles(dreamsDir, /^\d{4}-\d{2}-\d{2}\.json$/);
     const dreamSize = dreamFiles.reduce((sum, f) => {
       const stats = getFileStats(join(dreamsDir, f));
       return sum + (stats?.size || 0);
     }, 0);
-    
+
     // Self history files
     const selfHistoryFiles = listFiles(selfHistoryDir, /^SELF-\d{4}-\d{2}-\d{2}\.md$/);
-    
+
     // Calculate date range
     const sortedDaily = dailyFiles.sort();
     const firstDate = sortedDaily.length > 0 ? sortedDaily[0].replace('.md', '') : null;
-    const lastDate = sortedDaily.length > 0 ? sortedDaily[sortedDaily.length - 1].replace('.md', '') : null;
-    
+    const lastDate =
+      sortedDaily.length > 0 ? sortedDaily[sortedDaily.length - 1].replace('.md', '') : null;
+
     let daysActive = 0;
     if (firstDate) {
       const first = new Date(firstDate);
       const now = new Date();
       daysActive = Math.floor((now - first) / (1000 * 60 * 60 * 24)) + 1;
     }
-    
+
     // Recent files (last 7 days) for activity chart
-    const recentFiles = sortedDaily.slice(-7).map(f => ({
+    const recentFiles = sortedDaily.slice(-7).map((f) => ({
       date: f.replace('.md', ''),
       size: formatBytes(getFileStats(join(dailyBasePath, f))?.size || 0),
     }));
-    
+
     // Per-file embedding chunk counts (by full path)
     const chunkCountsByPath = {};
     const home = process.env.HOME || process.env.USERPROFILE || '.';
@@ -130,7 +131,7 @@ export const MemoryShelf = {
       try {
         const rows = execSync(
           `sqlite3 "${dbPath}" "SELECT path, COUNT(*) FROM chunks GROUP BY path;"`,
-          { timeout: 5000, encoding: 'utf-8' }
+          { timeout: 5000, encoding: 'utf-8' },
         ).trim();
         for (const row of rows.split('\n').filter(Boolean)) {
           const [path, count] = row.split('|');
@@ -141,27 +142,37 @@ export const MemoryShelf = {
 
     // Build complete file list — auto-discover ALL memory subdirectories
     const allFiles = [];
-    
+
     // Known icon hints (optional cosmetic, falls back to 📄)
     const ICON_HINTS = {
-      daily: '📅', changelog: '📋', correspondence: '✉️', creative: '🎨',
-      dreams: '🌙', 'self-history': '🪞', 'soul-history': '🪞', todo: '✅',
-      bugs: '🐛', archive: '📦', sessions: '🧪', research: '🔬',
-      projects: '🚀', notes: '📝',
+      daily: '📅',
+      changelog: '📋',
+      correspondence: '✉️',
+      creative: '🎨',
+      dreams: '🌙',
+      'self-history': '🪞',
+      'soul-history': '🪞',
+      todo: '✅',
+      bugs: '🐛',
+      archive: '📦',
+      sessions: '🧪',
+      research: '🔬',
+      projects: '🚀',
+      notes: '📝',
     };
-    
+
     // Directories to skip (shown elsewhere or internal)
     const SKIP_DIRS = new Set(['sessions']); // sessions shown in Journal panel
-    
+
     // Auto-discover subdirectories
     let discoveredDirs = [];
     try {
       const entries = readdirSync(memoryDir, { withFileTypes: true });
       discoveredDirs = entries
-        .filter(e => e.isDirectory() && !e.name.startsWith('.') && !SKIP_DIRS.has(e.name))
-        .map(e => e.name);
+        .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !SKIP_DIRS.has(e.name))
+        .map((e) => e.name);
     } catch {}
-    
+
     // Build category map from discovered directories
     const CATEGORY_MAP = {};
     for (const dir of discoveredDirs) {
@@ -243,9 +254,9 @@ export const MemoryShelf = {
       if (b.date) return 1;
       return (b.modified || '').localeCompare(a.modified || '');
     });
-    
+
     const totalSize = dailySize + sessionSize + dreamSize;
-    
+
     return {
       daily: {
         count: dailyFiles.length,
@@ -266,7 +277,8 @@ export const MemoryShelf = {
         count: selfHistoryFiles.length,
       },
       total: {
-        files: dailyFiles.length + sessionFiles.length + dreamFiles.length + selfHistoryFiles.length,
+        files:
+          dailyFiles.length + sessionFiles.length + dreamFiles.length + selfHistoryFiles.length,
         size: formatBytes(totalSize),
       },
       recent: recentFiles,

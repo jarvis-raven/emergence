@@ -10,7 +10,7 @@ import json
 import logging
 import shutil
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 
 # Use standard logging (logging_config imports this module, avoid circular import)
 logger = logging.getLogger("nautilus.config")

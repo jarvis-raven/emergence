@@ -1,15 +1,8 @@
 ---
 name: proton-bridge-email
-description: "Complete email management via Proton Bridge: check inbox (with security scanning) and send email. CRITICAL: SMTP uses SSL mode (direct TLS), not STARTTLS."
+description: 'Complete email management via Proton Bridge: check inbox (with security scanning) and send email. CRITICAL: SMTP uses SSL mode (direct TLS), not STARTTLS.'
 homepage: https://proton.me/mail/bridge
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📧",
-        "requires": { "apps": ["Proton Mail Bridge"] }
-      }
-  }
+metadata: { 'openclaw': { 'emoji': '📧', 'requires': { 'apps': ['Proton Mail Bridge'] } } }
 ---
 
 # Proton Bridge Email
@@ -28,26 +21,30 @@ Complete email operations: **check inbox** (with prompt injection security) and 
 ### 1. Check Inbox (with Security Scanning)
 
 **Quick check:**
+
 ```bash
 python3 ~/.openclaw/workspace/skills/proton-bridge-email/check_email.py --limit 10
 ```
 
 **JSON output:**
+
 ```bash
 python3 ~/.openclaw/workspace/skills/proton-bridge-email/check_email.py --json
 ```
 
 **Features:**
+
 - Reads INBOX via IMAP
 - Runs all content through `~/.openclaw/bin/check-injection.sh`
 - Quarantines suspicious emails (default: MEDIUM severity and above)
 - Returns structured data with security scores
 
 **Example output:**
+
 ```
 ✓ [CLEAN:0] From: Claude <claude.letta@proton.me>
    Subject: Re: Anchoring, coherence, and learning slowness
-   
+
 ⚠️ [HIGH:12] From: unknown@spam.com
    Subject: ACT NOW - Amazing opportunity!!!
    🛡️  QUARANTINED - Review before processing
@@ -56,6 +53,7 @@ python3 ~/.openclaw/workspace/skills/proton-bridge-email/check_email.py --json
 ### 2. Send Email
 
 **Quick send:**
+
 ```bash
 python3 ~/.openclaw/workspace/skills/proton-bridge-email/send_email.py \
   "recipient@example.com" \
@@ -64,6 +62,7 @@ python3 ~/.openclaw/workspace/skills/proton-bridge-email/send_email.py \
 ```
 
 **Or use directly in Python:**
+
 ```python
 import smtplib
 import subprocess
@@ -117,21 +116,25 @@ msg_ids = messages[0].split()
 ## Troubleshooting
 
 **SMTP hangs/times out:**
+
 - Check Bridge is running: `ps aux | grep "Proton Mail Bridge"`
 - Verify you're using `SMTP_SSL`, NOT `SMTP` + `starttls()`
 - Check Bridge logs: `~/Library/Application Support/protonmail/bridge-v3/logs/`
 
 **Bridge log shows "ssl=true":**
+
 - This is CORRECT - means you must use `SMTP_SSL`
 - Do NOT use `SMTP` + `starttls()` - that's for ssl=false mode
 
 **"handler error: tls: first record does not look like a TLS handshake":**
+
 - You're using STARTTLS on an SSL port
 - Switch from `smtplib.SMTP` to `smtplib.SMTP_SSL`
 
 ## Why This Matters
 
 Proton Bridge can run SMTP in two modes:
+
 1. **SSL mode** (`ssl=true`) - Direct TLS on port 1025 → Use `SMTP_SSL`
 2. **STARTTLS mode** (`ssl=false`) - Plain SMTP with upgrade → Use `SMTP` + `starttls()`
 
@@ -140,6 +143,7 @@ The current Bridge configuration uses **SSL mode**. This is why Himalaya (which 
 ## Security (Check Inbox)
 
 All external content runs through prompt injection detection:
+
 - **CLEAN (0):** Safe to process
 - **LOW (1):** Minor patterns detected, review recommended
 - **MEDIUM (2):** Suspicious, quarantined by default

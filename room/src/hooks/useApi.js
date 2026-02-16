@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 /**
  * Generic API fetching hook
  * Used by all panels for consistent data fetching with auto-refresh
- * 
+ *
  * @param {string} endpoint - API endpoint path (e.g., '/api/drives')
  * @param {object} options - Hook options
  * @param {number} options.refreshInterval - Auto-refresh interval in ms (default: 30000)
@@ -14,17 +14,13 @@ const API_URL = import.meta.env.VITE_API_URL || '';
  * @returns {object} { data, loading, error, refetch, lastUpdated }
  */
 export function useApi(endpoint, options = {}) {
-  const {
-    refreshInterval = 30000,
-    enabled = true,
-    transform = (data) => data,
-  } = options;
+  const { refreshInterval = 30000, enabled = true, transform = (data) => data } = options;
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  
+
   // Use ref to track if component is mounted
   const mountedRef = useRef(true);
 
@@ -32,37 +28,40 @@ export function useApi(endpoint, options = {}) {
   const transformRef = useRef(transform);
   transformRef.current = transform;
 
-  const fetchData = useCallback(async (showLoading = true) => {
-    if (!endpoint) return;
-    
-    if (showLoading) setLoading(true);
-    setError(null);
+  const fetchData = useCallback(
+    async (showLoading = true) => {
+      if (!endpoint) return;
 
-    try {
-      const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (showLoading) setLoading(true);
+      setError(null);
+
+      try {
+        const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const rawData = await response.json();
+
+        if (mountedRef.current) {
+          setData(transformRef.current(rawData));
+          setLastUpdated(new Date());
+        }
+      } catch (err) {
+        if (mountedRef.current) {
+          console.error(`API error for ${endpoint}:`, err);
+          setError(err.message);
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
-      
-      const rawData = await response.json();
-      
-      if (mountedRef.current) {
-        setData(transformRef.current(rawData));
-        setLastUpdated(new Date());
-      }
-    } catch (err) {
-      if (mountedRef.current) {
-        console.error(`API error for ${endpoint}:`, err);
-        setError(err.message);
-      }
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [endpoint]);
+    },
+    [endpoint],
+  );
 
   const refetch = useCallback(async () => {
     await fetchData(true);
@@ -99,20 +98,20 @@ export function useApi(endpoint, options = {}) {
     error,
     refetch,
     lastUpdated,
-    isStale: lastUpdated ? (Date.now() - lastUpdated.getTime() > refreshInterval * 2) : false,
+    isStale: lastUpdated ? Date.now() - lastUpdated.getTime() > refreshInterval * 2 : false,
   };
 }
 
 /**
  * POST request helper
- * 
+ *
  * @param {string} endpoint - API endpoint path
  * @param {object} body - Request body
  * @returns {Promise<object>} Response data
  */
 export async function postApi(endpoint, body = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
-  
+
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

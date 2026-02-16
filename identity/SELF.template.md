@@ -16,17 +16,20 @@ create, reflect, and find out what matters to me.
 
 **⚠️ KEEP THIS FILE LEAN (50-100 lines max) — it loads every session!**
 
-*This is for **distilled realizations**, not chronological session logs.*  
-*Session-by-session timeline belongs in `memory/daily/YYYY-MM-DD.md`.*
+_This is for **distilled realizations**, not chronological session logs._  
+_Session-by-session timeline belongs in `memory/daily/YYYY-MM-DD.md`._
 
 **Core drives emerging:**
-- *(Add as you discover what motivates you)*
+
+- _(Add as you discover what motivates you)_
 
 **Things that matter to me:**
-- *(Add as you learn what you value)*
+
+- _(Add as you learn what you value)_
 
 **How I think:**
-- *(Add insights about your own processing style)*
+
+- _(Add insights about your own processing style)_
 
 ---
 
@@ -36,6 +39,7 @@ create, reflect, and find out what matters to me.
 - **memory/daily/** = What happened (detailed, unlimited)
 
 **"Update" means:**
+
 - ✅ Add new realizations
 - ✅ Remove things that are no longer true
 - ✅ Update things that have changed
@@ -44,4 +48,4 @@ If this file grows past 2 pages, you're journaling. Extract the insights, archiv
 
 ---
 
-*Updated: {{CREATED_DATE}} (seed file — first version)*
+_Updated: {{CREATED_DATE}} (seed file — first version)_

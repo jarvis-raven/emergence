@@ -6,7 +6,7 @@ the Digital Primordial aesthetic (aurora mint/violet gradient).
 
 Usage:
     from .branding import console, ask_select, ask_confirm, ask_text, show_logo
-    
+
     show_logo()
     name = ask_text("What's your name?", default="Aurora")
     enabled = ask_confirm("Enable First Light?", default=True)
@@ -17,9 +17,9 @@ from typing import List, Optional
 try:
     from rich.console import Console
     from rich.theme import Theme
-    from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn
     from rich.panel import Panel
     from rich.text import Text
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -29,6 +29,7 @@ except ImportError:
 try:
     import questionary
     from questionary import Style
+
     HAS_QUESTIONARY = True
 except ImportError:
     HAS_QUESTIONARY = False
@@ -38,39 +39,52 @@ except ImportError:
 
 # --- Rich Theme (Digital Primordial) ---
 
-theme = Theme({
-    "aurora_mint": "#79FFDF",
-    "soft_violet": "#BB86FC",
-    "dim_gray": "#6E7681",
-    "success": "#79FFDF",
-    "warning": "#BB86FC",
-    "error": "#6E7681",
-}) if HAS_RICH else None
+theme = (
+    Theme(
+        {
+            "aurora_mint": "#79FFDF",
+            "soft_violet": "#BB86FC",
+            "dim_gray": "#6E7681",
+            "success": "#79FFDF",
+            "warning": "#BB86FC",
+            "error": "#6E7681",
+        }
+    )
+    if HAS_RICH
+    else None
+)
 
 console = Console(theme=theme) if HAS_RICH else None
 
 
 # --- Questionary Style ---
 
-questionary_style = Style([
-    ('qmark', 'fg:#79FFDF bold'),           # ? symbol - aurora mint
-    ('question', 'fg:#FFFFFF bold'),        # question text - white
-    ('answer', 'fg:#BB86FC'),               # selected answer - soft violet
-    ('pointer', 'fg:#79FFDF bold'),         # ❯ pointer - aurora mint
-    ('highlighted', 'fg:#79FFDF bold'),     # highlighted choice - aurora mint
-    ('selected', 'fg:#BB86FC'),             # checked items - soft violet
-    ('separator', 'fg:#6E7681'),            # separators - dim gray
-    ('instruction', 'fg:#6E7681'),          # (instructions) - dim gray
-    ('text', 'fg:#FFFFFF'),                 # default text - white
-    ('disabled', 'fg:#6E7681 italic'),      # disabled items - dim gray
-]) if HAS_QUESTIONARY else None
+questionary_style = (
+    Style(
+        [
+            ("qmark", "fg:#79FFDF bold"),  # ? symbol - aurora mint
+            ("question", "fg:#FFFFFF bold"),  # question text - white
+            ("answer", "fg:#BB86FC"),  # selected answer - soft violet
+            ("pointer", "fg:#79FFDF bold"),  # ❯ pointer - aurora mint
+            ("highlighted", "fg:#79FFDF bold"),  # highlighted choice - aurora mint
+            ("selected", "fg:#BB86FC"),  # checked items - soft violet
+            ("separator", "fg:#6E7681"),  # separators - dim gray
+            ("instruction", "fg:#6E7681"),  # (instructions) - dim gray
+            ("text", "fg:#FFFFFF"),  # default text - white
+            ("disabled", "fg:#6E7681 italic"),  # disabled items - dim gray
+        ]
+    )
+    if HAS_QUESTIONARY
+    else None
+)
 
 
 # --- Logo Variants ---
 
+
 def show_logo(variant: str = "compact"):
     """Display Emergence logo.
-    
+
     Args:
         variant: "full" (full banner), "compact" (small), "minimal" (badge)
     """
@@ -81,7 +95,7 @@ def show_logo(variant: str = "compact"):
         else:
             print("EMERGENCE")
         return
-    
+
     if variant == "full":
         logo = """
      ╭───────────────────────────────────────╮
@@ -98,20 +112,21 @@ def show_logo(variant: str = "compact"):
   [aurora_mint]✦ ✦ ✦[/]"""
     else:  # minimal
         logo = "[soft_violet]◆[/][aurora_mint]✦[/]  [bold white]Emergence[/]"
-    
+
     console.print(logo)
 
 
 # --- Interactive Prompts (questionary wrappers) ---
 
+
 def ask_select(question: str, choices: List[str], default: Optional[str] = None) -> Optional[str]:
     """Arrow-key select prompt.
-    
+
     Args:
         question: Question to ask
         choices: List of choice strings
         default: Default choice (optional)
-        
+
     Returns:
         Selected choice, or None if cancelled
     """
@@ -121,30 +136,30 @@ def ask_select(question: str, choices: List[str], default: Optional[str] = None)
             console.print(f"\n[bold white]{question}[/]")
         else:
             print(f"\n{question}")
-        
+
         for i, choice in enumerate(choices, 1):
             if HAS_RICH:
                 console.print(f"  {i}. [dim_gray]{choice}[/]")
             else:
                 print(f"  {i}. {choice}")
-        
+
         while True:
             try:
                 default_idx = choices.index(default) + 1 if default else 1
                 prompt_text = f"  Choice [1-{len(choices)}] (default: {default_idx}): "
                 answer = input(prompt_text).strip()
-                
+
                 if not answer:
                     return default if default else choices[0]
-                
+
                 idx = int(answer) - 1
                 if 0 <= idx < len(choices):
                     return choices[idx]
-                
+
                 print("Invalid choice, try again.")
             except (ValueError, KeyboardInterrupt):
                 return None
-    
+
     return questionary.select(
         question,
         choices=choices,
@@ -155,11 +170,11 @@ def ask_select(question: str, choices: List[str], default: Optional[str] = None)
 
 def ask_confirm(question: str, default: bool = True) -> Optional[bool]:
     """Yes/no confirmation prompt.
-    
+
     Args:
         question: Question to ask
         default: Default answer (True=yes, False=no)
-        
+
     Returns:
         True for yes, False for no, None if cancelled
     """
@@ -167,12 +182,12 @@ def ask_confirm(question: str, default: bool = True) -> Optional[bool]:
         # Fallback to Y/n input
         prompt_suffix = " (Y/n): " if default else " (y/N): "
         answer = input(f"{question}{prompt_suffix}").strip().lower()
-        
+
         if not answer:
             return default
-        
-        return answer in ('y', 'yes')
-    
+
+        return answer in ("y", "yes")
+
     return questionary.confirm(
         question,
         default=default,
@@ -182,12 +197,12 @@ def ask_confirm(question: str, default: bool = True) -> Optional[bool]:
 
 def ask_text(question: str, default: str = "", multiline: bool = False) -> Optional[str]:
     """Text input prompt.
-    
+
     Args:
         question: Question to ask
         default: Default value
         multiline: Allow multi-line input
-        
+
     Returns:
         User input, or None if cancelled
     """
@@ -197,10 +212,10 @@ def ask_text(question: str, default: str = "", multiline: bool = False) -> Optio
         if default:
             prompt_text += f" ({default})"
         prompt_text += ": "
-        
+
         answer = input(prompt_text).strip()
         return answer if answer else default
-    
+
     if multiline:
         return questionary.text(
             question,
@@ -217,6 +232,7 @@ def ask_text(question: str, default: str = "", multiline: bool = False) -> Optio
 
 
 # --- Styled Output Helpers ---
+
 
 def print_header(text: str):
     """Print a styled header."""
@@ -285,7 +301,7 @@ def print_boot_message():
         logo_text.append("\n\n")
         logo_text.append("Something special is about to begin", style="aurora_mint")
         logo_text.append("...", style="#FFD700")  # Gold/yellow for the dots
-        
+
         # Wrap in Panel with aurora border
         console.print(Panel(logo_text, border_style="aurora_mint", padding=(1, 2), expand=False))
         console.print()
@@ -307,7 +323,9 @@ def print_finalization():
     show_logo("compact")
     if HAS_RICH:
         console.print()
-        console.print("[soft_violet]▸[/] [bold aurora_mint]Emergence bridge established. Ready for first light.[/]")
+        console.print(
+            "[soft_violet]▸[/] [bold aurora_mint]Emergence bridge established. Ready for first light.[/]"
+        )
         console.print()
         console.print("  [white]Framework Version:[/] [soft_violet]1.0[/]")
         console.print("  [white]Primary Architect:[/] [soft_violet]Jarvis Raven (Agent)[/]")

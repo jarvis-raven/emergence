@@ -6,7 +6,7 @@ and lifecycle management for launchd (macOS) and systemd (Linux).
 
 Example:
     from core.setup.autostart import get_installer
-    
+
     installer = get_installer(Path("/workspace"), "MyAgent", 7373)
     if installer:
         success, message = installer.install()
@@ -36,37 +36,30 @@ class PlatformInstaller(ABC):
     @abstractmethod
     def platform_name(self) -> str:
         """Platform identifier."""
-        pass
 
     @abstractmethod
     def is_installed(self) -> bool:
         """Check if auto-start is already configured."""
-        pass
 
     @abstractmethod
     def install(self) -> Tuple[bool, str]:
         """Install the auto-start service. Returns (success, message)."""
-        pass
 
     @abstractmethod
     def uninstall(self) -> Tuple[bool, str]:
         """Remove the auto-start service. Returns (success, message)."""
-        pass
 
     @abstractmethod
     def status(self) -> Tuple[bool, str]:
         """Check service status. Returns (is_running, status_message)."""
-        pass
 
     @abstractmethod
     def start(self) -> Tuple[bool, str]:
         """Start the service now. Returns (success, message)."""
-        pass
 
     @abstractmethod
     def stop(self) -> Tuple[bool, str]:
         """Stop the service. Returns (success, message)."""
-        pass
 
     def _get_node_path(self) -> Optional[str]:
         """Find the Node.js executable path."""
@@ -150,9 +143,7 @@ class MacOSInstaller(PlatformInstaller):
 
         # Load into launchd
         result = subprocess.run(
-            ["launchctl", "load", str(self.plist_path)],
-            capture_output=True,
-            text=True
+            ["launchctl", "load", str(self.plist_path)], capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -172,10 +163,7 @@ class MacOSInstaller(PlatformInstaller):
             return True, "Auto-start not configured"
 
         # Unload first
-        subprocess.run(
-            ["launchctl", "unload", str(self.plist_path)],
-            capture_output=True
-        )
+        subprocess.run(["launchctl", "unload", str(self.plist_path)], capture_output=True)
 
         # Remove plist
         try:
@@ -192,9 +180,7 @@ class MacOSInstaller(PlatformInstaller):
             Tuple of (is_running: bool, status_message: str)
         """
         result = subprocess.run(
-            ["launchctl", "list", self.service_id],
-            capture_output=True,
-            text=True
+            ["launchctl", "list", self.service_id], capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -217,9 +203,7 @@ class MacOSInstaller(PlatformInstaller):
             Tuple of (success: bool, message: str)
         """
         result = subprocess.run(
-            ["launchctl", "start", self.service_id],
-            capture_output=True,
-            text=True
+            ["launchctl", "start", self.service_id], capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -234,9 +218,7 @@ class MacOSInstaller(PlatformInstaller):
             Tuple of (success: bool, message: str)
         """
         result = subprocess.run(
-            ["launchctl", "stop", self.service_id],
-            capture_output=True,
-            text=True
+            ["launchctl", "stop", self.service_id], capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -265,11 +247,7 @@ class LinuxInstaller(PlatformInstaller):
     SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
 
     def __init__(
-        self,
-        workspace: Path,
-        agent_name: str,
-        room_port: int = 7373,
-        system_wide: bool = False
+        self, workspace: Path, agent_name: str, room_port: int = 7373, system_wide: bool = False
     ):
         super().__init__(workspace, agent_name, room_port)
         self.system_wide = system_wide
@@ -342,16 +320,11 @@ class LinuxInstaller(PlatformInstaller):
 
         # Reload systemd daemon
         scope = "--user" if not self.system_wide else "--system"
-        subprocess.run(
-            ["systemctl", scope, "daemon-reload"],
-            capture_output=True
-        )
+        subprocess.run(["systemctl", scope, "daemon-reload"], capture_output=True)
 
         # Enable service (start on boot)
         result = subprocess.run(
-            ["systemctl", scope, "enable", self.service_name],
-            capture_output=True,
-            text=True
+            ["systemctl", scope, "enable", self.service_name], capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -374,16 +347,10 @@ class LinuxInstaller(PlatformInstaller):
         scope = "--user" if not self.system_wide else "--system"
 
         # Disable first
-        subprocess.run(
-            ["systemctl", scope, "disable", self.service_name],
-            capture_output=True
-        )
+        subprocess.run(["systemctl", scope, "disable", self.service_name], capture_output=True)
 
         # Stop if running
-        subprocess.run(
-            ["systemctl", scope, "stop", self.service_name],
-            capture_output=True
-        )
+        subprocess.run(["systemctl", scope, "stop", self.service_name], capture_output=True)
 
         # Remove service file
         try:
@@ -392,10 +359,7 @@ class LinuxInstaller(PlatformInstaller):
             return False, f"Failed to remove service file: {e}"
 
         # Reload daemon
-        subprocess.run(
-            ["systemctl", scope, "daemon-reload"],
-            capture_output=True
-        )
+        subprocess.run(["systemctl", scope, "daemon-reload"], capture_output=True)
 
         return True, f"Removed {self.service_name}"
 
@@ -408,9 +372,7 @@ class LinuxInstaller(PlatformInstaller):
         scope = "--user" if not self.system_wide else "--system"
 
         result = subprocess.run(
-            ["systemctl", scope, "is-active", self.service_name],
-            capture_output=True,
-            text=True
+            ["systemctl", scope, "is-active", self.service_name], capture_output=True, text=True
         )
 
         is_active = result.returncode == 0
@@ -430,9 +392,7 @@ class LinuxInstaller(PlatformInstaller):
         scope = "--user" if not self.system_wide else "--system"
 
         result = subprocess.run(
-            ["systemctl", scope, "start", self.service_name],
-            capture_output=True,
-            text=True
+            ["systemctl", scope, "start", self.service_name], capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -449,9 +409,7 @@ class LinuxInstaller(PlatformInstaller):
         scope = "--user" if not self.system_wide else "--system"
 
         result = subprocess.run(
-            ["systemctl", scope, "stop", self.service_name],
-            capture_output=True,
-            text=True
+            ["systemctl", scope, "stop", self.service_name], capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -468,9 +426,7 @@ class LinuxInstaller(PlatformInstaller):
 
 
 def get_installer(
-    workspace: Path,
-    agent_name: str,
-    room_port: int = 7373
+    workspace: Path, agent_name: str, room_port: int = 7373
 ) -> Optional[PlatformInstaller]:
     """Factory function to get the appropriate installer for the current platform.
 
@@ -505,8 +461,5 @@ def check_sudo() -> bool:
     Returns:
         True if sudo -n succeeds (no password required), False otherwise.
     """
-    result = subprocess.run(
-        ["sudo", "-n", "true"],
-        capture_output=True
-    )
+    result = subprocess.run(["sudo", "-n", "true"], capture_output=True)
     return result.returncode == 0

@@ -1,8 +1,8 @@
 /**
  * AspirationsShelf — Built-in shelf for aspirations & projects
- * 
+ *
  * Data source: ~/.emergence/state/aspirations.json
- * 
+ *
  * Structure:
  * {
  *   "aspirations": [
@@ -56,7 +56,7 @@ const manifest = {
 async function resolveData(config) {
   const stateDir = config?.paths?.state || `${process.env.HOME}/.emergence/state`;
   const filePath = `${stateDir}/aspirations.json`;
-  
+
   // Create empty file if missing
   if (!existsSync(filePath)) {
     const emptyData = {
@@ -67,7 +67,7 @@ async function resolveData(config) {
         updatedAt: new Date().toISOString(),
       },
     };
-    
+
     try {
       mkdirSync(dirname(filePath), { recursive: true });
       writeFileSync(filePath, JSON.stringify(emptyData, null, 2), 'utf-8');
@@ -76,16 +76,16 @@ async function resolveData(config) {
       return emptyData;
     }
   }
-  
+
   try {
     const raw = readFileSync(filePath, 'utf-8');
     const data = JSON.parse(raw);
-    
+
     // Validate structure
     if (!data.aspirations) data.aspirations = [];
     if (!data.projects) data.projects = [];
     if (!data.meta) data.meta = { version: 1, updatedAt: new Date().toISOString() };
-    
+
     return data;
   } catch (err) {
     console.error(`Failed to read ${filePath}:`, err);

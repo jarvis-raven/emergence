@@ -19,9 +19,10 @@ function HorizontalBar({ drive, isHighest, onClick, isExpanded }) {
     <div
       className={`
         group cursor-pointer rounded-lg px-2 py-1.5 transition-all duration-200
-        ${isExpanded
-          ? `${bandColors.bg} border ${bandColors.border}`
-          : `border border-transparent hover:${bandColors.bg}`
+        ${
+          isExpanded
+            ? `${bandColors.bg} border ${bandColors.border}`
+            : `border border-transparent hover:${bandColors.bg}`
         }
       `}
       onClick={onClick}
@@ -34,17 +35,21 @@ function HorizontalBar({ drive, isHighest, onClick, isExpanded }) {
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1.5">
           {bandIcon && <span className="text-[10px]">{bandIcon}</span>}
-          <span className={`
+          <span
+            className={`
             text-[11px] font-medium uppercase tracking-wider
             ${bandColors.text}
-          `}>
+          `}
+          >
             {name}
           </span>
         </div>
-        <span className={`
+        <span
+          className={`
           text-[11px] font-mono font-bold
           ${bandColors.text}
-        `}>
+        `}
+        >
           {percentage}%
         </span>
       </div>
@@ -52,14 +57,20 @@ function HorizontalBar({ drive, isHighest, onClick, isExpanded }) {
       {/* Horizontal bar with threshold markers */}
       <div className="relative h-2 bg-background/60 rounded-full overflow-hidden">
         {/* Threshold markers */}
-        <div className="absolute bottom-0 h-full border-l border-dashed border-emerald-500/20" style={{ left: '30%' }} />
-        <div className="absolute bottom-0 h-full border-l border-dashed border-yellow-500/20" style={{ left: '75%' }} />
-        
+        <div
+          className="absolute bottom-0 h-full border-l border-dashed border-emerald-500/20"
+          style={{ left: '30%' }}
+        />
+        <div
+          className="absolute bottom-0 h-full border-l border-dashed border-yellow-500/20"
+          style={{ left: '75%' }}
+        />
+
         {/* Fill bar with band colors */}
         <div
           className={`
             absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out
-            ${(band === 'crisis' || band === 'emergency') ? 'animate-pulse' : ''}
+            ${band === 'crisis' || band === 'emergency' ? 'animate-pulse' : ''}
           `}
           style={{
             width: `${displayWidth}%`,
@@ -73,7 +84,7 @@ function HorizontalBar({ drive, isHighest, onClick, isExpanded }) {
 
 /**
  * DriveSidebar — Compact left-column drives display
- * 
+ *
  * Horizontal pressure bars with awake/dream toggle.
  * Clicking a bar expands its detail card below.
  */
@@ -126,7 +137,7 @@ export default function DriveSidebar({ agentName = 'Agent' }) {
   if (drivesLoading && !drives.length) {
     return (
       <div className="p-4 space-y-3">
-        {[1,2,3,4,5].map(i => (
+        {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="animate-pulse">
             <div className="h-3 bg-background/50 rounded w-3/4 mb-1.5"></div>
             <div className="h-2 bg-background/50 rounded-full"></div>
@@ -141,7 +152,9 @@ export default function DriveSidebar({ agentName = 'Agent' }) {
     return (
       <div className="p-4 text-center">
         <p className="text-sm text-danger mb-2">Cannot load drives</p>
-        <button onClick={refetchDrives} className="text-xs text-accent hover:underline">Retry</button>
+        <button onClick={refetchDrives} className="text-xs text-accent hover:underline">
+          Retry
+        </button>
       </div>
     );
   }
@@ -158,10 +171,9 @@ export default function DriveSidebar({ agentName = 'Agent' }) {
             {isAwake ? `${agentName} is Awake` : `${agentName} is Dreaming`}
           </h2>
           <p className="text-[10px] text-textMuted mt-0.5">
-            {isAwake 
+            {isAwake
               ? `${triggeredDrives.length > 0 ? `${triggeredDrives.length} triggered` : `${drives.length} drives active`}`
-              : 'Processing memories'
-            }
+              : 'Processing memories'}
             {lastUpdated && (
               <span className="ml-1 opacity-70">
                 • {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -172,11 +184,13 @@ export default function DriveSidebar({ agentName = 'Agent' }) {
       </div>
 
       {/* Content */}
-      <div className={`
+      <div
+        className={`
         flex-1 overflow-y-auto min-h-0 p-2
         transition-all duration-600
         ${isTransitioning ? 'opacity-0' : 'opacity-100'}
-      `}>
+      `}
+      >
         {isAwake ? (
           <div className="space-y-1">
             {drives.map((drive) => (
@@ -185,9 +199,7 @@ export default function DriveSidebar({ agentName = 'Agent' }) {
                   drive={drive}
                   isHighest={drive.name === highestDrive?.name}
                   isExpanded={expandedDrive === drive.name}
-                  onClick={() => setExpandedDrive(
-                    expandedDrive === drive.name ? null : drive.name
-                  )}
+                  onClick={() => setExpandedDrive(expandedDrive === drive.name ? null : drive.name)}
                 />
                 {/* Expanded detail card */}
                 {expandedDrive === drive.name && (

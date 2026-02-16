@@ -48,12 +48,14 @@ record_access("MEMORY.md", access_type="write")
 ### 3. Nightly Maintenance
 
 **Automatic (via daemon):**
+
 ```bash
 # Already running if daemon is active
 # Check logs: ~/.openclaw/workspace/.emergence/logs/daemon.log
 ```
 
 **Manual:**
+
 ```bash
 python3 -m core.nautilus.nightly --verbose --register-recent
 ```
@@ -91,9 +93,9 @@ from core.nautilus import gravity
 
 db = gravity.get_db()
 recent = db.execute("""
-    SELECT path, last_accessed_at, access_count 
-    FROM gravity 
-    ORDER BY last_accessed_at DESC 
+    SELECT path, last_accessed_at, access_count
+    FROM gravity
+    ORDER BY last_accessed_at DESC
     LIMIT 10
 """).fetchall()
 
@@ -145,16 +147,16 @@ sqlite3 ~/.openclaw/state/nautilus/gravity.db "SELECT COUNT(*) FROM gravity"
 
 ## Configuration Reference
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `enabled` | `true` | Enable Nautilus |
-| `nightly_enabled` | `true` | Enable nightly maintenance |
-| `nightly_hour` | `2` | Preferred hour (0-23) |
-| `nightly_minute` | `30` | Preferred minute (0-59) |
-| `gravity_db` | `~/.openclaw/state/nautilus/gravity.db` | DB path |
-| `memory_dir` | `"memory"` | Memory directory |
-| `decay_rate` | `0.05` | Gravity decay rate |
-| `recency_half_life_days` | `14` | Recency decay half-life |
+| Option                   | Default                                 | Description                |
+| ------------------------ | --------------------------------------- | -------------------------- |
+| `enabled`                | `true`                                  | Enable Nautilus            |
+| `nightly_enabled`        | `true`                                  | Enable nightly maintenance |
+| `nightly_hour`           | `2`                                     | Preferred hour (0-23)      |
+| `nightly_minute`         | `30`                                    | Preferred minute (0-59)    |
+| `gravity_db`             | `~/.openclaw/state/nautilus/gravity.db` | DB path                    |
+| `memory_dir`             | `"memory"`                              | Memory directory           |
+| `decay_rate`             | `0.05`                                  | Gravity decay rate         |
+| `recency_half_life_days` | `14`                                    | Recency decay half-life    |
 
 ## API Reference
 

@@ -6,4 +6,4 @@
 
 ---
 
-*This file is yours to evolve. Update it as you discover who you are.*
+_This file is yours to evolve. Update it as you discover who you are._

@@ -1,6 +1,6 @@
 /**
  * MobileNav — Bottom navigation for mobile devices
- * 
+ *
  * Shows on screens < 1024px. Tabs matching Room's panels.
  * Center tab (Drives) is elevated and highlighted.
  */
@@ -11,7 +11,7 @@ const tabs = [
   { id: 'drives', icon: '🧠', label: 'Home' },
   { id: 'aspirations', icon: '✨', label: 'Aspirations' },
   { id: 'projects', icon: '🚀', label: 'Projects' },
-]
+];
 
 export default function MobileNav({ activeTab, onTabChange }) {
   return (
@@ -20,9 +20,9 @@ export default function MobileNav({ activeTab, onTabChange }) {
         className="flex justify-around items-end px-2 pt-1"
         style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
       >
-        {tabs.map(tab => {
-          const active = activeTab === tab.id
-          const isCenter = tab.id === 'drives'
+        {tabs.map((tab) => {
+          const active = activeTab === tab.id;
+          const isCenter = tab.id === 'drives';
           return (
             <button
               key={tab.id}
@@ -62,9 +62,9 @@ export default function MobileNav({ activeTab, onTabChange }) {
                 {tab.label}
               </span>
             </button>
-          )
+          );
         })}
       </div>
     </nav>
-  )
+  );
 }

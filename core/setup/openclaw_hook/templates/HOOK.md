@@ -1,7 +1,7 @@
 ---
 name: emergence-drives
-description: "Injects lightweight drive state (drives-state.json) into agent context at bootstrap"
-metadata: { "openclaw": { "emoji": "🧠", "events": ["agent:bootstrap"] } }
+description: 'Injects lightweight drive state (drives-state.json) into agent context at bootstrap'
+metadata: { 'openclaw': { 'emoji': '🧠', 'events': ['agent:bootstrap'] } }
 ---
 
 # Emergence Drives Bootstrap
@@ -18,6 +18,7 @@ Injects the agent's current drive pressures into the session context at startup.
 ## How It Finds the State File
 
 Search order:
+
 1. `EMERGENCE_CONFIG` env var → resolve state path from config
 2. `<workspace>/emergence.json` → read `paths.state` relative to config dir
 3. `<workspace>/../state/drives-state.json` (common OpenClaw layout)

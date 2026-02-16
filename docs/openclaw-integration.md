@@ -164,7 +164,7 @@ emergence init --workspace . --mode fresh
     "session_timeout": 900,
     "session_model": "anthropic/claude-sonnet-4-5",
     "announce_session": false,
-    "openclaw_path": "/custom/path/to/openclaw"  // Override auto-detection
+    "openclaw_path": "/custom/path/to/openclaw" // Override auto-detection
   },
   "memory": {
     "session_dir": "memory/sessions"
@@ -185,6 +185,7 @@ emergence openclaw-hook install
 ```
 
 This creates `~/.openclaw/hooks/emergence-drives/` with:
+
 - `handler.ts` — Finds your drives-state.json and formats it
 - `HOOK.md` — Documentation
 
@@ -200,7 +201,8 @@ Every session will include a `DRIVES.md` bootstrap file showing current drive pr
 
 ```markdown
 ## Drives State
-*11 drives, updated 2026-02-12T15:25:42+00:00*
+
+_11 drives, updated 2026-02-12T15:25:42+00:00_
 
 🟡 CARE: 19.3/20 (97%)
 🟢 MAINTENANCE: 30.1/40 (75%)
@@ -215,6 +217,7 @@ emergence openclaw-hook status
 ```
 
 Shows:
+
 - Hook installation status
 - Gateway status
 - File integrity
@@ -296,6 +299,7 @@ Open `http://localhost:7373` (or the port shown in terminal).
 **Solution:** Fixed in v0.2.3+. The completion command now uses dynamic workspace paths and venv python automatically.
 
 If you're on an older version:
+
 ```bash
 pip install --upgrade emergence-ai
 ```
@@ -321,4 +325,4 @@ emergence drives daemon start
 
 ---
 
-*Last updated: 2026-02-12*
+_Last updated: 2026-02-12_

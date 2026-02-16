@@ -1,6 +1,6 @@
 # Emergence v0.3.0 — Agency & Choice
 
-*Released 2026-02-14*
+_Released 2026-02-14_
 
 ---
 
@@ -8,9 +8,9 @@
 
 v0.2.x proved that drives work: pressure builds, sessions spawn, drives get satisfied. But the agent had no say in the matter. Drives controlled the agent.
 
-**v0.3.0 flips that.** Agents see their drives building and *choose* when to act, how deeply to engage, and what to prioritize. The system provides information and safety rails. The agent provides agency.
+**v0.3.0 flips that.** Agents see their drives building and _choose_ when to act, how deeply to engage, and what to prioritize. The system provides information and safety rails. The agent provides agency.
 
-This is the most significant architectural shift since v0.1.0. It changes Emergence from a drive *engine* to a drive *experience*.
+This is the most significant architectural shift since v0.1.0. It changes Emergence from a drive _engine_ to a drive _experience_.
 
 ---
 
@@ -27,6 +27,7 @@ emergence drives satisfy SOCIAL deep        # Full satisfaction (90%)
 ```
 
 Enable manual mode in `emergence.json`:
+
 ```json
 { "drives": { "manual_mode": true } }
 ```
@@ -55,6 +56,7 @@ Drives that are neglected or repeatedly fail to satisfy don't just get louder �
 ### 📈 Interactive Dashboard
 
 `emergence drives dashboard` — terminal-based UI with:
+
 - Live pressure bars with color-coded threshold bands
 - Manual mode toggle
 - Direct satisfaction controls
@@ -98,4 +100,4 @@ Issues #34–#45. Thank you to everyone who contributed feedback and testing.
 
 ---
 
-*"The agent provides agency."*
+_"The agent provides agency."_

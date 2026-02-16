@@ -1,6 +1,6 @@
 /**
  * Nautilus Routes — GET /api/nautilus/status
- * 
+ *
  * Returns Nautilus memory system status
  * - Gravity: total chunks, accesses, DB stats
  * - Chambers: atrium/corridor/vault distribution
@@ -22,54 +22,51 @@ const router = Router();
 router.get('/status', async (req, res) => {
   try {
     // Call emergence CLI for nautilus status
-    const { stdout, stderr } = await execAsync(
-      'python3 -m core.cli nautilus status',
-      { 
-        cwd: process.env.EMERGENCE_ROOT || `${process.env.HOME}/projects/emergence`,
-        timeout: 5000 
-      }
-    );
-    
+    const { stdout, stderr } = await execAsync('python3 -m core.cli nautilus status', {
+      cwd: process.env.EMERGENCE_ROOT || `${process.env.HOME}/projects/emergence`,
+      timeout: 5000,
+    });
+
     if (stderr && !stdout) {
       console.error('Nautilus CLI error:', stderr);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to get Nautilus status',
-        details: stderr 
+        details: stderr,
       });
     }
-    
+
     // Parse JSON output
     const data = JSON.parse(stdout);
     const nautilus = data['🐚 nautilus'] || data.nautilus;
-    
+
     if (!nautilus) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Unexpected Nautilus response format',
-        raw: data
+        raw: data,
       });
     }
-    
+
     // Extract and normalize data
     const gravity = nautilus.phase_1_gravity || {};
     const chambers = nautilus.phase_2_chambers || {};
     const doors = nautilus.phase_3_doors || {};
     const mirrors = nautilus.phase_4_mirrors || {};
     const summaryFiles = nautilus.summary_files || {};
-    
+
     // Calculate percentages
     const totalChunks = gravity.total_chunks || 0;
     const chamberCategorized = (chambers.atrium || 0) + (chambers.corridor || 0);
     const chamberUnknown = chambers.unknown || 0;
     const chamberTotal = chamberCategorized + chamberUnknown;
-    
+
     const doorTagged = doors.tagged_files || 0;
     const doorTotal = doors.total_files || 0;
     const doorCoverage = doorTotal > 0 ? (doorTagged / doorTotal) * 100 : 0;
-    
+
     const mirrorTotal = mirrors.total_events || 0;
     const mirrorFull = mirrors.fully_mirrored || 0;
     const mirrorCoverage = mirrors.coverage || {};
-    
+
     // Build response
     const response = {
       timestamp: new Date().toISOString(),
@@ -110,14 +107,14 @@ router.get('/status', async (req, res) => {
       },
       _raw: nautilus, // Include raw data for debugging
     };
-    
+
     res.json(response);
   } catch (err) {
     console.error('Nautilus status error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to get Nautilus status',
       message: err.message,
-      details: err.stderr || err.stdout
+      details: err.stderr || err.stdout,
     });
   }
 });

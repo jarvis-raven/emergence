@@ -5,8 +5,8 @@
 
 ## About {{HUMAN_NAME}}
 
-*(I'll learn more as we spend time together.)*
+_(I'll learn more as we spend time together.)_
 
 ---
 
-*Updated: {{CREATED_DATE}} (seed file — first version)*
+_Updated: {{CREATED_DATE}} (seed file — first version)_

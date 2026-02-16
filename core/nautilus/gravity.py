@@ -23,11 +23,10 @@ Usage:
 import sqlite3
 import json
 import sys
-import os
 import math
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 
 from . import config
 from .logging_config import get_logger

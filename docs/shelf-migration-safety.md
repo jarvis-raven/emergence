@@ -5,6 +5,7 @@
 When users upgrade Emergence via `pip install --upgrade emergence-ai`, the `room/server/shelves/index.js` file gets replaced, losing any custom builtin shelf registrations.
 
 **Current behavior:**
+
 - Builtins hardcoded in `index.js` → replaced on upgrade
 - Custom shelves in `~/.openclaw/state/shelves/` → safe from upgrades ✅
 - Custom builtin registrations → lost on upgrade ❌
@@ -37,20 +38,20 @@ When users upgrade Emergence via `pip install --upgrade emergence-ai`, the `room
 export async function initializeShelves(config) {
   const statePath = getStatePath(config, '');
   const registry = new ShelfRegistry(statePath);
-  
+
   // Load user preferences
   const userConfig = loadUserShelfConfig();
-  
+
   // Register built-in shelves (always available, but respect user enable/disable)
   const builtinDefs = {
-    'budget': BudgetTransparencyShelf,
-    'drives': DrivesShelf,
+    budget: BudgetTransparencyShelf,
+    drives: DrivesShelf,
     'pending-reviews': PendingReviewsShelf,
     'latent-drives': LatentDrivesShelf,
-    'memory': MemoryShelf,
-    'aspirations': AspirationsShelf,
+    memory: MemoryShelf,
+    aspirations: AspirationsShelf,
   };
-  
+
   for (const [id, def] of Object.entries(builtinDefs)) {
     const userPref = userConfig.builtins?.[id];
     if (userPref?.enabled !== false) {
@@ -61,10 +62,10 @@ export async function initializeShelves(config) {
       registry.registerBuiltin(def);
     }
   }
-  
+
   // Discover custom shelves from statePath/shelves/
   await registry.discover();
-  
+
   // Apply user preferences to custom shelves
   for (const [id, pref] of Object.entries(userConfig.custom || {})) {
     if (pref.enabled === false) {
@@ -74,12 +75,12 @@ export async function initializeShelves(config) {
       registry.setShelfPriority(id, pref.priority);
     }
   }
-  
+
   const all = registry.getAll();
-  const builtinCount = all.filter(s => s.isBuiltin).length;
-  const customCount = all.filter(s => !s.isBuiltin).length;
+  const builtinCount = all.filter((s) => s.isBuiltin).length;
+  const customCount = all.filter((s) => !s.isBuiltin).length;
   console.log(`📚 Shelves: ${builtinCount} built-in, ${customCount} custom discovered`);
-  
+
   return registry;
 }
 
@@ -118,11 +119,11 @@ function loadUserShelfConfig() {
 export async function initializeShelves(config) {
   const statePath = getStatePath(config, '');
   const registry = new ShelfRegistry(statePath);
-  
+
   // Load builtin manifest
   const builtinsPath = new URL('./builtins.json', import.meta.url);
   const builtins = JSON.parse(readFileSync(builtinsPath, 'utf-8'));
-  
+
   // Dynamically import and register
   for (const def of builtins) {
     try {
@@ -133,9 +134,9 @@ export async function initializeShelves(config) {
       console.error(`Failed to load builtin shelf ${def.id}:`, err.message);
     }
   }
-  
+
   await registry.discover();
-  
+
   return registry;
 }
 ```
@@ -174,6 +175,7 @@ When users upgrade to v0.2.2:
 4. **Recommend:** "Run `emergence shelves list` to customize"
 
 This ensures:
+
 - Existing users get seamless upgrade
 - New users get config file from `emerge init`
 - Custom shelves never break on upgrade

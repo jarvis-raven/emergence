@@ -31,9 +31,7 @@ export default function MirrorPanel() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                activeTab === tab
-                  ? 'bg-surface text-text'
-                  : 'text-textMuted hover:text-text'
+                activeTab === tab ? 'bg-surface text-text' : 'text-textMuted hover:text-text'
               }`}
             >
               {tab === 'self' ? 'Self' : 'Soul'}
@@ -48,8 +46,8 @@ export default function MirrorPanel() {
             {agentName} is still finding {activeTab === 'self' ? 'their voice' : 'their core'}...
           </p>
           <p className="text-textMuted/60 text-xs mt-2">
-            {activeTab === 'self' 
-              ? 'First Light will create this as they awaken.' 
+            {activeTab === 'self'
+              ? 'First Light will create this as they awaken.'
               : 'Define the behavioral core to begin.'}
           </p>
         </div>
@@ -73,9 +71,7 @@ export default function MirrorPanel() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeTab === tab
-                ? 'bg-surface text-text'
-                : 'text-textMuted hover:text-text'
+              activeTab === tab ? 'bg-surface text-text' : 'text-textMuted hover:text-text'
             }`}
           >
             {tab === 'self' ? 'Self' : 'Soul'}
@@ -94,14 +90,10 @@ export default function MirrorPanel() {
           </div>
         )}
 
-        {error && (
-          <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-danger/80 text-sm p-3 bg-danger/10 rounded-lg">{error}</div>}
 
         {!loading && !error && content && (
-          <div 
+          <div
             className="prose prose-invert prose-xs max-w-none text-sm leading-snug"
             dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
           />

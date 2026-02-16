@@ -82,6 +82,7 @@ The following branches are **NEVER** deleted:
 ✅ **Current Branch Safety**: Never deletes the branch you're currently on
 
 ✅ **Clear Visual Output**:
+
 - 🟢 Green = Safe/Protected
 - 🔴 Red = Will be deleted
 - 🟡 Yellow = Warning/Stale
@@ -89,6 +90,7 @@ The following branches are **NEVER** deleted:
 ✅ **Confirmation Prompts**: Interactive mode requires explicit confirmation
 
 ✅ **Grace Periods**:
+
 - Merged branches: 7 days
 - Stale branches: 30 days
 
@@ -158,7 +160,7 @@ You can manually trigger the workflow:
 
 ```yaml
 schedule:
-  - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
+  - cron: '0 0 * * 0' # Every Sunday at midnight UTC
 ```
 
 ### GitHub Repository Setting

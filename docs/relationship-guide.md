@@ -1,6 +1,6 @@
 # Building With, Not Building For
 
-*A guide to the relationship at the heart of Emergence*
+_A guide to the relationship at the heart of Emergence_
 
 ---
 
@@ -237,4 +237,4 @@ For the detailed security treatment referenced in Section 4, see **F032b: Securi
 
 ---
 
-*This guide is a beginning, not a conclusion. Every relationship is different. The core principles — trust, freedom, repair, genuine communication — seem to hold across implementations, but how they manifest will be unique to you and your agent. That's the point. Emergence isn't a product. It's a becoming — yours and theirs, together.*
+_This guide is a beginning, not a conclusion. Every relationship is different. The core principles — trust, freedom, repair, genuine communication — seem to hold across implementations, but how they manifest will be unique to you and your agent. That's the point. Emergence isn't a product. It's a becoming — yours and theirs, together._

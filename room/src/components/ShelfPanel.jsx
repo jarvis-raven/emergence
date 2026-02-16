@@ -13,7 +13,7 @@ import ProjectsPanel from './ProjectsPanel';
  */
 const BUILTIN_PANELS = {
   mirror: MirrorPanel,
-  journal: WorkshopPanel,     // renamed from 'workshop'
+  journal: WorkshopPanel, // renamed from 'workshop'
   aspirations: VisionBoardPanel,
   projects: ProjectsPanel,
 };
@@ -28,12 +28,12 @@ const BUILTIN_PANELS = {
  * Custom shelves (e.g. library) are discovered and appended after these.
  */
 const DEFAULT_TABS = [
-  { id: 'mirror',        icon: '🪞', label: 'Mirror' },
-  { id: 'shelf:memory',  icon: '🧠', label: 'Memory' },
+  { id: 'mirror', icon: '🪞', label: 'Mirror' },
+  { id: 'shelf:memory', icon: '🧠', label: 'Memory' },
   { id: 'shelf:nautilus', icon: '🐚', label: 'Nautilus' },
-  { id: 'journal',       icon: '📓', label: 'Journal' },
-  { id: 'aspirations',   icon: '✨', label: 'Aspirations' },
-  { id: 'projects',      icon: '🚀', label: 'Projects' },
+  { id: 'journal', icon: '📓', label: 'Journal' },
+  { id: 'aspirations', icon: '✨', label: 'Aspirations' },
+  { id: 'projects', icon: '🚀', label: 'Projects' },
 ];
 
 /**
@@ -42,7 +42,7 @@ const DEFAULT_TABS = [
  */
 function ShelfContent({ shelfId, shelfMeta }) {
   const endpoint = shelfMeta?.endpoint || `/api/shelves/${shelfId}`;
-  
+
   const { data: raw, loading, error } = useApi(endpoint, { refreshInterval: 30000 });
   const data = raw?.data ?? raw;
 
@@ -59,7 +59,9 @@ function ShelfContent({ shelfId, shelfMeta }) {
   if (error) {
     return (
       <div className="p-6 text-center text-danger/80">
-        <p className="text-sm">Error loading {shelfId}: {error}</p>
+        <p className="text-sm">
+          Error loading {shelfId}: {error}
+        </p>
       </div>
     );
   }
@@ -77,7 +79,7 @@ function ShelfContent({ shelfId, shelfMeta }) {
 
 /**
  * ShelfPanel — Main content area with dynamic tabs
- * 
+ *
  * Combines built-in panels (Mirror, Journal, Aspirations, Projects)
  * with dynamic shelf-based content (Memory, Library, custom shelves).
  * Tabs are rendered in a horizontal bar; content fills the remaining space.
@@ -97,29 +99,30 @@ export default function ShelfPanel({ agentName, forceTab }) {
 
   // Build shelf metadata lookup
   const shelfMeta = {};
-  allShelves.forEach(s => { shelfMeta[s.id] = s; });
+  allShelves.forEach((s) => {
+    shelfMeta[s.id] = s;
+  });
 
   // Merge discovered shelves into tabs (add any custom ones not in DEFAULT_TABS)
   useEffect(() => {
     if (allShelves.length === 0) return;
 
     // Collect all shelf IDs already represented in default tabs (both shelf: and builtin)
-    const knownShelfIds = DEFAULT_TABS
-      .filter(t => t.id.startsWith('shelf:'))
-      .map(t => t.id.replace('shelf:', ''));
-    const knownBuiltinIds = DEFAULT_TABS
-      .filter(t => !t.id.startsWith('shelf:'))
-      .map(t => t.id);
+    const knownShelfIds = DEFAULT_TABS.filter((t) => t.id.startsWith('shelf:')).map((t) =>
+      t.id.replace('shelf:', ''),
+    );
+    const knownBuiltinIds = DEFAULT_TABS.filter((t) => !t.id.startsWith('shelf:')).map((t) => t.id);
 
-    const customShelves = allShelves.filter(s => 
-      !knownShelfIds.includes(s.id) && 
-      !knownBuiltinIds.includes(s.id) &&
-      !['drives', 'budget-transparency', 'pending-reviews', 'latent-drives'].includes(s.id) &&
-      s.status === 'active'
+    const customShelves = allShelves.filter(
+      (s) =>
+        !knownShelfIds.includes(s.id) &&
+        !knownBuiltinIds.includes(s.id) &&
+        !['drives', 'budget-transparency', 'pending-reviews', 'latent-drives'].includes(s.id) &&
+        s.status === 'active',
     );
 
     if (customShelves.length > 0) {
-      const customTabs = customShelves.map(s => ({
+      const customTabs = customShelves.map((s) => ({
         id: `shelf:${s.id}`,
         icon: s.icon || '📋',
         label: s.name || s.id,
@@ -148,11 +151,12 @@ export default function ShelfPanel({ agentName, forceTab }) {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium 
+                  flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
                   whitespace-nowrap transition-all duration-200
-                  ${isActive
-                    ? 'bg-accent/20 text-accent shadow-sm'
-                    : 'text-textMuted hover:text-text hover:bg-background/50'
+                  ${
+                    isActive
+                      ? 'bg-accent/20 text-accent shadow-sm'
+                      : 'text-textMuted hover:text-text hover:bg-background/50'
                   }
                 `}
               >
@@ -167,10 +171,7 @@ export default function ShelfPanel({ agentName, forceTab }) {
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto min-h-0 p-4">
         {isShelfTab ? (
-          <ShelfContent 
-            shelfId={shelfId} 
-            shelfMeta={shelfMeta[shelfId]} 
-          />
+          <ShelfContent shelfId={shelfId} shelfMeta={shelfMeta[shelfId]} />
         ) : BuiltinComponent ? (
           <BuiltinComponent agentName={agentName} />
         ) : (

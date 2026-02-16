@@ -1,6 +1,6 @@
 /**
  * File Reader — Safe file reading with error handling
- * 
+ *
  * All file reads go through here for consistent error handling.
  * Missing files return null instead of throwing.
  */
@@ -10,7 +10,7 @@ import { join, dirname } from 'path';
 
 /**
  * Safely read a text file
- * 
+ *
  * @param {string} path - File path
  * @returns {string|null} File content or null if not found/error
  */
@@ -28,7 +28,7 @@ export function readTextFile(path) {
 
 /**
  * Safely read and parse JSON
- * 
+ *
  * @param {string} path - File path
  * @returns {object|null} Parsed JSON or null if not found/error
  */
@@ -51,7 +51,7 @@ export function readJsonFile(path) {
 
 /**
  * Safely write JSON file
- * 
+ *
  * @param {string} path - File path
  * @param {object} data - Data to write
  * @returns {boolean} Success
@@ -62,7 +62,7 @@ export function writeJsonFile(path, data) {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    
+
     writeFileSync(path, JSON.stringify(data, null, 2));
     return true;
   } catch (err) {
@@ -73,7 +73,7 @@ export function writeJsonFile(path, data) {
 
 /**
  * List files in directory matching pattern
- * 
+ *
  * @param {string} dir - Directory path
  * @param {RegExp} pattern - Filename pattern to match
  * @returns {string[]} Matching filenames
@@ -83,14 +83,14 @@ export function listFiles(dir, pattern = null) {
     if (!existsSync(dir)) {
       return [];
     }
-    
+
     const files = readdirSync(dir);
-    
+
     if (!pattern) {
       return files;
     }
-    
-    return files.filter(f => pattern.test(f));
+
+    return files.filter((f) => pattern.test(f));
   } catch (err) {
     console.error(`Error listing ${dir}:`, err.message);
     return [];
@@ -99,7 +99,7 @@ export function listFiles(dir, pattern = null) {
 
 /**
  * Get file stats
- * 
+ *
  * @param {string} path - File path
  * @returns {object|null} Stats or null
  */
@@ -116,7 +116,7 @@ export function getFileStats(path) {
 
 /**
  * Get directory size recursively
- * 
+ *
  * @param {string} dir - Directory path
  * @returns {number} Total size in bytes
  */
@@ -125,10 +125,10 @@ export function getDirectorySize(dir) {
     if (!existsSync(dir)) {
       return 0;
     }
-    
+
     const files = readdirSync(dir, { withFileTypes: true });
     let total = 0;
-    
+
     for (const file of files) {
       const path = join(dir, file.name);
       if (file.isDirectory()) {
@@ -140,7 +140,7 @@ export function getDirectorySize(dir) {
         }
       }
     }
-    
+
     return total;
   } catch (err) {
     return 0;
@@ -149,7 +149,7 @@ export function getDirectorySize(dir) {
 
 /**
  * Count files in directory matching pattern
- * 
+ *
  * @param {string} dir - Directory path
  * @param {RegExp} pattern - Filename pattern
  * @returns {number} Count
@@ -159,14 +159,14 @@ export function countFiles(dir, pattern = null) {
     if (!existsSync(dir)) {
       return 0;
     }
-    
+
     const files = readdirSync(dir, { withFileTypes: true });
-    
+
     if (!pattern) {
-      return files.filter(f => f.isFile()).length;
+      return files.filter((f) => f.isFile()).length;
     }
-    
-    return files.filter(f => f.isFile() && pattern.test(f.name)).length;
+
+    return files.filter((f) => f.isFile() && pattern.test(f.name)).length;
   } catch (err) {
     return 0;
   }

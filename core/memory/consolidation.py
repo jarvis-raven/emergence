@@ -34,12 +34,13 @@ OPENROUTER_DEFAULT_MODEL = "mistralai/mistral-nemo"
 
 # --- Configuration ---
 
+
 def load_config(config_path: Optional[Path] = None) -> dict:
     """Load configuration from emergence.json.
-    
+
     Args:
         config_path: Optional explicit path to config file
-        
+
     Returns:
         Configuration dictionary with defaults applied
     """
@@ -54,20 +55,19 @@ def load_config(config_path: Optional[Path] = None) -> dict:
         },
         "paths": {"workspace": ".", "state": ".emergence/state"},
     }
-    
+
     if config_path is None:
         config_path = DEFAULT_CONFIG
-    
+
     if not config_path.exists():
         return defaults
-    
+
     try:
         content = config_path.read_text(encoding="utf-8")
         # Strip comment lines (// or # at start)
-        lines = [ln for ln in content.split("\n") 
-                 if not ln.strip().startswith(("//", "#"))]
+        lines = [ln for ln in content.split("\n") if not ln.strip().startswith(("//", "#"))]
         loaded = json.loads("\n".join(lines))
-        
+
         # Merge with defaults
         merged = defaults.copy()
         for key, value in loaded.items():
@@ -102,15 +102,16 @@ def get_state_file(config: dict) -> Path:
 
 # --- YAML Frontmatter Parsing ---
 
+
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     """Parse YAML frontmatter from markdown content.
-    
+
     Args:
         content: Full markdown content with optional frontmatter
-        
+
     Returns:
         Tuple of (metadata dict, body content)
-        
+
     Example:
         >>> content = "---\\ndrive: CURIOSITY\\ntimestamp: 2026-02-07T14:30:00Z\\n---\\nBody"
         >>> meta, body = parse_frontmatter(content)
@@ -119,14 +120,14 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     """
     if not content.startswith("---"):
         return {}, content
-    
+
     parts = content.split("---", 2)
     if len(parts) < 3:
         return {}, content
-    
+
     fm_text = parts[1].strip()
     body = parts[2].strip()
-    
+
     # Simple key: value parsing (sufficient for our frontmatter)
     metadata = {}
     for line in fm_text.split("\n"):
@@ -138,17 +139,18 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
             key = key.strip()
             val = val.strip().strip('"').strip("'")
             metadata[key] = val
-    
+
     return metadata, body
 
 
 # --- State Management ---
 
+
 def load_state(state_file: Path) -> dict:
     """Load consolidation state from JSON file."""
     if not state_file.exists():
         return {"version": "1.0", "consolidated": []}
-    
+
     try:
         content = state_file.read_text(encoding="utf-8")
         return json.loads(content)
@@ -158,11 +160,11 @@ def load_state(state_file: Path) -> dict:
 
 def save_state(state_file: Path, state: dict) -> bool:
     """Save consolidation state atomically (write .tmp, then rename).
-    
+
     Args:
         state_file: Path to state file
         state: State dictionary to save
-        
+
     Returns:
         True if saved successfully
     """
@@ -195,28 +197,26 @@ def mark_consolidated(state: dict, filepath: Path) -> dict:
 
 # --- File Discovery ---
 
+
 def discover_sessions(session_dir: Path, state: dict) -> list[Path]:
     """Discover unconsolidated session files.
-    
+
     Args:
         session_dir: Directory containing session files
         state: Current consolidation state
-        
+
     Returns:
         List of Path objects for unconsolidated session files
     """
     if not session_dir.exists():
         return []
-    
+
     pattern = str(session_dir / SESSION_PATTERN)
     files = [Path(f) for f in glob(pattern)]
-    
+
     # Filter out already consolidated and non-markdown files
-    unconsolidated = [
-        f for f in files 
-        if f.suffix == ".md" and not is_consolidated(state, f)
-    ]
-    
+    unconsolidated = [f for f in files if f.suffix == ".md" and not is_consolidated(state, f)]
+
     # Sort by filename (which includes timestamp) for chronological order
     unconsolidated.sort(key=lambda p: p.name)
     return unconsolidated
@@ -224,10 +224,10 @@ def discover_sessions(session_dir: Path, state: dict) -> list[Path]:
 
 def get_target_date(metadata: dict) -> str:
     """Determine target daily memory date from session metadata.
-    
+
     Args:
         metadata: Session metadata dict with optional timestamp
-        
+
     Returns:
         Date string in YYYY-MM-DD format
     """
@@ -239,20 +239,21 @@ def get_target_date(metadata: dict) -> str:
             return dt.strftime("%Y-%m-%d")
         except (ValueError, AttributeError):
             pass
-    
+
     # Default to today
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 # --- LLM Analysis ---
 
+
 def build_consolidation_prompt(metadata: dict, body: str) -> str:
     """Build the LLM prompt for insight extraction.
-    
+
     Args:
         metadata: Session metadata (drive, timestamp, pressure, etc.)
         body: Session body content
-        
+
     Returns:
         Formatted prompt string
     """
@@ -260,12 +261,12 @@ def build_consolidation_prompt(metadata: dict, body: str) -> str:
     timestamp = metadata.get("timestamp", "unknown time")
     pressure = metadata.get("pressure", "unknown")
     trigger = metadata.get("trigger", "unknown")
-    
+
     # Truncate body to stay within token limits (approx 8000 chars)
     truncated_body = body[:8000] if len(body) > 8000 else body
     if len(body) > 8000:
         truncated_body += "\n\n[... content truncated ...]"
-    
+
     return f"""Summarize this autonomous session for daily memory consolidation.
 
 SESSION METADATA:
@@ -288,31 +289,30 @@ Keep it focused on what matters for future context. Write in third person."""
 
 def extract_with_ollama(prompt: str, config: Optional[dict] = None) -> Optional[str]:
     """Extract insights using local Ollama model.
-    
+
     Args:
         prompt: The consolidation prompt
         config: Configuration dictionary
-        
+
     Returns:
         Extracted summary text, or None if Ollama unavailable
     """
     ollama_url = (config or {}).get("consolidation", {}).get("ollama_url", OLLAMA_DEFAULT_URL)
     model = (config or {}).get("consolidation", {}).get("ollama_model", OLLAMA_DEFAULT_MODEL)
-    
-    req_data = json.dumps({
-        "model": model,
-        "prompt": prompt,
-        "stream": False,
-    }).encode("utf-8")
-    
+
+    req_data = json.dumps(
+        {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+        }
+    ).encode("utf-8")
+
     try:
         req = urllib.request.Request(
-            ollama_url,
-            data=req_data,
-            headers={"Content-Type": "application/json"},
-            method="POST"
+            ollama_url, data=req_data, headers={"Content-Type": "application/json"}, method="POST"
         )
-        
+
         with urllib.request.urlopen(req, timeout=120) as response:
             result = json.loads(response.read().decode("utf-8"))
             return result.get("response", "").strip()
@@ -322,99 +322,108 @@ def extract_with_ollama(prompt: str, config: Optional[dict] = None) -> Optional[
 
 def extract_with_openrouter(prompt: str, config: Optional[dict] = None) -> Optional[str]:
     """Extract insights using OpenRouter API.
-    
+
     Args:
         prompt: The consolidation prompt
         config: Configuration dictionary
-        
+
     Returns:
         Extracted summary text, or None if API unavailable/unconfigured
     """
     api_key = _get_openrouter_key(config)
     if not api_key:
         return None
-    
-    model = (config or {}).get("consolidation", {}).get(
-        "openrouter_model", 
-        config.get("lifecycle", {}).get("consolidation_model", OPENROUTER_DEFAULT_MODEL)
+
+    model = (
+        (config or {})
+        .get("consolidation", {})
+        .get(
+            "openrouter_model",
+            config.get("lifecycle", {}).get("consolidation_model", OPENROUTER_DEFAULT_MODEL),
+        )
     )
-    
-    req_data = json.dumps({
-        "model": model,
-        "max_tokens": 1000,
-        "temperature": 0.3,
-        "messages": [{"role": "user", "content": prompt}]
-    }).encode("utf-8")
-    
+
+    req_data = json.dumps(
+        {
+            "model": model,
+            "max_tokens": 1000,
+            "temperature": 0.3,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+    ).encode("utf-8")
+
     try:
         req = urllib.request.Request(
             OPENROUTER_DEFAULT_URL,
             data=req_data,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            method="POST"
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            method="POST",
         )
-        
+
         with urllib.request.urlopen(req, timeout=60) as response:
             result = json.loads(response.read().decode("utf-8"))
             return result["choices"][0]["message"]["content"].strip()
-    except (urllib.error.URLError, urllib.error.HTTPError, 
-            json.JSONDecodeError, KeyError, TimeoutError):
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        json.JSONDecodeError,
+        KeyError,
+        TimeoutError,
+    ):
         return None
 
 
 def extract_with_keywords(metadata: dict, body: str) -> str:
     """Extract basic summary using keyword patterns (fallback).
-    
+
     Args:
         metadata: Session metadata
         body: Session body content
-        
+
     Returns:
         Simple formatted summary
     """
     drive = metadata.get("drive", "UNKNOWN")
     timestamp = metadata.get("timestamp", "unknown time")
-    
+
     # Count some basic patterns
-    code_blocks = len(re.findall(r'```', body)) // 2
-    headers = len(re.findall(r'^##?\s+', body, re.MULTILINE))
-    links = len(re.findall(r'\[.*?\]\(.*?\)', body))
-    
+    code_blocks = len(re.findall(r"```", body)) // 2
+    headers = len(re.findall(r"^##?\s+", body, re.MULTILINE))
+    links = len(re.findall(r"\[.*?\]\(.*?\)", body))
+
     summary_parts = [f"Autonomous session driven by {drive} at {timestamp}."]
-    
+
     if code_blocks > 0:
         summary_parts.append(f"Included {code_blocks} code blocks.")
     if headers > 0:
         summary_parts.append(f"Contained {headers} sections.")
     if links > 0:
         summary_parts.append(f"Referenced {links} external links.")
-    
+
     # First line as preview if available
     first_line = body.strip().split("\n")[0][:100] if body.strip() else ""
     if first_line and not first_line.startswith("#"):
         summary_parts.append(f"Started with: {first_line}")
-    
+
     return " ".join(summary_parts)
 
 
-def extract_insights(metadata: dict, body: str, config: Optional[dict] = None,
-                     verbose: bool = False) -> str:
+def extract_insights(
+    metadata: dict, body: str, config: Optional[dict] = None, verbose: bool = False
+) -> str:
     """Orchestrator: Try Ollama → OpenRouter → keywords.
-    
+
     Args:
         metadata: Session metadata
         body: Session body content
         config: Configuration dictionary
         verbose: If True, print progress messages
-        
+
     Returns:
         Extracted summary text (always returns something)
     """
     prompt = build_consolidation_prompt(metadata, body)
-    
+
     # 1. Try Ollama first (local, free)
     if verbose:
         print("  🧠 Trying Ollama for insight extraction...")
@@ -425,7 +434,7 @@ def extract_insights(metadata: dict, body: str, config: Optional[dict] = None,
         return result
     if verbose:
         print("  ⚠ Ollama not available")
-    
+
     # 2. Try OpenRouter if configured
     if _get_openrouter_key(config):
         if verbose:
@@ -439,7 +448,7 @@ def extract_insights(metadata: dict, body: str, config: Optional[dict] = None,
             print("  ⚠ OpenRouter failed")
     elif verbose:
         print("  ⚠ OpenRouter not configured")
-    
+
     # 3. Fallback to keyword extraction
     if verbose:
         print("  🧠 Using keyword fallback...")
@@ -456,12 +465,12 @@ def _get_openrouter_key(config: Optional[dict] = None) -> Optional[str]:
         key = config.get("ingest", {}).get("openrouter_api_key")
         if key:
             return key
-    
+
     # 2. Environment variable
     key = os.environ.get("OPENROUTER_API_KEY")
     if key:
         return key
-    
+
     # 3. Key file
     key_file = Path.home() / ".openclaw" / "openrouter-key"
     if key_file.exists():
@@ -469,26 +478,27 @@ def _get_openrouter_key(config: Optional[dict] = None) -> Optional[str]:
             return key_file.read_text().strip()
         except IOError:
             pass
-    
+
     return None
 
 
 # --- Daily Memory Appending ---
 
+
 def format_consolidated_entry(metadata: dict, insights: str, source_file: Path) -> str:
     """Format a consolidated entry for daily memory.
-    
+
     Args:
         metadata: Session metadata
         insights: Extracted insights/summary
         source_file: Original session file path
-        
+
     Returns:
         Formatted markdown entry
     """
     drive = metadata.get("drive", "UNKNOWN")
     timestamp = metadata.get("timestamp", "")
-    
+
     # Parse timestamp for display
     time_str = ""
     if timestamp:
@@ -497,11 +507,11 @@ def format_consolidated_entry(metadata: dict, insights: str, source_file: Path) 
             time_str = dt.strftime("%H:%M GMT")
         except (ValueError, AttributeError):
             pass
-    
+
     header = f"## Consolidated Session — {drive}"
     if time_str:
         header += f" ({time_str})"
-    
+
     entry_parts = [
         "",
         header,
@@ -511,31 +521,31 @@ def format_consolidated_entry(metadata: dict, insights: str, source_file: Path) 
         f"*Source: `{source_file.name}`*",
         "",
     ]
-    
+
     return "\n".join(entry_parts)
 
 
 def append_to_daily(daily_path: Path, entry: str, dry_run: bool = False) -> bool:
     """Append consolidated entry to daily memory file atomically.
-    
+
     Args:
         daily_path: Path to daily memory file
         entry: Formatted entry to append
         dry_run: If True, don't actually write
-        
+
     Returns:
         True if successful (or dry_run)
     """
     if dry_run:
         return True
-    
+
     try:
         daily_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Append mode (create if doesn't exist)
         with open(daily_path, "a", encoding="utf-8") as f:
             f.write(entry)
-        
+
         return True
     except IOError:
         return False
@@ -543,28 +553,25 @@ def append_to_daily(daily_path: Path, entry: str, dry_run: bool = False) -> bool
 
 # --- Main Consolidation Logic ---
 
+
 def consolidate_session(
-    session_file: Path,
-    config: dict,
-    state: dict,
-    dry_run: bool = False,
-    verbose: bool = False
+    session_file: Path, config: dict, state: dict, dry_run: bool = False, verbose: bool = False
 ) -> bool:
     """Consolidate a single session file.
-    
+
     Args:
         session_file: Path to session file
         config: Configuration dictionary
         state: Current consolidation state
         dry_run: If True, don't actually write
         verbose: If True, print progress
-        
+
     Returns:
         True if successful
     """
     if verbose:
         print(f"Processing: {session_file.name}")
-    
+
     # Read session file
     try:
         content = session_file.read_text(encoding="utf-8")
@@ -572,26 +579,26 @@ def consolidate_session(
         if verbose:
             print(f"  ✗ Error reading file: {e}")
         return False
-    
+
     # Parse frontmatter and body
     metadata, body = parse_frontmatter(content)
-    
+
     if not metadata and not body.strip():
         if verbose:
             print("  ✗ Empty or unparsable file")
         return False
-    
+
     # Extract insights
     insights = extract_insights(metadata, body, config, verbose)
-    
+
     # Determine target daily file
     target_date = get_target_date(metadata)
     daily_dir = get_daily_dir(config)
     daily_path = daily_dir / f"{target_date}.md"
-    
+
     # Format entry
     entry = format_consolidated_entry(metadata, insights, session_file)
-    
+
     # Append to daily memory
     if append_to_daily(daily_path, entry, dry_run):
         if verbose:
@@ -600,28 +607,25 @@ def consolidate_session(
         if verbose:
             print(f"  ✗ Failed to append to {daily_path.name}")
         return False
-    
+
     # Mark as consolidated
     if not dry_run:
         mark_consolidated(state, session_file)
-    
+
     return True
 
 
 def run_consolidation(
-    config: dict,
-    dry_run: bool = False,
-    verbose: bool = False,
-    specific_file: Optional[Path] = None
+    config: dict, dry_run: bool = False, verbose: bool = False, specific_file: Optional[Path] = None
 ) -> dict:
     """Run the consolidation process.
-    
+
     Args:
         config: Configuration dictionary
         dry_run: If True, preview without writing
         verbose: If True, print progress
         specific_file: If provided, only process this file
-        
+
     Returns:
         Results dictionary with stats
     """
@@ -631,11 +635,11 @@ def run_consolidation(
         "skipped": 0,
         "sessions": [],
     }
-    
+
     # Load state
     state_file = get_state_file(config)
     state = load_state(state_file)
-    
+
     # Determine files to process
     if specific_file:
         if specific_file.exists():
@@ -648,51 +652,51 @@ def run_consolidation(
     else:
         session_dir = get_session_dir(config)
         files = discover_sessions(session_dir, state)
-    
+
     if verbose:
         count = len(files)
         print(f"Found {count} session(s) to consolidate")
         if dry_run:
             print("(DRY RUN — no files will be modified)")
         print()
-    
+
     # Process each file
     for session_file in files:
         success = consolidate_session(session_file, config, state, dry_run, verbose)
-        
+
         if success:
             results["processed"] += 1
             results["sessions"].append(session_file.name)
         else:
             results["failed"] += 1
-        
+
         if verbose:
             print()
-    
+
     # Save state
     if not dry_run and results["processed"] > 0:
         save_state(state_file, state)
         if verbose:
             print(f"State saved: {state_file}")
-    
+
     return results
 
 
 def get_status(config: dict) -> dict:
     """Get consolidation status (pending count, last run, etc.).
-    
+
     Args:
         config: Configuration dictionary
-        
+
     Returns:
         Status dictionary
     """
     state_file = get_state_file(config)
     state = load_state(state_file)
     session_dir = get_session_dir(config)
-    
+
     pending = discover_sessions(session_dir, state)
-    
+
     return {
         "pending_count": len(pending),
         "session_dir": str(session_dir),
@@ -703,9 +707,11 @@ def get_status(config: dict) -> dict:
 
 # --- CLI Interface ---
 
+
 def print_usage():
     """Print usage information."""
-    print("""Consolidation Engine — Extract insights from session files
+    print(
+        """Consolidation Engine — Extract insights from session files
 
 Usage:
     python3 -m core.memory.consolidation run [--dry-run] [--verbose]
@@ -728,38 +734,39 @@ Examples:
     python3 -m core.memory.consolidation run --dry-run --verbose
     python3 -m core.memory.consolidation status
     python3 -m core.memory.consolidation run --session memory/sessions/2026-02-07-1430-CURIOSITY.md
-""")
+"""
+    )
 
 
 def main():
     """CLI entry point."""
     args = sys.argv[1:]
-    
+
     if not args or args[0] in ("--help", "-h"):
         print_usage()
         sys.exit(0)
-    
+
     command = args[0]
-    
+
     # Parse options
     dry_run = "--dry-run" in args
     verbose = "--verbose" in args or "-v" in args
-    
+
     config_path = None
     if "--config" in args:
         idx = args.index("--config")
         if idx + 1 < len(args):
             config_path = Path(args[idx + 1])
-    
+
     specific_file = None
     if "--session" in args:
         idx = args.index("--session")
         if idx + 1 < len(args):
             specific_file = Path(args[idx + 1])
-    
+
     # Load config
     config = load_config(config_path)
-    
+
     if command == "status":
         status = get_status(config)
         print(f"Consolidation Status")
@@ -767,26 +774,25 @@ def main():
         print(f"Pending sessions: {status['pending_count']}")
         print(f"Session directory: {status['session_dir']}")
         print(f"State file: {status['state_file']}")
-        if status['pending_files']:
+        if status["pending_files"]:
             print(f"\nPending files (first 10):")
-            for f in status['pending_files']:
+            for f in status["pending_files"]:
                 print(f"  - {f}")
         sys.exit(0)
-    
+
     elif command == "run":
         if verbose:
             print(f"Consolidation Engine v{VERSION}")
             print(f"====================={ '=' * len(VERSION) }")
             print()
-        
+
         results = run_consolidation(config, dry_run, verbose, specific_file)
-        
+
         if verbose:
-            print(f"Summary: {results['processed']} processed, "
-                  f"{results['failed']} failed")
-        
+            print(f"Summary: {results['processed']} processed, " f"{results['failed']} failed")
+
         sys.exit(0 if results["failed"] == 0 else 1)
-    
+
     else:
         print(f"Unknown command: {command}", file=sys.stderr)
         print_usage()

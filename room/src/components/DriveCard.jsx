@@ -5,13 +5,13 @@ import PressureBar from './PressureBar.jsx';
 
 /**
  * Format date for display
- * 
+ *
  * @param {string|number} dateValue - Date value to format
  * @returns {string} Formatted date string
  */
 function formatDate(dateValue) {
   if (!dateValue) return 'Never';
-  
+
   try {
     const date = new Date(dateValue);
     const now = new Date();
@@ -24,10 +24,10 @@ function formatDate(dateValue) {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
     });
   } catch {
     return String(dateValue);
@@ -36,16 +36,16 @@ function formatDate(dateValue) {
 
 /**
  * Expandable drive detail card
- * 
+ *
  * @param {object} props
  * @param {object} props.drive - Drive data object
  * @param {boolean} props.isHighest - Whether this is the highest pressure drive
  * @param {function} props.onSatisfy - Callback when drive is satisfied
  * @param {boolean} props.satisfying - Whether satisfaction is in progress
  */
-export function DriveCard({ 
-  drive, 
-  isHighest = false, 
+export function DriveCard({
+  drive,
+  isHighest = false,
   onSatisfy,
   satisfying = false,
   defaultExpanded = false,
@@ -84,7 +84,7 @@ export function DriveCard({
   };
 
   return (
-    <div 
+    <div
       className={`
         bg-surface rounded-xl border-2 transition-all duration-300
         ${expanded ? 'border-primary/50' : 'border-transparent'}
@@ -93,18 +93,14 @@ export function DriveCard({
       `}
     >
       {/* Header row */}
-      <div 
+      <div
         className={`p-4 flex items-center gap-4 ${defaultExpanded ? '' : 'cursor-pointer'}`}
         onClick={defaultExpanded ? undefined : () => setExpanded(!expanded)}
       >
         {/* Pressure Bar — only in collapsible mode when collapsed */}
         {!defaultExpanded && !expanded && (
           <div className="shrink-0">
-            <PressureBar 
-              drive={drive} 
-              isHighest={isHighest}
-              showDetails={false}
-            />
+            <PressureBar drive={drive} isHighest={isHighest} showDetails={false} />
           </div>
         )}
 
@@ -113,8 +109,8 @@ export function DriveCard({
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-text">{name}</h3>
             {isAversive && (
-              <span 
-                className="text-red-500 font-bold" 
+              <span
+                className="text-red-500 font-bold"
                 title={`Aversive state (thwarted ${thwarting_count || 0}x)`}
                 aria-label="Aversive state"
               >
@@ -122,18 +118,18 @@ export function DriveCard({
               </span>
             )}
             {drive.isTriggered && !isAversive && (
-              <span className="text-warning" title="Triggered" aria-label="Triggered">🔥</span>
+              <span className="text-warning" title="Triggered" aria-label="Triggered">
+                🔥
+              </span>
             )}
             {isHighest && !drive.isTriggered && !isAversive && (
-              <span className="text-success" title="Highest" aria-label="Highest pressure">⚡</span>
+              <span className="text-success" title="Highest" aria-label="Highest pressure">
+                ⚡
+              </span>
             )}
           </div>
-          
-          {description && (
-            <p className="text-sm text-textMuted">
-              {description}
-            </p>
-          )}
+
+          {description && <p className="text-sm text-textMuted">{description}</p>}
         </div>
 
         {/* Satisfy button (collapsed only, not in sidebar mode) */}
@@ -148,9 +144,10 @@ export function DriveCard({
               px-3 py-2 rounded-lg text-xs font-medium
               transition-all duration-200
               min-h-[44px] min-w-[44px]
-              ${satisfying 
-                ? 'bg-textMuted/20 text-textMuted cursor-wait' 
-                : 'bg-primary/20 text-primary hover:bg-primary hover:text-white'
+              ${
+                satisfying
+                  ? 'bg-textMuted/20 text-textMuted cursor-wait'
+                  : 'bg-primary/20 text-primary hover:bg-primary hover:text-white'
               }
             `}
           >
@@ -160,7 +157,7 @@ export function DriveCard({
 
         {/* Expand indicator — only in collapsible mode */}
         {!defaultExpanded && (
-          <div 
+          <div
             className={`
               text-textMuted transition-transform duration-200
               ${expanded ? 'rotate-180' : ''}
@@ -211,8 +208,9 @@ export function DriveCard({
                       Aversive State - Drive in Distress
                     </h4>
                     <p className="text-xs text-red-300/80 mb-2">
-                      This drive has been thwarted {thwarting_count || 0} time{thwarting_count !== 1 ? 's' : ''}.
-                      Consider investigating blockages instead of forcing satisfaction.
+                      This drive has been thwarted {thwarting_count || 0} time
+                      {thwarting_count !== 1 ? 's' : ''}. Consider investigating blockages instead
+                      of forcing satisfaction.
                     </p>
                     <div className="text-xs text-red-300/60">
                       💡 Tip: Aversive drives often need reflection, not action
@@ -221,28 +219,34 @@ export function DriveCard({
                 </div>
               </div>
             )}
-            
+
             {/* Threshold status badge */}
-            <div className={`
+            <div
+              className={`
               inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium
               ${driveBandColors.bg} ${driveBandColors.border} border
-            `}>
+            `}
+            >
               <span>{bandIcon}</span>
               <span className={driveBandColors.text}>{bandLabel}</span>
               <span className="text-textMuted">
                 ({drive.pressure?.toFixed?.(1) || drive.pressure}/{drive.threshold})
               </span>
             </div>
-            
+
             {/* Threshold bands info */}
             {thresholds && (
               <div className="bg-background/50 rounded-lg p-3">
-                <h4 className="text-xs uppercase tracking-wider text-textMuted mb-2">Threshold Bands</h4>
+                <h4 className="text-xs uppercase tracking-wider text-textMuted mb-2">
+                  Threshold Bands
+                </h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center gap-1">
                     <span className="text-emerald-500">✓</span>
                     <span className="text-textMuted">Available:</span>
-                    <span className="text-text font-mono">{thresholds.available?.toFixed?.(1)}</span>
+                    <span className="text-text font-mono">
+                      {thresholds.available?.toFixed?.(1)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-yellow-500">⚡</span>
@@ -252,7 +256,9 @@ export function DriveCard({
                   <div className="flex items-center gap-1">
                     <span className="text-orange-500">🔥</span>
                     <span className="text-textMuted">Triggered:</span>
-                    <span className="text-text font-mono">{thresholds.triggered?.toFixed?.(1)}</span>
+                    <span className="text-text font-mono">
+                      {thresholds.triggered?.toFixed?.(1)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-red-500">⚠️</span>
@@ -262,7 +268,7 @@ export function DriveCard({
                 </div>
               </div>
             )}
-            
+
             {/* Prompt */}
             {prompt && (
               <div>
@@ -276,25 +282,32 @@ export function DriveCard({
               {valence && (
                 <div>
                   <h4 className="text-xs uppercase tracking-wider text-textMuted mb-1">Valence</h4>
-                  <p className={`text-sm font-medium ${
-                    valence === 'aversive' ? 'text-red-400' : 
-                    valence === 'appetitive' ? 'text-green-400' : 
-                    'text-gray-400'
-                  }`}>
-                    {valence === 'aversive' && '⚠️ '}{valence}
+                  <p
+                    className={`text-sm font-medium ${
+                      valence === 'aversive'
+                        ? 'text-red-400'
+                        : valence === 'appetitive'
+                          ? 'text-green-400'
+                          : 'text-gray-400'
+                    }`}
+                  >
+                    {valence === 'aversive' && '⚠️ '}
+                    {valence}
                   </p>
                 </div>
               )}
-              
+
               {rate !== undefined && (
                 <div>
                   <h4 className="text-xs uppercase tracking-wider text-textMuted mb-1">Rate</h4>
                   <p className="text-sm text-text">{rate}/hr</p>
                 </div>
               )}
-              
+
               <div>
-                <h4 className="text-xs uppercase tracking-wider text-textMuted mb-1">Last Satisfied</h4>
+                <h4 className="text-xs uppercase tracking-wider text-textMuted mb-1">
+                  Last Satisfied
+                </h4>
                 <p className="text-sm text-text">{formatDate(last_satisfied)}</p>
               </div>
             </div>
@@ -311,9 +324,10 @@ export function DriveCard({
                         w-full px-4 py-3 rounded-lg text-sm font-medium
                         transition-all duration-200
                         min-h-[44px]
-                        ${satisfying 
-                          ? 'bg-textMuted/20 text-textMuted cursor-wait' 
-                          : 'bg-orange-600 text-white hover:bg-orange-700'
+                        ${
+                          satisfying
+                            ? 'bg-textMuted/20 text-textMuted cursor-wait'
+                            : 'bg-orange-600 text-white hover:bg-orange-700'
                         }
                       `}
                     >
@@ -331,15 +345,16 @@ export function DriveCard({
                       w-full px-4 py-3 rounded-lg text-sm font-medium
                       transition-all duration-200
                       min-h-[44px]
-                      ${satisfying 
-                        ? 'bg-textMuted/20 text-textMuted cursor-wait' 
-                        : 'bg-gradient-to-r text-white hover:opacity-90'
+                      ${
+                        satisfying
+                          ? 'bg-textMuted/20 text-textMuted cursor-wait'
+                          : 'bg-gradient-to-r text-white hover:opacity-90'
                       }
                     `}
                     style={{
-                      background: !satisfying 
-                        ? `linear-gradient(to right, ${colors.from}, ${colors.to})` 
-                        : undefined
+                      background: !satisfying
+                        ? `linear-gradient(to right, ${colors.from}, ${colors.to})`
+                        : undefined,
                     }}
                   >
                     {satisfying ? 'Satisfying...' : `Satisfy ${name}`}

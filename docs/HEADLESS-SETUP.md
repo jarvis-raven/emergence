@@ -23,6 +23,7 @@ python3 -m core.setup.init_wizard
 ```
 
 When prompted about the Room dashboard:
+
 - ✅ **Enable it** — even though you can't view it locally
 - ✅ **Enable auto-start** — essential for headless operation
 
@@ -47,11 +48,13 @@ ssh -L 7373:localhost:7373 user@remote-host
 This creates an encrypted tunnel and exposes the remote port locally.
 
 **Pros:**
+
 - ✅ Encrypted (SSH tunnel)
 - ✅ No network exposure
 - ✅ Standard practice
 
 **Cons:**
+
 - ⚠️ Must keep SSH session open
 - ⚠️ One connection at a time (without multiplexing)
 
@@ -64,20 +67,23 @@ Edit `emergence.json`:
   "room": {
     "enabled": true,
     "port": 7373,
-    "bind": "0.0.0.0"  // ← Add this
+    "bind": "0.0.0.0" // ← Add this
   }
 }
 ```
 
 Then access via:
+
 - `http://<remote-ip>:7373`
 - `http://<hostname>:7373` (if DNS/mDNS configured)
 
 **Pros:**
+
 - ✅ Accessible from any machine on the network
 - ✅ No SSH required
 
 **Cons:**
+
 - ⚠️ HTTP (plaintext, unless you add HTTPS)
 - ⚠️ Exposed to entire network
 - ⚠️ Consider firewall rules
@@ -85,6 +91,7 @@ Then access via:
 ### Option 3: Reverse Proxy (Advanced)
 
 Use nginx/caddy to:
+
 - Add HTTPS
 - Restrict access by IP/auth
 - Proxy Room behind a standard web port (80/443)
@@ -110,11 +117,13 @@ server {
 ```
 
 **Pros:**
+
 - ✅ HTTPS
 - ✅ Standard ports
 - ✅ Can add auth/restrictions
 
 **Cons:**
+
 - ⚠️ Requires web server setup
 - ⚠️ More complex
 
@@ -171,6 +180,7 @@ tail ~/.openclaw/workspace/projects/emergence/.emergence/logs/room.err.log
 ```
 
 Common issues:
+
 - Node.js not in PATH
 - Port already in use
 - Workspace path incorrect
@@ -178,6 +188,7 @@ Common issues:
 ### SSH Port Forward Not Working
 
 Check:
+
 - ✅ SSH connection works: `ssh user@remote-host`
 - ✅ Room service is running on remote: `systemctl --user status emergence-room-*`
 - ✅ Port isn't already forwarded: `lsof -i :7373` (on local machine)
@@ -256,10 +267,11 @@ tail -f ~/.openclaw/workspace/projects/emergence/.emergence/logs/room.out.log
 4. Monitor logs for errors
 
 **Advanced users:**
+
 - Bind to 0.0.0.0 with firewall rules
 - Use reverse proxy for HTTPS
 - Consider Tailscale for secure mesh networking
 
 ---
 
-*Last updated: 2026-02-10*
+_Last updated: 2026-02-10_

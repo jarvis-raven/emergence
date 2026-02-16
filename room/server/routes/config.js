@@ -1,6 +1,6 @@
 /**
  * Config Routes — GET /api/config
- * 
+ *
  * Returns agent name, theme, room settings from emergence.json
  */
 
@@ -16,7 +16,7 @@ const router = Router();
 router.get('/', (req, res) => {
   try {
     const config = loadConfig();
-    
+
     // Return only the necessary config values
     const response = {
       agent: {
@@ -39,7 +39,7 @@ router.get('/', (req, res) => {
         identity: config.paths?.identity || '.',
       },
     };
-    
+
     res.json(response);
   } catch (err) {
     console.error('Config route error:', err);

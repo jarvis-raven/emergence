@@ -7,6 +7,7 @@
 ## ✅ Deliverables Completed
 
 ### Issue #61 - Database Migration Script
+
 - ✅ Created `core/nautilus/migrate_db.py` for seamless database migration
 - ✅ Merges existing Nautilus databases from legacy locations
 - ✅ Preserves all chamber/door/mirror data during migration
@@ -14,6 +15,7 @@
 - ✅ Migrated 708 gravity records successfully
 
 **Migration path:**
+
 ```
 ~/.openclaw/workspace/tools/nautilus/gravity.db
 ↓
@@ -21,18 +23,21 @@
 ```
 
 **Usage:**
+
 ```bash
 emergence nautilus migrate           # Run migration
 emergence nautilus migrate --dry-run # Preview migration
 ```
 
 ### Issue #62 - Configuration System
+
 - ✅ Added nautilus section to `emergence.json`
 - ✅ Configurable: DB path, chamber thresholds, decay rates
 - ✅ Backward compatible with standalone nautilus
 - ✅ Uses `get_config()` for centralized config access
 
 **New config section:**
+
 ```json
 {
   "nautilus": {
@@ -54,6 +59,7 @@ emergence nautilus migrate --dry-run # Preview migration
 ```
 
 ### Issue #63 - CLI Command Parity
+
 - ✅ `emergence nautilus search <query>` - Full pipeline search
 - ✅ `emergence nautilus status` - Chambers, doors, mirrors status
 - ✅ `emergence nautilus maintain` - Decay + promote + auto-tag
@@ -79,16 +85,21 @@ core/nautilus/
 ## 🔧 Integration Points
 
 ### 1. Core CLI (`core/cli.py`)
+
 Added routing for `emergence nautilus` command with 4 subcommands.
 
 ### 2. Module Exports
+
 All nautilus modules available via:
+
 ```python
 from core.nautilus import gravity, chambers, doors, mirrors
 ```
 
 ### 3. Config Integration
+
 Path resolution through centralized config system:
+
 - `get_workspace()` - Respects OPENCLAW_WORKSPACE env var
 - `get_state_dir()` - Respects EMERGENCE_STATE env var
 - `get_config()` - Loads from emergence.json
@@ -97,6 +108,7 @@ Path resolution through centralized config system:
 ## ✅ Testing
 
 Created comprehensive test suite:
+
 ```
 tests/test_nautilus.py
 ├── test_config_get_workspace
@@ -114,12 +126,14 @@ tests/test_nautilus.py
 ## 📊 Migration Results
 
 Successfully migrated:
+
 - **708** gravity records
 - **727** total chunks in new DB
 - **19** atrium files classified
 - **4** corridor files identified
 
 Legacy DB backed up to:
+
 ```
 ~/.openclaw/workspace/tools/nautilus/gravity.pre-migration-backup.db
 ```
@@ -127,6 +141,7 @@ Legacy DB backed up to:
 ## 🚀 Ready for Issue #64
 
 The alpha phase is complete and ready for testing:
+
 - All CLI commands working
 - Database migrated successfully
 - Configuration system integrated

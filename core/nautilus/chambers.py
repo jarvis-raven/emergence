@@ -26,14 +26,14 @@ import sys
 import re
 import subprocess
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from . import config
 from .gravity import get_db as get_gravity_db, now_iso
 from .logging_config import get_logger
-from .db_utils import commit_with_retry, DatabaseError
+from .db_utils import commit_with_retry
 
 # Setup logging
 logger = get_logger("chambers")

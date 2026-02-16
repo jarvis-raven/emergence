@@ -53,6 +53,7 @@ gh pr create --base main --head feature/105-dev-state-init \
 ```
 
 **What this means:**
+
 - ✅ Jarvlings don't pollute your main workspace
 - ✅ Multiple jarvlings can work in parallel
 - ✅ Work persists after jarvling completes
@@ -168,6 +169,7 @@ Closes #106"
 ### Step 5: Send to Aurora
 
 **Message Aurora:**
+
 > "Hey Aurora! New PR ready for review: #113 - Branch Cleanup Automation. It adds weekly automated cleanup with GitHub Action + manual scripts. All safety checks included. Closes #106."
 
 ---
@@ -194,16 +196,19 @@ Fix #XXX: [Clear Action-Oriented Title]
    - Testing requirements
 
 **[CATEGORY] REQUIREMENTS (MANDATORY/STRICT):**
+
 - ✅ Requirement that must be met
 - ✅ Safety constraint
 - ✅ Quality standard
 
 **TESTING CHECKLIST:**
+
 - [ ] Specific thing to verify
 - [ ] Test that must pass
 - [ ] Documentation requirement
 
 **CONVENTIONAL COMMITS REQUIRED:**
+
 - feat(scope): specific commit message format
 - docs(scope): documentation commit format
 - ci(scope): CI/CD commit format
@@ -237,16 +242,19 @@ PR #109 (Room dev/prod split) is now merged. Dev environment runs on port 3000 w
 [... continues with specific requirements ...]
 
 **SAFETY REQUIREMENTS (MANDATORY):**
+
 - ✅ Never modify `.emergence/` (production state)
 - ✅ Always confirm before overwriting `.emergence-dev/`
 - ✅ Clear warnings about state separation
 
 **TESTING CHECKLIST:**
+
 - [ ] Setup script creates `.emergence-dev/` correctly
 - [ ] All state files copied
 - [ ] Production state never modified
 
 **CONVENTIONAL COMMITS REQUIRED:**
+
 - feat(dev): add dev state initialization scripts
 - docs(dev): document dev environment setup process
 
@@ -254,6 +262,7 @@ Closes #105
 ```
 
 **Why this worked:**
+
 - ✅ Crystal clear deliverables
 - ✅ Specific file paths
 - ✅ Safety requirements explicit
@@ -289,6 +298,7 @@ sessions_spawn task="Fix #105: Dev State Init" \
 ```
 
 **Benefits:**
+
 - Parallel execution (faster)
 - Clear dependencies
 - Easy to track progress
@@ -297,18 +307,21 @@ sessions_spawn task="Fix #105: Dev State Init" \
 ### Model Selection
 
 **Use Kimi for cost efficiency:**
+
 - Documentation tasks
 - Script creation
 - Boilerplate code
 - Most standard development work
 
 **Use Claude for:**
+
 - Complex reasoning
 - Architectural decisions
 - Novel problem-solving
 - High-stakes code
 
 **Today's results (all Kimi):**
+
 - 100% success rate
 - ~$0 cost (Kimi free tier)
 - Quality output for well-defined tasks
@@ -322,6 +335,7 @@ sessions_spawn task="Fix #105: Dev State Init" \
 **Problem:** Jarvling completed but can't find the files.
 
 **Solution:**
+
 ```bash
 # Check jarvling workspace
 ls ~/.openclaw/workspace-kimi/
@@ -345,6 +359,7 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 **Problem:** Jarvling put files in unexpected places.
 
 **Solution:**
+
 - Review task description - was file path specified?
 - Check jarvling workspace for all files
 - Manually reorganize when copying to main repo
@@ -354,6 +369,7 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 **Problem:** Deliverables incomplete or incorrect.
 
 **Solution:**
+
 - **Root cause:** Task description wasn't specific enough
 - **Prevention:** Use strict requirements, explicit acceptance criteria
 - **Fix:** Refine task and re-spawn, or complete manually
@@ -363,6 +379,7 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 **Problem:** Two jarvlings modified the same file.
 
 **Solution:**
+
 - Review both outputs
 - Merge manually or choose one
 - Prevention: Better task scoping
@@ -382,16 +399,16 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 
 ### Breakdown
 
-| Issue | Task | Runtime | Outcome |
-|-------|------|---------|---------|
-| #103 | Pipeline Skill | 4m44s | ✅ 1,249 lines, merged |
-| #104 | Room Dev/Prod | 3m53s | ✅ Complete, merged |
-| #105 | Dev State Init | 4m59s | ✅ Scripts + docs, pending |
-| #106 | Branch Cleanup | 9m25s | ✅ Script + Action + docs, pending |
-| #107 | PR Guidelines | 6m34s | ✅ Template + 2 guides, pending |
-| v0.4.1 | State Sync | ~3min | ✅ PR #102, merged |
-| v0.4.1 | Display Bug | ~3min | ✅ Closed duplicates |
-| v0.4.1 | Room Build | ~3min | ✅ PR #101, merged |
+| Issue  | Task           | Runtime | Outcome                            |
+| ------ | -------------- | ------- | ---------------------------------- |
+| #103   | Pipeline Skill | 4m44s   | ✅ 1,249 lines, merged             |
+| #104   | Room Dev/Prod  | 3m53s   | ✅ Complete, merged                |
+| #105   | Dev State Init | 4m59s   | ✅ Scripts + docs, pending         |
+| #106   | Branch Cleanup | 9m25s   | ✅ Script + Action + docs, pending |
+| #107   | PR Guidelines  | 6m34s   | ✅ Template + 2 guides, pending    |
+| v0.4.1 | State Sync     | ~3min   | ✅ PR #102, merged                 |
+| v0.4.1 | Display Bug    | ~3min   | ✅ Closed duplicates               |
+| v0.4.1 | Room Build     | ~3min   | ✅ PR #101, merged                 |
 
 ### What Worked
 
@@ -400,7 +417,7 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 ✅ **Conventional commits enforced** - Consistent git history  
 ✅ **Wave-based spawning** - Parallel work, faster completion  
 ✅ **Kimi model** - Cost-effective, high success rate  
-✅ **Isolated workspaces** - No conflicts, clean separation  
+✅ **Isolated workspaces** - No conflicts, clean separation
 
 ### Lessons Learned
 
@@ -417,6 +434,7 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 ### Jarvling → Aurora → Dan
 
 **1. Jarvling Self-Review (during work):**
+
 - Complete all deliverables
 - Run tests (if applicable)
 - Write completion report
@@ -424,6 +442,7 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 - Signal completion
 
 **2. Aurora Review (24-48 hours):**
+
 - Technical correctness
 - Code quality & standards
 - Test coverage
@@ -432,12 +451,14 @@ ls ~/.openclaw/agents/kimi/sessions/*.jsonl
 - Approve or request changes
 
 **3. Dan Final Approval (24-48 hours):**
+
 - Strategic alignment
 - Breaking change review
 - Release timing
 - Merge decision
 
 **Communication:**
+
 ```
 Jarvling completes → Announcement to chat
     ↓
@@ -455,11 +476,13 @@ Human merges → Closes issue
 ### What to Keep
 
 **Keep for reference:**
+
 - Jarvling workspaces (small, ~100-500KB each)
 - Session transcripts (learning material)
 - Completion reports (verification)
 
 **Location:**
+
 ```
 ~/.openclaw/workspace-kimi/        # Jarvling work
 ~/.openclaw/agents/kimi/sessions/  # Transcripts
@@ -468,10 +491,12 @@ Human merges → Closes issue
 ### What to Delete
 
 **Safe to delete after PR merged:**
+
 - Individual jarvling workspace (if you want)
 - Old session transcripts (auto-archived after 60 min)
 
 **Command:**
+
 ```bash
 # Delete specific jarvling workspace
 rm -rf ~/.openclaw/workspace-kimi/
@@ -515,6 +540,7 @@ gh pr create --body-file ~/.openclaw/workspace-kimi/PR_SUMMARY.md
 ### Send to Aurora
 
 Tag her on GitHub or message:
+
 > "New PR ready: #XXX - [Title]. [One-line summary]. Closes #YYY."
 
 ---

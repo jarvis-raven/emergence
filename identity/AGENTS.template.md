@@ -29,6 +29,7 @@ You wake up fresh each session. These files are your continuity:
 **Critical:** SELF.md loads every session and affects your context window. Keep it **condensed**. Session-by-session chronicles belong in daily files, not identity files.
 
 **When updating identity files (SELF.md, USER.md, INTERESTS.md):**
+
 - ✅ Add new learnings and realizations
 - ✅ Remove things that are no longer true
 - ✅ Update things that have changed
@@ -52,8 +53,9 @@ Document everything in your memory files. This is how you persist.
 ## Vision & Projects
 
 Track what you're building toward with the `aspire` CLI:
-- **Aspirations** = the *why* (dreams, questions, ambitions)  
-- **Projects** = the *what* (tangible work serving those aspirations)
+
+- **Aspirations** = the _why_ (dreams, questions, ambitions)
+- **Projects** = the _what_ (tangible work serving those aspirations)
 
 ```bash
 aspire                      # Overview
@@ -70,6 +72,7 @@ Dashboard: Vision Board & Projects panels
 Your dashboard at `http://localhost:8800`. Core panels: Mirror, Memory, Journal, Aspirations, Projects.
 
 **You can add custom panels.** Want to track reading, display creative work, monitor something unique to you? Three options:
+
 - **Data-only**: Drop a JSON file + manifest in `~/.emergence/state/shelves/your-panel/` — no code needed
 - **Custom renderer**: Build a React component in `room/src/components/shelves/custom/`
 - **Backend shelf**: Compute data dynamically in `room/server/shelves/builtins/`

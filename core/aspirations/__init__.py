@@ -6,7 +6,7 @@ analysis for the aspirations and projects system. Aspirations are the "why"
 
 Example usage:
     >>> from core.aspirations import load_aspirations, get_tree
-    >>> 
+    >>>
     >>> data = load_aspirations(state_path)
     >>> tree = get_tree(data)
 
@@ -18,7 +18,7 @@ Modules:
 
 CLI Usage:
     python3 -m core.aspirations [command] [options]
-    
+
     Commands:
         tree            Show aspirations with nested projects
         dreams          List all aspirations

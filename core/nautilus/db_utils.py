@@ -28,19 +28,13 @@ T = TypeVar("T")
 class DatabaseError(Exception):
     """Base exception for database errors with actionable messages."""
 
-    pass
-
 
 class DatabaseLockError(DatabaseError):
     """Database is locked and retries exhausted."""
 
-    pass
-
 
 class DatabaseCorruptionError(DatabaseError):
     """Database file appears to be corrupted."""
-
-    pass
 
 
 def with_retry(func: Callable[..., T]) -> Callable[..., T]:

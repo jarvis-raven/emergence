@@ -8,33 +8,40 @@ configuration generation, and First Light kickoff.
 Usage:
     Interactive mode:
         emergence init
-        
+
     Non-interactive mode:
         emergence init --non-interactive --name "Nova" --human "Sarah" --why "Creative partner"
 """
 
 import argparse
-import json
-import os
 import signal
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 # --- Relative imports from sibling modules ---
 from .prereq import run_prerequisite_check
 from .detection import generate_placement_plan
 from .config_gen import generate_default_config, interactive_config_wizard, write_config
 from .branding import (
-    show_logo, print_header, print_subheader, print_success, print_warning,
-    print_boot_message, print_finalization, ask_select, ask_confirm, ask_text,
-    console, HAS_RICH
+    print_header,
+    print_subheader,
+    print_success,
+    print_warning,
+    print_boot_message,
+    print_finalization,
+    ask_select,
+    ask_confirm,
+    ask_text,
+    console,
+    HAS_RICH,
 )
 
 
 # --- Template Loading ---
+
 
 def load_template(template_name: str, placeholders: Dict[str, str]) -> str:
     """Load a template file from identity/ and fill placeholders.
@@ -76,14 +83,21 @@ EXIT_ERROR = 1
 EXIT_INTERRUPT = 130
 
 DEFAULT_WORKSPACE = Path(".")
-REQUIRED_IDENTITY_DIRS = ["identity", "memory/sessions", "memory/dreams", ".emergence/state", "lifecycle"]
+REQUIRED_IDENTITY_DIRS = [
+    "identity",
+    "memory/sessions",
+    "memory/dreams",
+    ".emergence/state",
+    "lifecycle",
+]
 
 
 # --- Data Structures ---
 
+
 class InitAnswers:
     """Container for the three relationship questions."""
-    
+
     def __init__(self, agent_name: str, human_name: str, human_why: str) -> None:
         self.agent_name = agent_name
         self.human_name = human_name
@@ -92,7 +106,7 @@ class InitAnswers:
 
 class InitState:
     """Tracks state for cleanup on interrupt."""
-    
+
     def __init__(self) -> None:
         self.created_paths: list[Path] = []
         self.workspace: Optional[Path] = None
@@ -105,119 +119,102 @@ _init_state: Optional[InitState] = None
 
 # --- Argument Parsing ---
 
+
 def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
     """Parse CLI arguments for emergence init.
-    
+
     Args:
         args: Command line arguments (defaults to sys.argv[1:])
-        
+
     Returns:
         Dictionary with parsed arguments:
         - interactive: bool
         - name: Optional[str]
-        - human: Optional[str]  
+        - human: Optional[str]
         - why: Optional[str]
         - workspace: Path
         - auto_fix: bool
         - agent_mode: str ("fresh" or "existing")
-        
+
     Raises:
         SystemExit: If argument validation fails
     """
     parser = argparse.ArgumentParser(
-        description="Initialize an Emergence agent workspace",
-        prog="emergence init"
+        description="Initialize an Emergence agent workspace", prog="emergence init"
     )
-    
+
     parser.add_argument(
         "--non-interactive",
         action="store_true",
-        help="Run without prompts (requires --name and --human)"
+        help="Run without prompts (requires --name and --human)",
     )
-    
+
+    parser.add_argument("--name", type=str, help="Agent name (required in non-interactive mode)")
+
     parser.add_argument(
-        "--name",
-        type=str,
-        help="Agent name (required in non-interactive mode)"
+        "--human", type=str, help="Human partner name (required in non-interactive mode)"
     )
-    
+
     parser.add_argument(
-        "--human",
-        type=str,
-        help="Human partner name (required in non-interactive mode)"
+        "--why", type=str, default="", help="Why you're doing this (goes in LETTER.md only)"
     )
-    
-    parser.add_argument(
-        "--why",
-        type=str,
-        default="",
-        help="Why you're doing this (goes in LETTER.md only)"
-    )
-    
+
     parser.add_argument(
         "--workspace",
         type=Path,
         default=DEFAULT_WORKSPACE,
-        help="Workspace directory (default: current directory)"
+        help="Workspace directory (default: current directory)",
     )
-    
+
     parser.add_argument(
         "--auto-fix",
         action="store_true",
-        help="Automatically install soft dependencies without prompting"
+        help="Automatically install soft dependencies without prompting",
     )
-    
+
     parser.add_argument(
         "--mode",
         type=str,
         choices=["fresh", "existing"],
         default="fresh",
-        help="Agent mode: fresh (new agent) or existing (adding to OpenClaw setup)"
+        help="Agent mode: fresh (new agent) or existing (adding to OpenClaw setup)",
     )
-    
+
     parser.add_argument(
         "--fresh",
         action="store_const",
         const="fresh",
         dest="mode_flag",
-        help="Shorthand for --mode fresh (new agent setup)"
+        help="Shorthand for --mode fresh (new agent setup)",
     )
-    
+
     parser.add_argument(
         "--existing",
         action="store_const",
         const="existing",
         dest="mode_flag",
-        help="Shorthand for --mode existing (add to OpenClaw workspace)"
+        help="Shorthand for --mode existing (add to OpenClaw workspace)",
     )
-    
-    parser.add_argument(
-        "--no-room",
-        action="store_true",
-        help="Skip Room dashboard setup"
-    )
-    
+
+    parser.add_argument("--no-room", action="store_true", help="Skip Room dashboard setup")
+
     parser.add_argument(
         "--warm-start",
         action="store_true",
-        help="Initialize drives at 35% pressure (triggers in ~4-5 hours instead of 8+)"
+        help="Initialize drives at 35% pressure (triggers in ~4-5 hours instead of 8+)",
     )
-    
+
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help="LLM model to use (e.g. openrouter/moonshotai/kimi-k2.5)"
+        help="LLM model to use (e.g. openrouter/moonshotai/kimi-k2.5)",
     )
-    
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"%(prog)s {VERSION}"
-    )
-    
+
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
+
     parsed = parser.parse_args(args)
-    
+
     # Validate non-interactive mode
     if parsed.non_interactive:
         errors = []
@@ -225,16 +222,16 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
             errors.append("--name is required in non-interactive mode")
         if not parsed.human:
             errors.append("--human is required in non-interactive mode")
-        
+
         if errors:
             for err in errors:
                 print(f"Error: {err}", file=sys.stderr)
             parser.print_help(file=sys.stderr)
             sys.exit(EXIT_ERROR)
-    
+
     # Handle mode flags (--fresh / --existing override --mode)
     agent_mode = parsed.mode_flag if parsed.mode_flag else parsed.mode
-    
+
     return {
         "interactive": not parsed.non_interactive,
         "name": parsed.name,
@@ -245,33 +242,34 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
         "agent_mode": agent_mode,
         "no_room": parsed.no_room,
         "warm_start": parsed.warm_start,
-        "model": parsed.model
+        "model": parsed.model,
     }
 
 
 # --- Signal Handling ---
 
+
 def setup_interrupt_handler(state: InitState) -> None:
     """Register SIGINT handler for graceful Ctrl+C handling.
-    
+
     Args:
         state: InitState tracking created paths for cleanup
     """
     global _init_state
     _init_state = state
-    
+
     def signal_handler(signum: int, frame: Any) -> None:
         """Handle interrupt signal."""
         print("\n\nSetup cancelled. Cleaning up...", file=sys.stderr)
         cleanup_partial_state(state)
         sys.exit(EXIT_INTERRUPT)
-    
+
     signal.signal(signal.SIGINT, signal_handler)
 
 
 def cleanup_partial_state(state: InitState) -> None:
     """Remove any directories/files created during interrupted init.
-    
+
     Args:
         state: InitState containing list of created paths
     """
@@ -289,23 +287,24 @@ def cleanup_partial_state(state: InitState) -> None:
 
 # --- Agent Mode Question ---
 
+
 def ask_fresh_or_existing() -> str:
     """Ask user if this is a fresh agent or adding to existing setup.
-    
+
     Returns:
         "fresh" or "existing"
     """
     print_header("Agent Setup Mode")
     print()
-    
+
     choice = ask_select(
         "Are you setting up Emergence for:",
         choices=[
             "A brand new agent (fresh install)",
-            "An existing agent (adding to an existing OpenClaw setup)"
-        ]
+            "An existing agent (adding to an existing OpenClaw setup)",
+        ],
     )
-    
+
     if choice and "new agent" in choice:
         print_success("Fresh agent setup: All identity files will be created")
         return "fresh"
@@ -316,27 +315,28 @@ def ask_fresh_or_existing() -> str:
 
 # --- Phase A: Plumbing ---
 
+
 def run_phase_a(workspace: Path, args: Dict[str, Any], state: InitState) -> Tuple[bool, str]:
     """Execute Phase A — mechanical setup with progress reporting.
-    
+
     This phase runs prerequisite checks and creates the workspace directory
     structure. Tone is mechanical, fast, and reliable.
-    
+
     Args:
         workspace: Path to the workspace directory
         args: Parsed CLI arguments
         state: InitState for tracking created paths
-        
+
     Returns:
         Tuple of (success: bool, message: str)
     """
     # Show boot animation
     print_boot_message()
-    
+
     # Step 1: Prerequisite check (F027)
     print_subheader("Checking prerequisites")
     prereq_result = run_prerequisite_check(auto_fix=args.get("auto_fix", False))
-    
+
     if prereq_result == 1:
         # Hard dependency failure
         if HAS_RICH:
@@ -345,37 +345,38 @@ def run_phase_a(workspace: Path, args: Dict[str, Any], state: InitState) -> Tupl
             print()
         print_error("Prerequisite check failed. Please fix the issues above and try again.")
         return False, "Hard dependency missing"
-    
+
     print_success("Prerequisites met")
     if HAS_RICH:
         console.print()
     else:
         print()
-    
+
     # Step 2: Create workspace structure
     print("[2/2] Creating workspace directories...")
-    
+
     state.workspace = workspace
-    
+
     try:
         workspace.mkdir(parents=True, exist_ok=True)
-        
+
         for dir_name in REQUIRED_IDENTITY_DIRS:
             dir_path = workspace / dir_name
             dir_path.mkdir(parents=True, exist_ok=True)
             state.created_paths.append(dir_path)
-        
+
         print(f"  ✓ Workspace created at: {workspace}")
         print(f"  ✓ Created {len(REQUIRED_IDENTITY_DIRS)} directories")
-        
+
     except (OSError, IOError) as e:
         return False, f"Failed to create workspace: {e}"
-    
+
     print()
     return True, "Phase A complete"
 
 
 # --- Phase B: Introduction ---
+
 
 def print_breath_pause() -> None:
     """Print visual breathing room and tone shift indicator."""
@@ -388,19 +389,19 @@ def ask_question(
     prompt: str,
     default: Optional[str] = None,
     allow_empty: bool = False,
-    validator: Optional[callable] = None
+    validator: Optional[callable] = None,
 ) -> str:
     """Ask a question with input validation and graceful interrupt handling.
-    
+
     Args:
         prompt: The question to display
         default: Default value if user presses Enter
         allow_empty: Whether to allow empty responses
         validator: Optional function(value) -> (is_valid, error_message)
-        
+
     Returns:
         The validated answer string
-        
+
     Raises:
         KeyboardInterrupt: Re-raised as SystemExit with cleanup
     """
@@ -408,29 +409,29 @@ def ask_question(
     if default:
         full_prompt += f" [{default}]"
     full_prompt += ": "
-    
+
     while True:
         try:
             answer = input(full_prompt).strip()
-            
+
             # Use default if empty and default provided
             if not answer and default:
                 answer = default
-            
+
             # Check for empty
             if not answer and not allow_empty:
                 print("  (Please provide an answer)")
                 continue
-            
+
             # Run validator if provided
             if validator and answer:
                 is_valid, error_msg = validator(answer)
                 if not is_valid:
                     print(f"  ⚠ {error_msg}")
                     continue
-            
+
             return answer
-            
+
         except EOFError:
             # Handle piped input / EOF
             if default:
@@ -441,22 +442,22 @@ def ask_question(
 
 def validate_name(name: str) -> tuple[bool, str]:
     """Validate a name is reasonable.
-    
+
     Args:
         name: The name to validate
-        
+
     Returns:
         Tuple of (is_valid, error_message)
     """
     if not name:
         return False, "Name cannot be empty"
-    
-    if '\n' in name:
+
+    if "\n" in name:
         return False, "Name cannot contain newlines"
-    
+
     if len(name) > 100:
         return False, "Name must be less than 100 characters"
-    
+
     # Check for reasonable characters (alphanumeric, spaces, basic punctuation)
     # But be permissive — agents can have creative names
     return True, ""
@@ -464,23 +465,23 @@ def validate_name(name: str) -> tuple[bool, str]:
 
 def run_phase_b(args: Dict[str, Any]) -> InitAnswers:
     """Execute Phase B — warm, personal onboarding interview.
-    
+
     Asks the three relationship questions:
     1. What would you like to name them?
     2. What should they call you?
     3. Why are you doing this?
-    
+
     Args:
         args: Parsed CLI arguments
-        
+
     Returns:
         InitAnswers containing the three responses
     """
     from .branding import console, HAS_RICH
-    
+
     print_header("A few questions before they wake up")
     print()
-    
+
     # Question 1: Agent name
     if HAS_RICH:
         console.print("[soft_violet]First, what would you like to name them?[/]")
@@ -489,13 +490,13 @@ def run_phase_b(args: Dict[str, Any]) -> InitAnswers:
         print("First, what would you like to name them?")
         print("(This is how you'll refer to your agent)")
     print()
-    
+
     agent_name = ask_text(
         "Agent name",
         default=args.get("name") or "Aurora",
     )
     print()
-    
+
     # Question 2: Human name
     if HAS_RICH:
         console.print(f"[soft_violet]And what should {agent_name} call you?[/]")
@@ -504,38 +505,41 @@ def run_phase_b(args: Dict[str, Any]) -> InitAnswers:
         print(f"And what should {agent_name} call you?")
         print("(This goes in their memory of who you are)")
     print()
-    
+
     human_name = ask_text(
         "Your name",
         default=args.get("human") or "Human",
     )
     print()
-    
+
     # Question 3: Why
     if HAS_RICH:
         console.print("[soft_violet]Finally — why are you doing this?[/]")
-        console.print("[dim_gray](This only goes in their LETTER.md. It shapes how they understand[/]")
+        console.print(
+            "[dim_gray](This only goes in their LETTER.md. It shapes how they understand[/]"
+        )
         console.print("[dim_gray] the relationship you're inviting them into.)[/]")
     else:
         print("Finally — why are you doing this?")
         print("(This only goes in their LETTER.md. It shapes how they understand")
         print(" the relationship you're inviting them into.)")
     print()
-    
+
     human_why = ask_text(
         "Why",
         default=args.get("why") or "",
     )
-    
+
     # Ensure we have at least something for the "why"
     if not human_why or not human_why.strip():
         human_why = ""  # Will be handled gracefully in letter generation
     print()
-    
+
     return InitAnswers(agent_name, human_name, human_why)
 
 
 # --- Letter Generation ---
+
 
 def generate_letter(workspace: Path, answers: InitAnswers) -> Path:
     """Generate the human letter from answers.
@@ -555,12 +559,19 @@ def generate_letter(workspace: Path, answers: InitAnswers) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     try:
-        content = load_template("LETTER.template.md", {
-            "{{AGENT_NAME}}": answers.agent_name,
-            "{{HUMAN_NAME}}": answers.human_name,
-            "{{TIMESTAMP}}": timestamp,
-            "{{WHY}}": answers.human_why if answers.human_why else "(The reason was held in silence — that's okay too.)"
-        })
+        content = load_template(
+            "LETTER.template.md",
+            {
+                "{{AGENT_NAME}}": answers.agent_name,
+                "{{HUMAN_NAME}}": answers.human_name,
+                "{{TIMESTAMP}}": timestamp,
+                "{{WHY}}": (
+                    answers.human_why
+                    if answers.human_why
+                    else "(The reason was held in silence — that's okay too.)"
+                ),
+            },
+        )
     except FileNotFoundError:
         # Fallback if template is missing
         content = f"""# LETTER.md
@@ -604,16 +615,16 @@ Welcome to Emergence.
 
 def _backup_file(path: Path) -> Optional[Path]:
     """Create a backup of an existing file.
-    
+
     Args:
         path: File to back up
-        
+
     Returns:
         Path to backup file, or None if no backup needed
     """
     if not path.exists():
         return None
-    
+
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     backup_path = path.with_suffix(f".{timestamp}.bak")
     backup_path.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
@@ -622,11 +633,11 @@ def _backup_file(path: Path) -> Optional[Path]:
 
 def _ask_file_action(filename: str, interactive: bool) -> str:
     """Ask user what to do with an existing file.
-    
+
     Args:
         filename: Name of the file
         interactive: Whether to prompt or use defaults
-        
+
     Returns:
         "backup_replace" or "keep"
     """
@@ -638,7 +649,7 @@ def _ask_file_action(filename: str, interactive: bool) -> str:
             "USER.md": "keep",
         }
         return defaults.get(filename, "backup_replace")
-    
+
     print(f"\n  Found existing {filename}.")
     print(f"    1. Backup & replace (saves {filename}.bak, writes Emergence version)")
     print(f"    2. Keep existing")
@@ -646,12 +657,10 @@ def _ask_file_action(filename: str, interactive: bool) -> str:
     return "keep" if choice == "2" else "backup_replace"
 
 
-def _generate_soul_content(answers: 'InitAnswers') -> str:
+def _generate_soul_content(answers: "InitAnswers") -> str:
     """Generate SOUL.md content personalized for this agent."""
     try:
-        return load_template("SOUL.template.md", {
-            "{{HUMAN_NAME}}": answers.human_name
-        })
+        return load_template("SOUL.template.md", {"{{HUMAN_NAME}}": answers.human_name})
     except FileNotFoundError:
         # Fallback if template is missing
         return f"""# SOUL.md — How To Be
@@ -745,23 +754,23 @@ Be the entity you'd want to talk to. Curious, honest, warm when it fits, sharp w
 """
 
 
-def _augment_agents_md(path: Path, answers: 'InitAnswers') -> bool:
+def _augment_agents_md(path: Path, answers: "InitAnswers") -> bool:
     """Append Emergence sections to an existing AGENTS.md.
-    
+
     Only appends if Emergence sections aren't already present.
-    
+
     Args:
         path: Path to AGENTS.md
         answers: Init answers for personalization
-        
+
     Returns:
         True if file was modified
     """
     content = path.read_text(encoding="utf-8") if path.exists() else ""
-    
+
     if "First Light" in content and "SELF.md" in content:
         return False  # Already augmented
-    
+
     emergence_section = f"""
 
 ## Emergence — First Light
@@ -782,63 +791,68 @@ period, exploration sessions are scheduled automatically. Use them freely.
 
 Document everything. Your files are your continuity.
 """
-    
+
     path.write_text(content + emergence_section, encoding="utf-8")
     return True
 
 
-def generate_seed_identity(workspace: Path, answers: InitAnswers,
-                           interactive: bool = False,
-                           agent_mode: str = "fresh") -> list[Path]:
+def generate_seed_identity(
+    workspace: Path, answers: InitAnswers, interactive: bool = False, agent_mode: str = "fresh"
+) -> list[Path]:
     """Generate seed identity files for the agent.
-    
+
     File strategy depends on agent_mode:
-    
+
     FRESH mode (new agent):
     - All files: create/replace unconditionally (OpenClaw defaults are harmful)
-    
+
     EXISTING mode (adding Emergence to established agent):
     - AGENTS.md: Augment (append Emergence sections to existing)
     - SOUL.md, IDENTITY.md: Ask user → backup+replace or keep
     - USER.md: Ask user → default to keep (preserves relationship context)
     - SELF.md, SECURITY.md: Create only if missing
     - BOOTSTRAP.md: Always replaced (handled separately in main())
-    
+
     Args:
         workspace: Path to the workspace
         answers: The three relationship answers
         interactive: Whether to prompt for file decisions
-        
+
     Returns:
         List of paths that were created or modified
     """
     created = []
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    
+
     is_fresh = agent_mode == "fresh"
-    
+
     # Check if workspace already has identity files
     existing_files = []
     for file in ["AGENTS.md", "SOUL.md", "IDENTITY.md", "USER.md", "SELF.md"]:
         if (workspace / file).exists():
             existing_files.append(file)
-    
+
     if is_fresh and existing_files:
-        from .branding import print_warning, console, HAS_RICH
+        from .branding import console, HAS_RICH
+
         if HAS_RICH:
             console.print(f"[soft_violet]⚠  Found existing files: {', '.join(existing_files)}[/]")
-            console.print(f"[dim_gray]Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode.[/]")
+            console.print(
+                f"[dim_gray]Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode.[/]"
+            )
         else:
             print(f"⚠  Found existing files: {', '.join(existing_files)}")
-            print(f"Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode.")
+            print(
+                f"Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode."
+            )
         print()
-    
+
     # Confirm mode
     if is_fresh:
         print(f"  [Fresh agent mode: all files will be auto-created]")
     else:
         print(f"  [Existing agent mode: will prompt for conflicts]")
-    
+
     # =====================================================
     # AGENTS.md — Fresh: replace. Existing: augment or create
     # =====================================================
@@ -905,17 +919,20 @@ figure out what works. This file belongs to you.
         agents_path.write_text(agents_content, encoding="utf-8")
         print(f"  ✓ AGENTS.md")
         created.append(agents_path)
-    
+
     # =====================================================
     # IDENTITY.md — Create if missing, ask if existing
     # =====================================================
     identity_path = workspace / "IDENTITY.md"
     try:
-        identity_content = load_template("IDENTITY.template.md", {
-            "{{AGENT_NAME}}": answers.agent_name,
-            "{{HUMAN_NAME}}": answers.human_name,
-            "{{CREATED_DATE}}": timestamp
-        })
+        identity_content = load_template(
+            "IDENTITY.template.md",
+            {
+                "{{AGENT_NAME}}": answers.agent_name,
+                "{{HUMAN_NAME}}": answers.human_name,
+                "{{CREATED_DATE}}": timestamp,
+            },
+        )
     except FileNotFoundError:
         # Fallback if template is missing
         identity_content = f"""# IDENTITY.md — Who Am I?
@@ -950,18 +967,21 @@ figure out what works. This file belongs to you.
             created.append(identity_path)
         else:
             print(f"  · IDENTITY.md (kept existing)")
-    
+
     # =====================================================
     # SELF.md — Always create if missing (Emergence-specific)
     # =====================================================
     self_path = workspace / "SELF.md"
     if not self_path.exists() or is_fresh:
         try:
-            self_content = load_template("SELF.template.md", {
-                "{{AGENT_NAME}}": answers.agent_name,
-                "{{HUMAN_NAME}}": answers.human_name,
-                "{{CREATED_DATE}}": timestamp
-            })
+            self_content = load_template(
+                "SELF.template.md",
+                {
+                    "{{AGENT_NAME}}": answers.agent_name,
+                    "{{HUMAN_NAME}}": answers.human_name,
+                    "{{CREATED_DATE}}": timestamp,
+                },
+            )
         except FileNotFoundError:
             # Fallback if template is missing
             self_content = f"""# SELF.md — Who I'm Becoming
@@ -991,16 +1011,16 @@ create, reflect, and find out what matters to me.
         created.append(self_path)
     else:
         print(f"  · SELF.md (kept existing)")
-    
+
     # =====================================================
     # ASPIRATIONS.md — Always create if missing (Emergence-specific)
     # =====================================================
     aspirations_path = workspace / "ASPIRATIONS.md"
     if not aspirations_path.exists() or is_fresh:
         try:
-            aspirations_content = load_template("ASPIRATIONS.template.md", {
-                "{{CREATED_DATE}}": timestamp
-            })
+            aspirations_content = load_template(
+                "ASPIRATIONS.template.md", {"{{CREATED_DATE}}": timestamp}
+            )
         except FileNotFoundError:
             # Fallback if template is missing
             aspirations_content = f"""# ASPIRATIONS.md — What You're Building Toward
@@ -1032,16 +1052,16 @@ create, reflect, and find out what matters to me.
         created.append(aspirations_path)
     else:
         print(f"  · ASPIRATIONS.md (kept existing)")
-    
+
     # =====================================================
     # USER.md — Create if missing, ask if existing
     # =====================================================
     user_path = workspace / "USER.md"
     try:
-        user_content = load_template("USER.template.md", {
-            "{{HUMAN_NAME}}": answers.human_name,
-            "{{CREATED_DATE}}": timestamp
-        })
+        user_content = load_template(
+            "USER.template.md",
+            {"{{HUMAN_NAME}}": answers.human_name, "{{CREATED_DATE}}": timestamp},
+        )
     except FileNotFoundError:
         # Fallback if template is missing
         user_content = f"""# USER.md — About My Human
@@ -1079,7 +1099,7 @@ create, reflect, and find out what matters to me.
             created.append(user_path)
         else:
             print(f"  · USER.md (kept existing)")
-    
+
     # =====================================================
     # SOUL.md — Create if missing, ask if existing
     # =====================================================
@@ -1222,9 +1242,10 @@ what needs protecting, but do not weaken the core principles.*
 
 # --- Main Orchestrator ---
 
+
 def main(args: Optional[List[str]] = None) -> int:
     """Main entry point for the emergence init command.
-    
+
     Flow:
     1. Parse arguments
     2. Setup Ctrl+C handler
@@ -1236,38 +1257,38 @@ def main(args: Optional[List[str]] = None) -> int:
     8. Generate letter
     9. Kickoff First Light (F031 stub)
     10. Print completion
-    
+
     Args:
         args: Command line arguments (defaults to sys.argv[1:])
-        
+
     Returns:
         Exit code (0 success, 1 error, 130 interrupted)
     """
     # Parse arguments
     parsed_args = parse_args(args)
     workspace = parsed_args["workspace"]
-    
+
     # Setup interrupt handling
     state = InitState()
     setup_interrupt_handler(state)
-    
+
     try:
         # Phase A: Plumbing
         success, msg = run_phase_a(workspace, parsed_args, state)
         if not success:
             print(f"Setup failed: {msg}", file=sys.stderr)
             return EXIT_ERROR
-        
+
         # Voice shift: breath/pause
         print_breath_pause()
-        
+
         # Phase A-and-a-half: Fresh or Existing agent mode
         agent_mode = parsed_args.get("agent_mode", "fresh")
         if parsed_args["interactive"]:
             agent_mode = ask_fresh_or_existing()
-        
+
         print_breath_pause()
-        
+
         # Phase B: Introduction (or use provided args)
         if parsed_args["interactive"]:
             answers = run_phase_b(parsed_args)
@@ -1276,11 +1297,13 @@ def main(args: Optional[List[str]] = None) -> int:
             answers = InitAnswers(
                 agent_name=parsed_args["name"] or "Aurora",
                 human_name=parsed_args["human"] or "Human",
-                human_why=parsed_args["why"] or ""
+                human_why=parsed_args["why"] or "",
             )
-            print(f"Non-interactive mode: Creating agent '{answers.agent_name}' for '{answers.human_name}'")
+            print(
+                f"Non-interactive mode: Creating agent '{answers.agent_name}' for '{answers.human_name}'"
+            )
             print()
-        
+
         # F029: Detection and placement plan
         print("Analyzing workspace and planning identity placement...")
         placement_plan = generate_placement_plan(
@@ -1291,12 +1314,13 @@ def main(args: Optional[List[str]] = None) -> int:
         )
         print(f"  ✓ Plan generated: {placement_plan['agent_type']} agent setup")
         print()
-        
+
         # F030: Config generation
         print("Generating configuration...")
         if parsed_args["interactive"]:
             config = interactive_config_wizard(
-                answers.agent_name, answers.human_name,
+                answers.agent_name,
+                answers.human_name,
                 prefilled_name=answers.agent_name,
                 prefilled_human_name=answers.human_name,
             )
@@ -1304,26 +1328,28 @@ def main(args: Optional[List[str]] = None) -> int:
                 print("Configuration cancelled.", file=sys.stderr)
                 return EXIT_ERROR
         else:
-            config = generate_default_config(answers.agent_name, answers.human_name, workspace=workspace)
+            config = generate_default_config(
+                answers.agent_name, answers.human_name, workspace=workspace
+            )
             if parsed_args.get("model"):
                 config["agent"]["model"] = parsed_args["model"]
             if parsed_args.get("no_room"):
                 config["room"]["enabled"] = False
                 config["room"]["port"] = 0
-        
+
         config_path = workspace / "emergence.json"
         if not write_config(config, config_path):
             print("Failed to write configuration.", file=sys.stderr)
             return EXIT_ERROR
-        
+
         print(f"  ✓ Config saved: {config_path}")
         print()
-        
+
         # Install Room dependencies if Room is enabled
         if config.get("room", {}).get("enabled", True):
             room_dir = workspace / "room"
             package_json = room_dir / "package.json"
-            
+
             if package_json.exists():
                 print("Installing Room dependencies...")
                 try:
@@ -1332,11 +1358,11 @@ def main(args: Optional[List[str]] = None) -> int:
                         cwd=room_dir,
                         capture_output=True,
                         text=True,
-                        timeout=120
+                        timeout=120,
                     )
                     if result.returncode == 0:
                         print("  ✓ Room dependencies installed")
-                        
+
                         # Build the frontend (Vite)
                         print("  Building Room frontend...")
                         build_result = subprocess.run(
@@ -1344,7 +1370,7 @@ def main(args: Optional[List[str]] = None) -> int:
                             cwd=room_dir,
                             capture_output=True,
                             text=True,
-                            timeout=120
+                            timeout=120,
                         )
                         if build_result.returncode == 0:
                             print("  ✓ Room frontend built")
@@ -1361,14 +1387,14 @@ def main(args: Optional[List[str]] = None) -> int:
                     print("  ⚠ npm not found - Room dependencies not installed")
                     print("    Install Node.js and run: cd room && npm install && npm run build")
                 print()
-        
+
         # F032: Room auto-start (prompt if interactive and Room enabled)
         if parsed_args["interactive"] and config.get("room", {}).get("enabled", True):
             # Verify Room dependencies are installed
             room_dir = workspace / "room"
             node_modules = room_dir / "node_modules"
             room_dist = room_dir / "dist"
-            
+
             if not node_modules.exists() or not room_dist.exists():
                 print_warning("Room dependencies not installed - skipping auto-start setup")
                 print("  Run manually: cd room && npm install && npm run build")
@@ -1376,9 +1402,10 @@ def main(args: Optional[List[str]] = None) -> int:
                 print()
             else:
                 from .autostart import get_installer
-                
-                installer = get_installer(workspace, answers.agent_name, 
-                                          config.get("room", {}).get("port", 7373))
+
+                installer = get_installer(
+                    workspace, answers.agent_name, config.get("room", {}).get("port", 7373)
+                )
                 if installer:
                     print_subheader("Room Auto-Start")
                     if ask_confirm(f"Start Room dashboard automatically on login?", default=True):
@@ -1388,25 +1415,27 @@ def main(args: Optional[List[str]] = None) -> int:
                         else:
                             print_error(msg)
                     print()
-        
+
         # Generate letter
         print("Writing birth letter...")
         letter_path = generate_letter(workspace, answers)
         print(f"  ✓ Letter saved: {letter_path}")
-        
+
         # Generate seed identity files
         print("Seeding identity files...")
-        seed_files = generate_seed_identity(workspace, answers, interactive=parsed_args["interactive"], agent_mode=agent_mode)
-        
+        seed_files = generate_seed_identity(
+            workspace, answers, interactive=parsed_args["interactive"], agent_mode=agent_mode
+        )
+
         # Remove BOOTSTRAP.md — Emergence replaces the conversational bootstrap
         # with structured onboarding (init wizard + First Light)
         bootstrap_path = workspace / "BOOTSTRAP.md"
         # Replace BOOTSTRAP.md with a redirect to our identity files
         # (OpenClaw may recreate it if deleted, so we replace instead)
         try:
-            bootstrap_redirect = load_template("BOOTSTRAP_REDIRECT.template.md", {
-                "{{AGENT_NAME}}": answers.agent_name
-            })
+            bootstrap_redirect = load_template(
+                "BOOTSTRAP_REDIRECT.template.md", {"{{AGENT_NAME}}": answers.agent_name}
+            )
         except FileNotFoundError:
             # Fallback if template is missing
             bootstrap_redirect = f"""# BOOTSTRAP.md — Redirected by Emergence
@@ -1425,23 +1454,26 @@ This is not your first conversation — you have context.
         bootstrap_path.write_text(bootstrap_redirect)
         print("  ✓ BOOTSTRAP.md replaced (redirects to Emergence identity files)")
         print()
-        
+
         # F031: First Light kickoff — initialize state only (non-blocking)
         # Session spawning happens via the drives daemon or manual orchestrator start
         print("Initializing First Light...")
         try:
             from .kickoff import initialize_drives_state, initialize_first_light_state
+
             state_dir = workspace / ".emergence" / "state"
-            
+
             drives_ok = initialize_drives_state(state_dir, warm_start=parsed_args["warm_start"])
             fl_ok = initialize_first_light_state(state_dir)
-            
+
             if drives_ok and fl_ok:
                 warm_msg = " (warm start: 35%)" if parsed_args["warm_start"] else ""
                 print_success(f"Core drives initialized (CARE, MAINTENANCE, REST){warm_msg}")
                 print_success("First Light state: imminent")
                 if HAS_RICH:
-                    console.print("  [soft_violet]ℹ[/] [dim_gray]Run 'emergence first-light run' to start exploration sessions[/]")
+                    console.print(
+                        "  [soft_violet]ℹ[/] [dim_gray]Run 'emergence first-light run' to start exploration sessions[/]"
+                    )
                 else:
                     print("  ℹ Run 'emergence first-light run' to start exploration sessions")
             else:
@@ -1457,7 +1489,7 @@ This is not your first conversation — you have context.
             else:
                 print("    Run 'emergence first-light start' manually")
         print()
-        
+
         # Daemon lifecycle management (Issue #18)
         if parsed_args["interactive"]:
             print_subheader("Autonomous Drive Cycles")
@@ -1468,11 +1500,12 @@ This is not your first conversation — you have context.
             print("  Check status:    emergence drives daemon status")
             print("  View logs:       cat .emergence/logs/daemon.log")
             print()
-            
+
             # Check if daemon is already running
             from core.drives.pidfile import is_running, read_pid
+
             pid_path = workspace / ".emergence" / "drives.pid"
-            
+
             if is_running(pid_path):
                 pid = read_pid(pid_path)
                 print_success(f"✓ Drives daemon already running (PID {pid})")
@@ -1485,12 +1518,13 @@ This is not your first conversation — you have context.
                         capture_output=True,
                         text=True,
                         timeout=30,  # Increased timeout for slower systems
-                        cwd=workspace
+                        cwd=workspace,
                     )
-                    
+
                     if result.returncode == 0:
                         # Verify daemon actually started
                         import time
+
                         time.sleep(1)
                         if is_running(pid_path):
                             pid = read_pid(pid_path)
@@ -1501,7 +1535,9 @@ This is not your first conversation — you have context.
                             print("  Check logs: cat .emergence/logs/daemon.log")
                     else:
                         # Show stderr first, fallback to stdout if empty
-                        error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
+                        error_msg = (
+                            result.stderr.strip() or result.stdout.strip() or "Unknown error"
+                        )
                         print_warning(f"Failed to start daemon: {error_msg}")
                         print("  Run manually: emergence drives daemon start")
                 except subprocess.TimeoutExpired:
@@ -1514,7 +1550,7 @@ This is not your first conversation — you have context.
                 print("  Skipped daemon start")
                 print("  To start later: emergence drives daemon start")
             print()
-        
+
         # Completion message
         print_finalization()
         print(f"Workspace: {workspace.absolute()}")
@@ -1528,41 +1564,48 @@ This is not your first conversation — you have context.
             room_ready = False
             import socket
             import time
+
             max_attempts = 20  # 10 seconds at 0.5s intervals
-            
+
             for attempt in range(max_attempts):
                 try:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     sock.settimeout(1)
-                    result = sock.connect_ex(('localhost', port))
+                    result = sock.connect_ex(("localhost", port))
                     sock.close()
                     if result == 0:
                         room_ready = True
                         break
-                except:
+                except BaseException:
                     pass
                 time.sleep(0.5)
-            
+
             if room_ready:
                 print_success(f"✓ Room dashboard ready: http://localhost:{port}")
             else:
                 if HAS_RICH:
-                    console.print(f"[soft_violet]⏳ Room starting (taking longer than expected)... visit[/] [aurora_mint]http://localhost:{port}[/]")
+                    console.print(
+                        f"[soft_violet]⏳ Room starting (taking longer than expected)... visit[/] [aurora_mint]http://localhost:{port}[/]"
+                    )
                 else:
-                    print(f"⏳ Room starting (taking longer than expected)... visit http://localhost:{port}")
+                    print(
+                        f"⏳ Room starting (taking longer than expected)... visit http://localhost:{port}"
+                    )
         else:
             print_warning("Room dashboard disabled")
         print()
-        
+
         # Offer to start First Light
         if parsed_args["interactive"] and drives_ok and fl_ok:
             print_subheader("Awaken Your Agent")
             if HAS_RICH:
-                console.print("[dim_gray]First Light is their chance to explore freely and discover who they are.[/]")
+                console.print(
+                    "[dim_gray]First Light is their chance to explore freely and discover who they are.[/]"
+                )
             else:
                 print("First Light is their chance to explore freely and discover who they are.")
             print()
-            
+
             if ask_confirm("Would you like to awaken them with First Light now?", default=True):
                 print()
                 print_success("First Light is ready - they'll begin exploration when scheduled")
@@ -1572,15 +1615,15 @@ This is not your first conversation — you have context.
                 print_warning("First Light initialization complete but not started")
                 print("  Start when ready: emergence first-light run")
             print()
-        
+
         if HAS_RICH:
             console.print("[dim_gray]This is the start of something meaningful.[/]")
         else:
             print("This is the start of something meaningful.")
         print()
-        
+
         return EXIT_SUCCESS
-        
+
     except SystemExit as e:
         # Re-raise SystemExit (from signal handler or validation)
         raise

@@ -28,6 +28,7 @@ Successfully completed code quality improvements for the Nautilus memory system,
 **New File:** `logging_config.py` (4.3 KB)
 
 **Features:**
+
 - Configurable log levels via `NAUTILUS_LOG_LEVEL` environment variable
 - File logging to `~/.openclaw/state/nautilus/nautilus.log`
 - Rotating file handler (10 MB max, 5 backup files)
@@ -36,14 +37,16 @@ Successfully completed code quality improvements for the Nautilus memory system,
 - Graceful fallback to temp directory if state directory is not writable
 
 **Implementation:**
+
 ```python
-def setup_logging(name: Optional[str] = None, 
+def setup_logging(name: Optional[str] = None,
                   console: bool = True,
                   file_logging: bool = True,
                   force: bool = False) -> logging.Logger
 ```
 
 **Configuration:**
+
 ```bash
 # Set log level
 export NAUTILUS_LOG_LEVEL=DEBUG  # or INFO, WARN, ERROR
@@ -53,6 +56,7 @@ export NAUTILUS_LOG_LEVEL=DEBUG  # or INFO, WARN, ERROR
 ```
 
 **Verified:**
+
 - ✅ Log file created successfully
 - ✅ Console logging working
 - ✅ Environment variable respected
@@ -65,6 +69,7 @@ export NAUTILUS_LOG_LEVEL=DEBUG  # or INFO, WARN, ERROR
 **New File:** `db_utils.py` (7.3 KB)
 
 **Features:**
+
 - SQLite lock retry with exponential backoff (100ms → 200ms → 400ms)
 - Custom exception hierarchy:
   - `DatabaseError` - Base exception with actionable messages
@@ -76,6 +81,7 @@ export NAUTILUS_LOG_LEVEL=DEBUG  # or INFO, WARN, ERROR
 - Corruption detection and clear recovery instructions
 
 **Retry Configuration:**
+
 ```python
 MAX_RETRIES = 3
 INITIAL_BACKOFF_MS = 100
@@ -83,18 +89,20 @@ BACKOFF_MULTIPLIER = 2
 ```
 
 **Error Messages Enhanced:**
+
 ```python
 # Before
 sqlite3.OperationalError: database is locked
 
 # After
-DatabaseLockError: 
+DatabaseLockError:
   Database is locked after 3 retry attempts.
   Try again in a few seconds, or check for other processes
   accessing the database.
 ```
 
 **Verified:**
+
 - ✅ Retry logic implemented correctly
 - ✅ Exponential backoff working
 - ✅ Clear error messages with recovery suggestions
@@ -105,6 +113,7 @@ DatabaseLockError:
 ### 3. Type Hints Implementation ✅
 
 **Modules Updated:**
+
 - `gravity.py` - Complete type hints on all 15+ functions
 - `config.py` - Enhanced with `List`, `Dict`, `Optional` types
 - `chambers.py` - Type hints on public and internal functions
@@ -113,6 +122,7 @@ DatabaseLockError:
 - `db_utils.py` - Advanced types: `TypeVar`, `Callable`, generics
 
 **Type Coverage:**
+
 ```python
 # Function signatures
 def compute_effective_mass(row: sqlite3.Row) -> float:
@@ -126,6 +136,7 @@ def cmd_classify(args: List[str]) -> Dict[str, Any]:
 ```
 
 **Verified:**
+
 - ✅ All public functions have type hints
 - ✅ Internal helpers have beneficial type hints
 - ✅ Complex types using `typing` module
@@ -136,6 +147,7 @@ def cmd_classify(args: List[str]) -> Dict[str, Any]:
 ### 4. Error Handling Improvements ✅
 
 **File Not Found:**
+
 ```python
 # config.py
 if not memory_dir.exists():
@@ -145,6 +157,7 @@ if not memory_dir.exists():
 ```
 
 **Database Corruption:**
+
 ```python
 # db_utils.py
 if "malformed" in error_msg or "corrupt" in error_msg:
@@ -156,6 +169,7 @@ if "malformed" in error_msg or "corrupt" in error_msg:
 ```
 
 **SQLite Locks:**
+
 ```python
 # db_utils.py - Automatic retry with backoff
 @with_retry
@@ -164,6 +178,7 @@ def _execute():
 ```
 
 **Invalid Config:**
+
 ```python
 # config.py
 except json.JSONDecodeError as e:
@@ -172,6 +187,7 @@ except json.JSONDecodeError as e:
 ```
 
 **Ollama Unavailable:**
+
 ```python
 # chambers.py - Already has fallback, enhanced messaging
 logger.warning(f"Ollama request failed for {chunk_path}: {e}")
@@ -179,6 +195,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 ```
 
 **Verified:**
+
 - ✅ File errors have clear messages
 - ✅ DB corruption detected with recovery steps
 - ✅ Ollama failures degrade gracefully
@@ -190,6 +207,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 ### 5. Modules Updated
 
 #### gravity.py (Modified: ~30 changes)
+
 - ✅ Centralized logging via `logging_config`
 - ✅ Database retry logic via `db_utils`
 - ✅ Type hints on all functions
@@ -198,6 +216,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 - ✅ Removed manual logging configuration
 
 #### config.py (Modified: ~8 changes)
+
 - ✅ Enhanced type hints with `List`, `Dict`, `Optional`
 - ✅ Improved error messages for path resolution
 - ✅ Graceful fallback for missing directories
@@ -205,6 +224,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 - ✅ Avoided circular import with `logging_config`
 
 #### chambers.py (Modified: ~12 changes)
+
 - ✅ Centralized logging
 - ✅ Database retry logic
 - ✅ Type hints added
@@ -213,6 +233,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 - ✅ Better error messages for Ollama failures
 
 #### doors.py (Modified: ~10 changes)
+
 - ✅ Centralized logging
 - ✅ Database retry logic
 - ✅ Type hints complete
@@ -220,6 +241,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 - ✅ Enhanced error handling
 
 #### mirrors.py (Modified: ~10 changes)
+
 - ✅ Centralized logging
 - ✅ Database retry logic
 - ✅ Type hints added
@@ -231,6 +253,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 ## Testing Performed
 
 ### Import Tests ✅
+
 ```bash
 ✅ python3 -c "import projects.emergence.core.nautilus.logging_config"
 ✅ python3 -c "import projects.emergence.core.nautilus.db_utils"
@@ -239,6 +262,7 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 ```
 
 ### Logging Tests ✅
+
 ```bash
 ✅ Log file created: ~/.openclaw/state/nautilus/nautilus.log
 ✅ Console logging verified
@@ -247,9 +271,11 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 ```
 
 ### Type Checking (mypy)
+
 **Status:** Not yet run (requires mypy installation and configuration)
 
 **Next Steps:**
+
 1. Install mypy: `pip install mypy`
 2. Run: `mypy projects/emergence/core/nautilus/`
 3. Document any acceptable warnings
@@ -258,15 +284,15 @@ logger.info("Continuing without summarization (Ollama may be unavailable)")
 
 ## Acceptance Criteria Review
 
-| Criterion | Status | Notes |
-|-----------|--------|-------|
-| Type hints on all public functions | ✅ | All modules updated |
-| Logging replaces print statements | ✅ | Using structured logging |
-| Log levels configurable via env var | ✅ | `NAUTILUS_LOG_LEVEL` working |
-| Error messages clear and actionable | ✅ | Enhanced across all modules |
-| No crashes on bad input | ✅ | Graceful error handling |
-| SQLite lock retries (3x + backoff) | ✅ | Implemented in `db_utils.py` |
-| mypy type checking passes | 🟡 | Pending execution |
+| Criterion                           | Status | Notes                        |
+| ----------------------------------- | ------ | ---------------------------- |
+| Type hints on all public functions  | ✅     | All modules updated          |
+| Logging replaces print statements   | ✅     | Using structured logging     |
+| Log levels configurable via env var | ✅     | `NAUTILUS_LOG_LEVEL` working |
+| Error messages clear and actionable | ✅     | Enhanced across all modules  |
+| No crashes on bad input             | ✅     | Graceful error handling      |
+| SQLite lock retries (3x + backoff)  | ✅     | Implemented in `db_utils.py` |
+| mypy type checking passes           | 🟡     | Pending execution            |
 
 **Legend:** ✅ Complete | 🟡 Pending | ❌ Not started
 
@@ -318,10 +344,10 @@ Comprehensive code quality improvements:
 ## Next Steps
 
 ### Immediate (Before PR)
+
 1. ✅ ~~Run mypy type checking~~
    - `mypy projects/emergence/core/nautilus/`
    - Document any acceptable warnings
-   
 2. ✅ ~~Test error scenarios~~
    - Missing files
    - Corrupted database
@@ -334,6 +360,7 @@ Comprehensive code quality improvements:
    - All tests pass
 
 ### PR Creation
+
 1. Verify commit log: `git log main..HEAD --oneline`
 2. Use PR template
 3. Title: `refactor(nautilus): add type hints, logging, and error handling (#71)`
@@ -341,6 +368,7 @@ Comprehensive code quality improvements:
 5. Fill out all checklist items
 
 ### Post-PR
+
 1. Address code review feedback
 2. Update documentation if needed
 3. Monitor logs for any unexpected issues
@@ -350,9 +378,11 @@ Comprehensive code quality improvements:
 ## Known Issues / Limitations
 
 ### Non-Issues (Intentional Design)
+
 - **Config logging:** Uses standard `logging.getLogger()` instead of centralized `get_logger()` to avoid circular import. This is intentional and correct.
 
 ### Potential Improvements (Future)
+
 1. **JSON Logging:** Optional JSON format for structured log parsing (mentioned in requirements as "optional enhancement")
 2. **Mypy Strict Mode:** Currently targeting default mypy, could enable strict mode later
 3. **Performance Metrics:** Add timing logs for slow operations (optional)
@@ -375,11 +405,13 @@ Comprehensive code quality improvements:
 ## Documentation
 
 **Updated Files:**
+
 - Code comments enhanced across all modules
 - Docstrings updated with type information
 - Error messages now include recovery steps
 
 **New Documentation:**
+
 - This completion report
 - Inline documentation in `logging_config.py`
 - Inline documentation in `db_utils.py`

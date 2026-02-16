@@ -2,7 +2,7 @@
 
 The Dream Engine extracts concepts from recent memory files, randomly pairs
 them from different sources, generates surreal "dream fragments," and scores
-them for insight. It runs nightly via cron and outputs to 
+them for insight. It runs nightly via cron and outputs to
 memory/dreams/YYYY-MM-DD.json.
 
 Modules:
@@ -28,24 +28,24 @@ from .scoring import score_pairs, InsightScorer
 
 __all__ = [
     # Version
-    '__version__',
+    "__version__",
     # Config
-    'load_config',
-    'get_dream_dir',
-    'get_memory_dir',
-    'get_dream_engine_config',
+    "load_config",
+    "get_dream_dir",
+    "get_memory_dir",
+    "get_dream_engine_config",
     # Concepts
-    'extract_concepts',
-    'ConceptExtractor',
+    "extract_concepts",
+    "ConceptExtractor",
     # Pairs
-    'generate_pairs',
-    'ConceptPair',
-    'PairGenerator',
+    "generate_pairs",
+    "ConceptPair",
+    "PairGenerator",
     # Fragments
-    'generate_fragment',
-    'generate_fragments',
-    'DREAM_TEMPLATES',
+    "generate_fragment",
+    "generate_fragments",
+    "DREAM_TEMPLATES",
     # Scoring
-    'score_pairs',
-    'InsightScorer',
+    "score_pairs",
+    "InsightScorer",
 ]

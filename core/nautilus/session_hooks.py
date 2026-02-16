@@ -23,7 +23,6 @@ import asyncio
 import logging
 
 from .config import get_gravity_db_path, get_workspace
-from . import gravity
 
 # Configure logging
 logger = logging.getLogger("nautilus.session_hooks")

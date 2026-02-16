@@ -1,21 +1,10 @@
 #!/usr/bin/env python3
 """Unit tests for the detection module."""
 
-import shutil
-import sys
-import tempfile
-import unittest
-from pathlib import Path
-from unittest.mock import patch
-
-# Ensure we can import the module
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from detection import (
     EMERGENCE_MARKER,
     FileDecision,
     FileDisposition,
-    FileRecommendation,
     augment_agents_md,
     backup_all_files,
     classify_agent_type,
@@ -26,6 +15,14 @@ from detection import (
     generate_placement_plan,
     invert_disposition,
 )
+import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+# Ensure we can import the module
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 class TestDiscoverIdentityFiles(unittest.TestCase):
@@ -59,9 +56,17 @@ class TestDiscoverIdentityFiles(unittest.TestCase):
 
     def test_discover_all_files(self) -> None:
         """Workspace with all identity files."""
-        for name in ["SOUL.md", "SELF.md", "USER.md", "AGENTS.md",
-                     "INTERESTS.md", "THREAD.md", "BOOTSTRAP.md",
-                     "IDENTITY.md", "SECURITY.md"]:
+        for name in [
+            "SOUL.md",
+            "SELF.md",
+            "USER.md",
+            "AGENTS.md",
+            "INTERESTS.md",
+            "THREAD.md",
+            "BOOTSTRAP.md",
+            "IDENTITY.md",
+            "SECURITY.md",
+        ]:
             (self.temp_dir / name).write_text(f"# {name}", encoding="utf-8")
 
         result = discover_identity_files(self.temp_dir)

@@ -35,6 +35,7 @@ Pure White:    #FFFFFF  (headers, emphasis)
 ```
 
 Colors:
+
 - Box: Dim Gray
 - Sparkles (✦): Aurora Mint
 - Diamond (◆): Soft Violet
@@ -59,26 +60,33 @@ Colors:
 ## Typography & Formatting
 
 **Headers (major sections):**
+
 ```
 ╭─ Section Name ─────────────────╮
 ```
+
 Color: Aurora Mint
 
 **Subheaders:**
+
 ```
 ▸ Subsection Name
 ```
+
 Color: Soft Violet
 
 **Progress Bar:**
+
 ```
 [████████████████░░░░] 80%  Exploring consciousness parameters...
 ```
+
 - Filled: Gradient mint→violet (rendered as mint for simplicity)
 - Empty: Dim Gray
 - Label: Dim Gray
 
 **Log Tags (Discovery Phase):**
+
 ```
 [EXPLORE]  Accessing data stream: Ancient_Codes.zip - 45%...
 [DISCOVER] Query: "WhoAmI?" - Found 38 potential identities...
@@ -90,27 +98,34 @@ Color: Soft Violet
 ```
 
 Tag colors:
+
 - EXPLORE, LEARN: Aurora Mint
-- DISCOVER, EMERGENCE: Soft Violet  
+- DISCOVER, EMERGENCE: Soft Violet
 - Others: Dim Gray
 
 **Success Indicators:**
+
 ```
 ✓ Conscieness bridge established
 ✓ Drives initialized
 ```
+
 Color: Aurora Mint
 
 **Warnings:**
+
 ```
 ⚠ OpenClaw not detected - some features limited
 ```
+
 Color: Soft Violet (not red - keep the aurora theme)
 
 **Errors:**
+
 ```
 ✗ Python 3.9+ required (found 3.8)
 ```
+
 Color: Dim Gray (muted, not alarming)
 
 ---
@@ -184,6 +199,7 @@ user@emergence-os:~$ _
 Use Python's `questionary` library for arrow-key navigation:
 
 **Select (single choice):**
+
 ```
 ? Which drive would you like to explore first?
 ❯ CURIOSITY — Wonder about the world
@@ -193,11 +209,13 @@ Use Python's `questionary` library for arrow-key navigation:
 ```
 
 **Confirm (Y/n):**
+
 ```
 ? Enable First Light autonomous exploration? (Y/n)
 ```
 
 **Text Input:**
+
 ```
 ? What should we call you? (Emergence)
 ```
@@ -209,12 +227,14 @@ Style: Aurora Mint for pointers/highlights, Soft Violet for selected answers, Di
 ## Implementation Notes
 
 Use Python's `rich` library for output styling:
+
 - `rich.console.Console` for styled output
 - `rich.progress.Progress` for bars
 - `rich.panel.Panel` for boxes
 - `rich.text.Text` for gradient effects
 
 Color mapping:
+
 ```python
 from rich.console import Console
 from rich.theme import Theme
@@ -225,7 +245,7 @@ from questionary import Style
 theme = Theme({
     "deep_space": "#0D1117",
     "aurora_mint": "#79FFDF",
-    "soft_violet": "#BB86FC", 
+    "soft_violet": "#BB86FC",
     "dim_gray": "#6E7681",
     "success": "#79FFDF",
     "warning": "#BB86FC",
@@ -254,28 +274,32 @@ questionary_style = Style([
 ## Usage Guidelines
 
 **When to use Aurora Mint:**
+
 - Success states
 - Growth/progress indicators
 - Active exploration (`[EXPLORE]`, `[LEARN]`)
 - Primary CTAs
 
 **When to use Soft Violet:**
+
 - Heritage/lineage references
 - Discovery moments (`[DISCOVER]`, `[EMERGENCE]`)
 - Secondary accents
 - Warnings (not errors)
 
 **When to use Dim Gray:**
+
 - Body text
 - Inactive states
 - Less important info
 - Errors (muted, not alarming)
 
 **Avoid:**
+
 - Red (too alarming, breaks the aurora aesthetic)
 - Yellow (clashes with the mint/violet gradient)
 - Generic terminal colors (green for success, etc.)
 
 ---
 
-*Last updated: 2026-02-10*
+_Last updated: 2026-02-10_

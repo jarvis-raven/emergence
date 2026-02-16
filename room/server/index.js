@@ -1,11 +1,11 @@
 /**
  * The Room — Dashboard API Server
- * 
+ *
  * Express.js server that reads Emergence state files and serves them as JSON.
  * Files are the source of truth — re-read on every request.
- * 
+ *
  * Supports both HTTP and HTTPS (HTTPS preferred with self-signed certs).
- * 
+ *
  * WebSocket Support:
  * - Watches drives state file for changes and broadcasts to connected clients
  * - Message format: {"type": "drives_update", "data": <drives.json contents>}
@@ -63,25 +63,27 @@ try {
   drivesStatePath = getStatePath(config, 'drives.json');
 } catch (err) {
   // Fallback to env var or legacy path
-  drivesStatePath = process.env.EMERGENCE_STATE 
+  drivesStatePath = process.env.EMERGENCE_STATE
     ? join(process.env.EMERGENCE_STATE, 'drives.json')
     : join(os.homedir(), '.openclaw/state', 'drives.json');
 }
 
 // Middleware
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://localhost:5173',
-    'https://localhost:5173',
-    'http://127.0.0.1:3000',
-    'https://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'https://127.0.0.1:5173',
-  ],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:3000',
+      'https://localhost:3000',
+      'http://localhost:5173',
+      'https://localhost:5173',
+      'http://127.0.0.1:3000',
+      'https://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
+      'https://127.0.0.1:5173',
+    ],
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 
@@ -145,7 +147,8 @@ app.use((err, req, res, next) => {
 function broadcastToClients(message) {
   const data = JSON.stringify(message);
   wsClients.forEach((ws) => {
-    if (ws.readyState === 1) { // WebSocket.OPEN
+    if (ws.readyState === 1) {
+      // WebSocket.OPEN
       ws.send(data);
     }
   });
@@ -160,7 +163,7 @@ function broadcastDrivesState() {
       console.error('Failed to read drives state:', err.message);
       return;
     }
-    
+
     try {
       const data = JSON.parse(content);
       broadcastToClients({
@@ -184,7 +187,7 @@ function setupWebSocket(server) {
   wss.on('connection', (ws, req) => {
     const clientId = `${req.socket.remoteAddress}:${req.socket.remotePort}`;
     console.log(`[WebSocket] Client connected: ${clientId}`);
-    
+
     wsClients.add(ws);
 
     // Send initial drives state to the new client
@@ -192,10 +195,12 @@ function setupWebSocket(server) {
       if (!err) {
         try {
           const data = JSON.parse(content);
-          ws.send(JSON.stringify({
-            type: 'drives_update',
-            data: data,
-          }));
+          ws.send(
+            JSON.stringify({
+              type: 'drives_update',
+              data: data,
+            }),
+          );
         } catch (parseErr) {
           console.error('Failed to parse drives state for new client:', parseErr.message);
         }
@@ -250,13 +255,13 @@ function watchDrivesState() {
     console.error('[Watch] Run drives engine to initialize state file');
     return;
   }
-  
+
   setupWatch(drivesStatePath);
 }
 
 function setupWatch(filePath) {
   console.log(`[Watch] Watching drives state: ${filePath}`);
-  
+
   // Use watchFile (stat-polling) instead of watch (inode-based) because
   // the drives engine writes atomically via temp file + rename.
   // fs.watch loses track of the file after rename on macOS.
@@ -277,16 +282,16 @@ async function startServer() {
     if (USE_HTTPS) {
       // Ensure certificates exist
       const certs = ensureCertificates(SSL_DIR);
-      
+
       if (certs.error) {
         console.warn('⚠️  HTTPS certificates not available, falling back to HTTP');
         console.warn('   Run with OpenSSL available to generate certificates');
-        
+
         // Fallback to HTTP
         const server = createServer(app);
         setupWebSocket(server);
         watchDrivesState();
-        
+
         server.listen(PORT, HOST, () => {
           console.log(`🌙 The Room API running on http://0.0.0.0:${PORT}`);
           console.log(`   Agent: ${config.agent?.name || 'My Agent'}`);
@@ -295,15 +300,15 @@ async function startServer() {
         });
         return;
       }
-      
+
       // Read certificates
       const key = readFileSync(certs.keyPath);
       const cert = readFileSync(certs.certPath);
-      
+
       const server = createHttpsServer({ key, cert }, app);
       setupWebSocket(server);
       watchDrivesState();
-      
+
       server.listen(PORT, HOST, () => {
         console.log(`🌙 The Room API running on https://0.0.0.0:${PORT}`);
         console.log(`   Agent: ${config.agent?.name || 'My Agent'}`);
@@ -316,7 +321,7 @@ async function startServer() {
       const server = createServer(app);
       setupWebSocket(server);
       watchDrivesState();
-      
+
       server.listen(PORT, HOST, () => {
         console.log(`🌙 The Room API running on http://0.0.0.0:${PORT}`);
         console.log(`   Agent: ${config.agent?.name || 'My Agent'}`);

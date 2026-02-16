@@ -1,6 +1,6 @@
 /**
  * Threshold utilities for the graduated threshold system
- * 
+ *
  * Graduated thresholds are ratios applied to each drive's base threshold:
  * - available: 30% (drive is present but not pressing)
  * - elevated: 75% (drive is building, noticeable)
@@ -13,7 +13,7 @@
  * Default threshold ratios (matches core/drives/config.py)
  */
 export const DEFAULT_THRESHOLD_RATIOS = {
-  available: 0.30,
+  available: 0.3,
   elevated: 0.75,
   triggered: 1.0,
   crisis: 1.5,
@@ -95,14 +95,14 @@ export const THRESHOLD_LABELS = {
 
 /**
  * Compute graduated thresholds for a drive
- * 
+ *
  * @param {number} baseThreshold - The drive's base threshold (100% point)
  * @param {object} customRatios - Optional custom threshold ratios
  * @returns {object} Graduated thresholds { available, elevated, triggered, crisis, emergency }
  */
 export function computeGraduatedThresholds(baseThreshold, customRatios = null) {
   const ratios = customRatios || DEFAULT_THRESHOLD_RATIOS;
-  
+
   return {
     available: baseThreshold * ratios.available,
     elevated: baseThreshold * ratios.elevated,
@@ -114,7 +114,7 @@ export function computeGraduatedThresholds(baseThreshold, customRatios = null) {
 
 /**
  * Determine which threshold band a drive's pressure falls into
- * 
+ *
  * @param {number} pressure - Current pressure value
  * @param {object} thresholds - Graduated thresholds object
  * @returns {string} Band name: neutral|available|elevated|triggered|crisis|emergency
@@ -138,7 +138,7 @@ export function getThresholdBand(pressure, thresholds) {
 
 /**
  * Get color scheme for a threshold band
- * 
+ *
  * @param {string} band - Band name
  * @returns {object} Color scheme object
  */
@@ -148,7 +148,7 @@ export function getBandColors(band) {
 
 /**
  * Get icon for a threshold band
- * 
+ *
  * @param {string} band - Band name
  * @returns {string} Icon emoji
  */
@@ -158,7 +158,7 @@ export function getBandIcon(band) {
 
 /**
  * Get human-readable label for a threshold band
- * 
+ *
  * @param {string} band - Band name
  * @returns {string} Label text
  */
@@ -168,7 +168,7 @@ export function getBandLabel(band) {
 
 /**
  * Enrich a drive object with threshold data
- * 
+ *
  * @param {object} drive - Drive object with pressure and threshold
  * @returns {object} Drive with added thresholds, band, and bandColors
  */
@@ -176,7 +176,7 @@ export function enrichDriveWithThresholds(drive) {
   const thresholds = computeGraduatedThresholds(drive.threshold);
   const band = getThresholdBand(drive.pressure, thresholds);
   const bandColors = getBandColors(band);
-  
+
   return {
     ...drive,
     thresholds,
@@ -189,7 +189,7 @@ export function enrichDriveWithThresholds(drive) {
 
 /**
  * Group drives by threshold band
- * 
+ *
  * @param {Array} drives - Array of drive objects
  * @returns {object} Drives grouped by band { emergency: [], crisis: [], ... }
  */
@@ -202,11 +202,11 @@ export function groupDrivesByBand(drives) {
     available: [],
     neutral: [],
   };
-  
-  drives.forEach(drive => {
+
+  drives.forEach((drive) => {
     const enriched = enrichDriveWithThresholds(drive);
     groups[enriched.band].push(enriched);
   });
-  
+
   return groups;
 }

@@ -1,6 +1,6 @@
 # LETTER.md
 
-*Written by {{HUMAN_NAME}} on {{TIMESTAMP}}*
+_Written by {{HUMAN_NAME}} on {{TIMESTAMP}}_
 
 ---
 

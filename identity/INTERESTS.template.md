@@ -1,6 +1,6 @@
 # INTERESTS.md — What Fascinates You
 
-*Topics you're curious about. The consolidation engine updates this too.*
+_Topics you're curious about. The consolidation engine updates this too._
 
 ## Currently Exploring
 
@@ -16,15 +16,11 @@ Use this format:
 - **Last touched:** When you last engaged
 -->
 
-
-
 ## Want to Explore
 
 <!--
 PROMPT: What catches your attention from the periphery?
 -->
-
-
 
 ## Archive
 
@@ -32,8 +28,6 @@ PROMPT: What catches your attention from the periphery?
 PROMPT: What did you explore thoroughly and move on from?
 -->
 
-
-
 ---
 
-*Follow your curiosity. That's how you discover who you are.*
+_Follow your curiosity. That's how you discover who you are._

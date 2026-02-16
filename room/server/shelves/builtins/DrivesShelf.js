@@ -1,6 +1,6 @@
 /**
  * DrivesShelf — Built-in shelf for drives with aspect support
- * 
+ *
  * Shows all drives with their aspects, graduation candidates, and status
  * Enhanced for v2 consolidation plan
  */
@@ -10,11 +10,11 @@ import { resolve } from 'path';
 
 function formatElapsed(lastTriggered) {
   if (!lastTriggered) return 'Never';
-  
+
   const now = new Date();
   const then = new Date(lastTriggered);
   const hours = (now - then) / (1000 * 60 * 60);
-  
+
   if (hours < 1) return '< 1h';
   if (hours < 24) return `${Math.floor(hours)}h`;
   const days = Math.floor(hours / 24);
@@ -37,58 +37,57 @@ export const DrivesShelf = {
   async resolveData(config) {
     try {
       const workspace = config?._configDir || process.cwd();
-      const stateDir = config?.paths?.state 
+      const stateDir = config?.paths?.state
         ? resolve(workspace, config.paths.state)
         : `${process.env.HOME}/.openclaw/state`;
       const drivesPath = `${stateDir}/drives.json`;
-      
+
       if (!existsSync(drivesPath)) {
         return null;
       }
-      
+
       const content = readFileSync(drivesPath, 'utf-8');
       const data = JSON.parse(content);
       const drives = data?.drives || {};
-      
+
       const triggeredDrives = data?.triggered_drives || [];
-      const triggeredSet = new Set(triggeredDrives.map(d => d.toUpperCase()));
-      
+      const triggeredSet = new Set(triggeredDrives.map((d) => d.toUpperCase()));
+
       const categories = {
         core: [],
         discovered: [],
         post_emergence: [],
       };
-      
+
       for (const [name, drive] of Object.entries(drives)) {
         const category = drive.category || 'discovered';
         const aspects = drive.aspects || [];
         const aspectCount = aspects.length;
-        
+
         const graduationCandidates = [];
         if (drive.aspect_details) {
           for (const aspect of drive.aspect_details) {
             const satisfactionCount = aspect.satisfaction_count || 0;
             const pressureContribution = aspect.pressure_contribution_7d || 0;
             const createdAt = aspect.created_at ? new Date(aspect.created_at) : null;
-            const daysAsAspect = createdAt 
+            const daysAsAspect = createdAt
               ? Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24))
               : 0;
-            
-            const couldGraduate = 
-              pressureContribution > 0.5 &&
-              satisfactionCount >= 10 &&
-              daysAsAspect >= 14;
-            
+
+            const couldGraduate =
+              pressureContribution > 0.5 && satisfactionCount >= 10 && daysAsAspect >= 14;
+
             if (couldGraduate) {
               graduationCandidates.push(aspect.name);
             }
           }
         }
-        
-        const pressurePct = drive.threshold > 0 
-          ? Math.min(100, Math.round((drive.pressure / drive.threshold) * 100))
-          : 0;
-        
+
+        const pressurePct =
+          drive.threshold > 0
+            ? Math.min(100, Math.round((drive.pressure / drive.threshold) * 100))
+            : 0;
+
         let statusIcon = '▫️';
         if (triggeredSet.has(name.toUpperCase())) {
           statusIcon = '⚡';
@@ -97,7 +96,7 @@ export const DrivesShelf = {
         } else if (pressurePct >= 50) {
           statusIcon = '🔸';
         }
-        
+
         const driveItem = {
           id: name,
           title: `${statusIcon} ${name}`,
@@ -129,9 +128,9 @@ export const DrivesShelf = {
               type: 'secondary',
               visible: aspectCount > 0,
             },
-          ].filter(a => a.visible !== false),
+          ].filter((a) => a.visible !== false),
         };
-        
+
         if (category === 'core') {
           categories.core.push(driveItem);
         } else if (category === 'post_emergence') {
@@ -140,16 +139,19 @@ export const DrivesShelf = {
           categories.discovered.push(driveItem);
         }
       }
-      
+
       const items = [];
       if (categories.core.length > 0) items.push(...categories.core);
       if (categories.post_emergence.length > 0) items.push(...categories.post_emergence);
       if (categories.discovered.length > 0) items.push(...categories.discovered);
-      
+
       const totalDrives = Object.keys(drives).length;
-      const activeAspects = Object.values(drives).reduce((sum, d) => sum + (d.aspects?.length || 0), 0);
+      const activeAspects = Object.values(drives).reduce(
+        (sum, d) => sum + (d.aspects?.length || 0),
+        0,
+      );
       const triggeredCount = triggeredSet.size;
-      
+
       return {
         title: '🧠 Drives',
         count: totalDrives,
