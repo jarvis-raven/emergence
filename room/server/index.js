@@ -57,15 +57,18 @@ const SSL_DIR = join(__dirname, '..', 'ssl');
 const wsClients = new Set();
 
 // Get drives state file path
-// Use config-resolved path first, then env var, then legacy fallback
+// IMPORTANT: Use drives-state.json (runtime state with pressure values)
+// NOT drives.json (config without pressure) - fixes NaN% bug
 let drivesStatePath;
 try {
-  drivesStatePath = getStatePath(config, 'drives.json');
+  // Get base state directory from config, then append drives-state.json
+  const configDrivesPath = getStatePath(config, 'drives.json');
+  drivesStatePath = configDrivesPath.replace('drives.json', 'drives-state.json');
 } catch (err) {
   // Fallback to env var or legacy path
   drivesStatePath = process.env.EMERGENCE_STATE
-    ? join(process.env.EMERGENCE_STATE, 'drives.json')
-    : join(os.homedir(), '.openclaw/state', 'drives.json');
+    ? join(process.env.EMERGENCE_STATE, 'drives-state.json')
+    : join(os.homedir(), '.openclaw/state', 'drives-state.json');
 }
 
 // Middleware
