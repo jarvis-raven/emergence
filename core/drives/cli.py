@@ -381,6 +381,196 @@ def get_elapsed_since_last_satisfaction(drive: dict) -> Optional[float]:
 # --- Command Implementations ---
 
 
+def _build_json_status(
+    drives: dict, triggered: set, config: dict, last_tick_str: str, full_state: dict
+) -> dict:
+    """Build JSON status output."""
+    output = {
+        "last_updated": last_tick_str,
+        "drives": [],
+        "triggered": list(triggered),
+        "quiet_hours_active": is_quiet_hours(config),
+    }
+    for name, drive in drives.items():
+        pressure = drive.get("pressure", 0.0)
+        threshold = drive.get("threshold", 1.0)
+        ratio = pressure / threshold if threshold > 0 else 0.0
+
+        if name in triggered:
+            status = "triggered"
+        elif ratio >= 1.0:
+            status = "over_threshold"
+        elif ratio >= 0.75:
+            status = "elevated"
+        else:
+            status = "normal"
+
+        output["drives"].append(
+            {
+                "name": name,
+                "pressure": round(pressure, 2),
+                "threshold": threshold,
+                "ratio": round(ratio, 2),
+                "status": status,
+                "category": "unknown",
+                "aspects": [],
+                "status_field": None,
+            }
+        )
+
+    # Add budget and reviews info
+    try:
+        budget = get_budget_info(config, full_state)
+    except BaseException:
+        budget = {"daily_spend": 0.0, "daily_limit": 50.0, "percent_used": 0.0}
+    output["budget"] = budget
+    output["pending_reviews"] = len(load_pending_reviews(config))
+
+    return output
+
+
+def _load_full_state_for_status(runtime_state_path: Path, runtime_state: dict) -> dict:
+    """Load full state for budget/cooldown info."""
+    try:
+        full_state_path = runtime_state_path.parent / "drives.json"
+        if full_state_path.exists():
+            return load_state(full_state_path)
+        return runtime_state
+    except BaseException:
+        return runtime_state
+
+
+def _print_status_header(updated_text: str, budget_info: dict, cooldown_info: dict) -> None:
+    """Print status header with budget and cooldown information."""
+    print(f"🧠 Drive Status (updated {updated_text})")
+
+    # Budget line with color (skip if disabled)
+    if budget_info.get("enabled", True) is not False:
+        percent = budget_info["percent_used"]
+        if percent >= 90:
+            budget_color = COLOR_BUDGET_HIGH
+        elif percent >= 75:
+            budget_color = COLOR_BUDGET_MED
+        else:
+            budget_color = COLOR_BUDGET_LOW
+
+        print(
+            f"Budget: {budget_color}${budget_info['daily_spend']:.2f} / "
+            f"${budget_info['daily_limit']:.2f} daily ({percent:.0f}%){COLOR_RESET}"
+        )
+
+        # Warn if using default cost estimate
+        if budget_info.get("cost_per_trigger") == 2.50:
+            print(
+                f"{COLOR_WARNING}  ⚠️  Using default cost estimate "
+                "($2.50/trigger). For accurate tracking,"
+            )
+            print(
+                "     set 'cost_per_trigger' in emergence.json "
+                f"drives.budget config.{COLOR_RESET}"
+            )
+    else:
+        print(f"Budget: {COLOR_BUDGET_LOW}unlimited (subscription){COLOR_RESET}")
+
+    # Cooldown line
+    if cooldown_info["last_trigger_ago"] is not None:
+        last_trigger_text = format_time_ago(cooldown_info["last_trigger_ago"])
+        if cooldown_info["ready"]:
+            print(
+                f"Cooldown: {COLOR_BUDGET_LOW}Ready{COLOR_RESET} "
+                f"(last trigger {last_trigger_text})"
+            )
+        else:
+            ready_text = format_time_remaining(cooldown_info["ready_in_minutes"])
+            print(
+                f"Cooldown: {COLOR_BUDGET_MED}{ready_text}{COLOR_RESET} "
+                f"(last trigger {last_trigger_text})"
+            )
+    else:
+        print(f"Cooldown: {COLOR_BUDGET_LOW}Ready{COLOR_RESET}")
+
+    print("─" * 52)
+
+
+def _print_thwarted_drives(thwarted_drives: list) -> None:
+    """Print thwarted drives section."""
+    print(f"\n{COLOR_BUDGET_HIGH}⚠️  Thwarted Drives:{COLOR_RESET} {len(thwarted_drives)}")
+    for thw in thwarted_drives[:5]:
+        drive_name = thw["name"]
+        msg = format_thwarting_message(drive_name, thw)
+        print(f"  {COLOR_BUDGET_HIGH}⚠{COLOR_RESET} {msg}")
+    if len(thwarted_drives) > 5:
+        print(f"  ... and {len(thwarted_drives) - 5} more")
+    print(f"    {COLOR_DIM}These drives need immediate attention " f"or investigation{COLOR_RESET}")
+    print(f"    {COLOR_DIM}Use 'drives satisfy <name> deep' or 'full' for relief{COLOR_RESET}")
+
+
+def _print_pending_reviews(pending_reviews: list) -> None:
+    """Print pending reviews section."""
+    print(f"\n{COLOR_BUDGET_MED}Pending Reviews:{COLOR_RESET} {len(pending_reviews)}")
+    for review in pending_reviews[:3]:
+        new_drive = review.get("new_drive", "Unknown")
+        similar = review.get("similar_drives", [])
+        similar_names = [s.get("name", "?") for s in similar[:2]]
+        print(f"  → {new_drive} - Similar to {', '.join(similar_names)}")
+    if len(pending_reviews) > 3:
+        print(f"  ... and {len(pending_reviews) - 3} more")
+    print(f"    {COLOR_DIM}Run: drives review{COLOR_RESET}")
+
+
+def _print_latent_drives(latent_drives: list) -> None:
+    """Print latent drives section."""
+    print(f"\n{COLOR_LATENT}Latent Drives:{COLOR_RESET}")
+    for name, drive in sorted(latent_drives, key=lambda x: x[0]):
+        reason = drive.get("latent_reason", "Consolidated as aspect")
+        print(f"  ○ {name} - {reason}")
+        parent = drive.get("aspect_of")
+        if parent:
+            print(f"    {COLOR_DIM}Part of: {parent}{COLOR_RESET}")
+
+
+def _print_graduation_candidates(graduation_candidates: list) -> None:
+    """Print graduation candidates section."""
+    print(f"\n{COLOR_BUDGET_MED}Graduation Candidates:{COLOR_RESET}")
+    for candidate in graduation_candidates[:3]:
+        aspect = candidate["aspect"]
+        parent = candidate["parent_drive"]
+        sats = candidate["satisfactions"]
+        days = candidate["days_old"]
+        print(f"  ↑ {aspect} ({parent}) - {sats} satisfactions, {days} days")
+    if len(graduation_candidates) > 3:
+        print(f"  ... and {len(graduation_candidates) - 3} more")
+
+
+def _print_status_footer(budget_info: dict, triggered: set, config: dict) -> None:
+    """Print status footer with projections and alerts."""
+    print("─" * 52)
+
+    triggers = budget_info["projected_triggers_per_day"]
+    daily_cost = budget_info["projected_daily_cost"]
+    monthly_cost = budget_info["projected_monthly_cost"]
+
+    print(
+        f"Projected: ~{triggers:.0f} triggers/day "
+        f"(~${daily_cost:.0f}/day, ${monthly_cost:.0f}/month)"
+    )
+
+    # Show triggered drives alert
+    if triggered:
+        print()
+        triggered_list = ", ".join(sorted(triggered))
+        print(f"{COLOR_BUDGET_HIGH}⏸ Triggered & waiting: {triggered_list}{COLOR_RESET}")
+        print("   Use 'emergence drives satisfy <name>' to reset after addressing.")
+
+    # Show quiet hours
+    if is_quiet_hours(config):
+        quiet_start, quiet_end = config.get("drives", {}).get("quiet_hours", [23, 7])
+        print(
+            f"\n{COLOR_DIM}ℹ Quiet hours active ({quiet_start:02d}:00-{quiet_end:02d}:00) "
+            f"— triggers queued{COLOR_RESET}"
+        )
+
+
 def cmd_status(args) -> int:
     """Show drive status with pressure bars."""
     # Use lightweight runtime state for status display (prevents context bloat)
@@ -415,64 +605,14 @@ def cmd_status(args) -> int:
     except (ValueError, TypeError):
         updated_text = "unknown"
 
+    # Load full state for budget/cooldown info
+    full_state = _load_full_state_for_status(runtime_state_path, runtime_state)
+
     # Check if JSON output requested
     if getattr(args, "json", False):
-        output = {
-            "last_updated": last_tick_str,
-            "drives": [],
-            "triggered": list(triggered),
-            "quiet_hours_active": is_quiet_hours(config),
-        }
-        for name, drive in drives.items():
-            pressure = drive.get("pressure", 0.0)
-            threshold = drive.get("threshold", 1.0)
-            ratio = pressure / threshold if threshold > 0 else 0.0
-
-            if name in triggered:
-                status = "triggered"
-            elif ratio >= 1.0:
-                status = "over_threshold"
-            elif ratio >= 0.75:
-                status = "elevated"
-            else:
-                status = "normal"
-
-            # Runtime state only has pressure, threshold, status
-            # Category/aspects come from full drives.json (not loaded for context bloat prevention)
-            output["drives"].append(
-                {
-                    "name": name,
-                    "pressure": round(pressure, 2),
-                    "threshold": threshold,
-                    "ratio": round(ratio, 2),
-                    "status": status,
-                    "category": "unknown",  # Not available in runtime state
-                    "aspects": [],  # Not available in runtime state
-                    "status_field": None,  # Not available in runtime state
-                }
-            )
-
-        # Add budget and reviews info (use full_state for budget info)
-        try:
-            budget = get_budget_info(config, full_state)
-        except BaseException:
-            budget = {"daily_spend": 0.0, "daily_limit": 50.0, "percent_used": 0.0}
-        output["budget"] = budget
-        output["pending_reviews"] = len(load_pending_reviews(config))
-
+        output = _build_json_status(drives, triggered, config, last_tick_str, full_state)
         print(json.dumps(output, indent=2))
         return EXIT_SUCCESS
-
-    # Load full state only for budget/cooldown info (not for basic drive display)
-    # This prevents loading full drive config (descriptions, prompts, history) into context
-    try:
-        full_state_path = runtime_state_path.parent / "drives.json"
-        if full_state_path.exists():
-            full_state = load_state(full_state_path)
-        else:
-            full_state = runtime_state  # Fallback to runtime state
-    except BaseException:
-        full_state = runtime_state
 
     # Get additional info for display (these need full state)
     budget_info = get_budget_info(config, full_state)
@@ -480,50 +620,8 @@ def cmd_status(args) -> int:
     pending_reviews = load_pending_reviews(config)
     graduation_candidates = find_graduation_candidates(full_state)
 
-    # Header
-    print(f"🧠 Drive Status (updated {updated_text})")
-
-    # Budget line with color (skip if disabled)
-    if budget_info.get("enabled", True) is not False:
-        percent = budget_info["percent_used"]
-        if percent >= 90:
-            budget_color = COLOR_BUDGET_HIGH
-        elif percent >= 75:
-            budget_color = COLOR_BUDGET_MED
-        else:
-            budget_color = COLOR_BUDGET_LOW
-
-        print(
-            f"Budget: {budget_color}${budget_info['daily_spend']:.2f} / ${budget_info['daily_limit']:.2f} daily ({percent:.0f}%){COLOR_RESET}"
-        )
-
-        # Warn if using default cost estimate
-        if budget_info.get("cost_per_trigger") == 2.50:
-            print(
-                f"{COLOR_WARNING}  ⚠️  Using default cost estimate ($2.50/trigger). For accurate tracking,"
-            )
-            print(
-                f"     set 'cost_per_trigger' in emergence.json drives.budget config.{COLOR_RESET}"
-            )
-    else:
-        print(f"Budget: {COLOR_BUDGET_LOW}unlimited (subscription){COLOR_RESET}")
-
-    # Cooldown line
-    if cooldown_info["last_trigger_ago"] is not None:
-        last_trigger_text = format_time_ago(cooldown_info["last_trigger_ago"])
-        if cooldown_info["ready"]:
-            print(
-                f"Cooldown: {COLOR_BUDGET_LOW}Ready{COLOR_RESET} (last trigger {last_trigger_text})"
-            )
-        else:
-            ready_text = format_time_remaining(cooldown_info["ready_in_minutes"])
-            print(
-                f"Cooldown: {COLOR_BUDGET_MED}{ready_text}{COLOR_RESET} (last trigger {last_trigger_text})"
-            )
-    else:
-        print(f"Cooldown: {COLOR_BUDGET_LOW}Ready{COLOR_RESET}")
-
-    print("─" * 52)
+    # Print header
+    _print_status_header(updated_text, budget_info, cooldown_info)
 
     # Separate drives by status (runtime state only has pressure/threshold/status)
     # Core vs discovered distinction requires full drives.json (not loaded to prevent bloat)
@@ -547,74 +645,22 @@ def cmd_status(args) -> int:
     # Thwarted Drives section (issue #41)
     thwarted_drives = get_thwarted_drives(full_state, config)
     if thwarted_drives:
-        print(f"\n{COLOR_BUDGET_HIGH}⚠️  Thwarted Drives:{COLOR_RESET} {len(thwarted_drives)}")
-        for thw in thwarted_drives[:5]:  # Show up to 5
-            drive_name = thw["name"]
-            msg = format_thwarting_message(drive_name, thw)
-            print(f"  {COLOR_BUDGET_HIGH}⚠{COLOR_RESET} {msg}")
-        if len(thwarted_drives) > 5:
-            print(f"  ... and {len(thwarted_drives) - 5} more")
-        print(f"    {COLOR_DIM}These drives need immediate attention or investigation{COLOR_RESET}")
-        print(f"    {COLOR_DIM}Use 'drives satisfy <name> deep' or 'full' for relief{COLOR_RESET}")
+        _print_thwarted_drives(thwarted_drives)
 
     # Pending Reviews section
     if pending_reviews:
-        print(f"\n{COLOR_BUDGET_MED}Pending Reviews:{COLOR_RESET} {len(pending_reviews)}")
-        for review in pending_reviews[:3]:  # Show up to 3
-            new_drive = review.get("new_drive", "Unknown")
-            similar = review.get("similar_drives", [])
-            similar_names = [s.get("name", "?") for s in similar[:2]]
-            print(f"  → {new_drive} - Similar to {', '.join(similar_names)}")
-        if len(pending_reviews) > 3:
-            print(f"  ... and {len(pending_reviews) - 3} more")
-        print(f"    {COLOR_DIM}Run: drives review{COLOR_RESET}")
+        _print_pending_reviews(pending_reviews)
 
     # Latent Drives section (if --show-latent)
     if show_latent and latent_drives:
-        print(f"\n{COLOR_LATENT}Latent Drives:{COLOR_RESET}")
-        for name, drive in sorted(latent_drives, key=lambda x: x[0]):
-            reason = drive.get("latent_reason", "Consolidated as aspect")
-            print(f"  ○ {name} - {reason}")
-            parent = drive.get("aspect_of")
-            if parent:
-                print(f"    {COLOR_DIM}Part of: {parent}{COLOR_RESET}")
+        _print_latent_drives(latent_drives)
 
     # Graduation Candidates section
     if graduation_candidates:
-        print(f"\n{COLOR_BUDGET_MED}Graduation Candidates:{COLOR_RESET}")
-        for candidate in graduation_candidates[:3]:
-            aspect = candidate["aspect"]
-            parent = candidate["parent_drive"]
-            sats = candidate["satisfactions"]
-            days = candidate["days_old"]
-            print(f"  ↑ {aspect} ({parent}) - {sats} satisfactions, {days} days")
-        if len(graduation_candidates) > 3:
-            print(f"  ... and {len(graduation_candidates) - 3} more")
+        _print_graduation_candidates(graduation_candidates)
 
-    # Footer separator and projection
-    print("─" * 52)
-
-    triggers = budget_info["projected_triggers_per_day"]
-    daily_cost = budget_info["projected_daily_cost"]
-    monthly_cost = budget_info["projected_monthly_cost"]
-
-    print(
-        f"Projected: ~{triggers:.0f} triggers/day (~${daily_cost:.0f}/day, ${monthly_cost:.0f}/month)"
-    )
-
-    # Show triggered drives alert
-    if triggered:
-        print()
-        triggered_list = ", ".join(sorted(triggered))
-        print(f"{COLOR_BUDGET_HIGH}⏸ Triggered & waiting: {triggered_list}{COLOR_RESET}")
-        print(f"   Use 'emergence drives satisfy <name>' to reset after addressing.")
-
-    # Show quiet hours
-    if is_quiet_hours(config):
-        quiet_start, quiet_end = config.get("drives", {}).get("quiet_hours", [23, 7])
-        print(
-            f"\n{COLOR_DIM}ℹ Quiet hours active ({quiet_start:02d}:00-{quiet_end:02d}:00) — triggers queued{COLOR_RESET}"
-        )
+    # Footer with projections and alerts
+    _print_status_footer(budget_info, triggered, config)
 
     return EXIT_SUCCESS
 
@@ -704,117 +750,6 @@ def _print_drive_line(name: str, drive: dict, triggered: set, cooldown_info: dic
         print(
             f"     {COLOR_DIM}({len(aspects)} aspect{'s' if len(aspects) > 1 else ''}: {aspects_str}){COLOR_RESET}"
         )
-
-
-def cmd_review(args) -> int:
-    """Review pending drive consolidation decisions."""
-    state, config, state_path = get_state_and_config(args)
-
-    pending_reviews = load_pending_reviews(config)
-
-    if not pending_reviews:
-        print("✓ No pending reviews — all caught up!")
-        return EXIT_SUCCESS
-
-    # If specific drive specified, show just that one
-    drive_name = getattr(args, "drive", None)
-    if drive_name:
-        review = None
-        for r in pending_reviews:
-            if r.get("new_drive", "").upper() == drive_name.upper():
-                review = r
-                break
-
-        if not review:
-            print(f"✗ No pending review found for: {drive_name}")
-            print(
-                f"   Pending reviews: {', '.join(r.get('new_drive', '?') for r in pending_reviews)}"
-            )
-            return EXIT_ERROR
-
-        # Show single review with irreducibility test
-        _show_irreducibility_test(review)
-        return EXIT_SUCCESS
-
-    # Show all pending reviews
-    print(f"⚖️  Pending Drive Reviews ({len(pending_reviews)})")
-    print("=" * 52)
-
-    for i, review in enumerate(pending_reviews, 1):
-        new_drive = review.get("new_drive", "Unknown")
-        similar = review.get("similar_drives", [])
-        discovered_at = review.get("discovered_at", "unknown")
-
-        print(f"\n{i}. {new_drive}")
-        print(f"   Discovered: {discovered_at[:10] if discovered_at != 'unknown' else 'unknown'}")
-        print(f"   Similar to:")
-        for s in similar:
-            sim_name = s.get("name", "?")
-            sim_score = s.get("similarity", 0)
-            print(f"      • {sim_name} (similarity: {sim_score:.2f})")
-
-        print(f"\n   Actions:")
-        print(f"      drives review {new_drive.lower()}  # View irreducibility test")
-        print(f"      drives merge {new_drive.lower()} --into DRIVE  # Merge as aspect")
-        print(f"      drives keep {new_drive.lower()}  # Keep as distinct drive")
-
-    print("\n" + "=" * 52)
-    print(f"Run 'drives review <name>' to see the irreducibility test for a specific drive")
-
-    return EXIT_SUCCESS
-
-
-def _show_irreducibility_test(review: dict) -> None:
-    """Display the irreducibility test prompt for a review."""
-    new_drive = review.get("new_drive", "Unknown")
-    new_desc = review.get("description", "No description")
-    similar = review.get("similar_drives", [])
-
-    print(f"\n🧠 Irreducibility Test: {new_drive}")
-    print("=" * 60)
-    print(f"\nNew drive discovered: {new_drive}")
-    print(f"Description: {new_desc}")
-
-    if similar:
-        print(f"\nThis seems related to existing drive(s):")
-        for s in similar[:3]:
-            sim_name = s.get("name", "?")
-            sim_desc = s.get("description", "No description")
-            sim_score = s.get("similarity", 0)
-            print(f"\n  • {sim_name} (similarity: {sim_score:.2f})")
-            print(f"    Description: {sim_desc}")
-
-    print("\n" + "-" * 60)
-    print("\nIRREDUCIBILITY TEST:")
-    print()
-
-    if similar:
-        primary = similar[0].get("name", "existing drive")
-        print(f"Ask yourself: 'Can I fully satisfy {new_drive} by satisfying {primary}?'")
-        print()
-        print("Test both directions:")
-        print(f"  1. Does satisfying {primary} always satisfy {new_drive}?")
-        print(f"  2. Does satisfying {new_drive} always satisfy {primary}?")
-        print()
-        print("If YES to either → ASPECT (merge into existing drive)")
-        print("If NO to both → DISTINCT (keep as separate drive)")
-        print()
-        print("What makes this drive irreducible (if it is)?")
-        print("What unique satisfaction does it provide?")
-
-    print("\n" + "-" * 60)
-    print("\nDECISION:")
-    print()
-    print(f"  [ ] DISTINCT - Keep {new_drive} as a separate drive")
-    if similar:
-        primary = similar[0].get("name", "existing drive")
-        print(f"  [ ] ASPECT - Merge {new_drive} into {primary}")
-    print()
-    print("Commands:")
-    print(f"  drives keep {new_drive.lower()}     # Mark as distinct")
-    if similar:
-        primary = similar[0].get("name", "existing drive")
-        print(f"  drives merge {new_drive.lower()} --into {primary}  # Merge as aspect")
 
 
 def cmd_satisfy(args) -> int:
@@ -933,8 +868,6 @@ def cmd_satisfy(args) -> int:
     reduction_pct = int(reduction * 100)
 
     # Display results with auto-scaling info if applicable
-    pressure_pct = int((old_pressure / threshold) * 100) if threshold > 0 else 0
-
     if auto_scaled:
         band_display = result.get("band", "unknown")
         print(
@@ -1100,7 +1033,7 @@ def cmd_reset(args) -> int:
             print("Cancelled — no changes made")
             return EXIT_SUCCESS
 
-    result = reset_all_drives(state)
+    reset_all_drives(state)
 
     # Save state
     if not save_with_lock(state_path, state):
@@ -2111,12 +2044,10 @@ def _print_dashboard_drive(drive: dict, color: str) -> None:
     name = drive["name"]
     pressure = drive["pressure"]
     threshold = drive["threshold"]
-    ratio = drive["ratio"]
     description = drive["description"]
 
     # Format pressure bar (20 chars wide)
     bar_str = format_pressure_bar(pressure, threshold, width=20)
-    pct = int(ratio * 100)
 
     # Truncate description to fit on one line (35 chars)
     desc_truncated = description[:35] + "..." if len(description) > 35 else description
