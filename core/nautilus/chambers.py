@@ -755,6 +755,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # Suppress runpy warning about module already in sys.modules
+    import warnings
+    warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
+    
     # Configure logging if running as main
     logging.basicConfig(
         level=logging.INFO,

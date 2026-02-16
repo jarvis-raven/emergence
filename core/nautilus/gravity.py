@@ -1037,5 +1037,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
     # Logging already configured by logging_config module
     main()
