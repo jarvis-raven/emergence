@@ -574,7 +574,9 @@ Respond with the JSON array only, no other text."""
         return None
 
 
-def _supplement_with_templates(fragments: list, concept_pairs: list, reference_date: datetime, verbose: bool) -> list:
+def _supplement_with_templates(
+    fragments: list, concept_pairs: list, reference_date: datetime, verbose: bool
+) -> list:
     """Supplement partial LLM results with template-based fragments."""
     remaining_pairs = concept_pairs[len(fragments) :]
     seed = int(reference_date.strftime("%Y%m%d"))
@@ -583,7 +585,9 @@ def _supplement_with_templates(fragments: list, concept_pairs: list, reference_d
     return fragments + template_fragments
 
 
-def _try_openrouter_generation(concept_pairs: list, config: dict, reference_date: datetime, verbose: bool) -> Optional[list]:
+def _try_openrouter_generation(
+    concept_pairs: list, config: dict, reference_date: datetime, verbose: bool
+) -> Optional[list]:
     """Try to generate fragments using OpenRouter. Returns None if unavailable."""
     de_config = config.get("dream_engine", {})
     use_openrouter = de_config.get("use_openrouter", False)
@@ -600,13 +604,17 @@ def _try_openrouter_generation(concept_pairs: list, config: dict, reference_date
         return fragments
     elif fragments:
         if verbose:
-            print(f"  OpenRouter returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates...")
+            print(
+                f"  OpenRouter returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates..."
+            )
         return _supplement_with_templates(fragments, concept_pairs, reference_date, verbose)
 
     return None
 
 
-def _try_ollama_generation(concept_pairs: list, config: dict, reference_date: datetime, verbose: bool, use_openrouter: bool) -> Optional[list]:
+def _try_ollama_generation(
+    concept_pairs: list, config: dict, reference_date: datetime, verbose: bool, use_openrouter: bool
+) -> Optional[list]:
     """Try to generate fragments using Ollama. Returns None if unavailable."""
     de_config = config.get("dream_engine", {})
     use_ollama = de_config.get("use_ollama", not use_openrouter)
@@ -623,7 +631,9 @@ def _try_ollama_generation(concept_pairs: list, config: dict, reference_date: da
         return fragments
     elif fragments:
         if verbose:
-            print(f"  Ollama returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates...")
+            print(
+                f"  Ollama returned {len(fragments)}/{len(concept_pairs)} fragments, supplementing with templates..."
+            )
         return _supplement_with_templates(fragments, concept_pairs, reference_date, verbose)
 
     return None
@@ -659,7 +669,9 @@ def generate_fragments(
         return fragments
 
     # Try Ollama next (free, creative, local)
-    fragments = _try_ollama_generation(concept_pairs, config, reference_date, verbose, use_openrouter)
+    fragments = _try_ollama_generation(
+        concept_pairs, config, reference_date, verbose, use_openrouter
+    )
     if fragments:
         return fragments
 

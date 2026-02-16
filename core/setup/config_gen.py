@@ -247,7 +247,10 @@ def generate_default_config(
             "CARE": {
                 "threshold": 25,
                 "rate_per_hour": 2,
-                "description": "Connection to human partner — checking in, remembering what matters",
+                "description": (
+                    "Connection to human partner — "
+                    "checking in, remembering what matters"
+                ),
             },
             "MAINTENANCE": {
                 "threshold": 20,

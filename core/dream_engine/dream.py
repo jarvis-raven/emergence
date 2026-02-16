@@ -29,7 +29,9 @@ from .scoring import score_pairs
 VERSION = "1.0.0"
 
 
-def _print_header(reference_date: datetime, memory_dir: Path, lookback_days: int, max_concepts: int):
+def _print_header(
+    reference_date: datetime, memory_dir: Path, lookback_days: int, max_concepts: int
+):
     """Print dream generation header."""
     print(f"Dream Engine v{VERSION}")
     print(f"====================={ '=' * len(VERSION) }")
@@ -39,7 +41,9 @@ def _print_header(reference_date: datetime, memory_dir: Path, lookback_days: int
     print()
 
 
-def _create_error_result(reference_date: datetime, source_files: int, source_concepts: int, error: str) -> dict:
+def _create_error_result(
+    reference_date: datetime, source_files: int, source_concepts: int, error: str
+) -> dict:
     """Create an error result dictionary."""
     return {
         "date": reference_date.strftime("%Y-%m-%d"),
@@ -49,6 +53,38 @@ def _create_error_result(reference_date: datetime, source_files: int, source_con
         "dreams": [],
         "error": error,
     }
+
+
+def _generate_concept_pairs(concepts: list, pairs_to_generate: int, reference_date: datetime, verbose: bool) -> list:
+    """Generate concept pairs with fallback to same-source if needed."""
+    if verbose:
+        print("Step 2: Generating concept pairs...")
+
+    pairs = generate_pairs(
+        concepts=concepts,
+        pairs_to_generate=pairs_to_generate,
+        require_cross_source=True,
+        reference_date=reference_date,
+        verbose=verbose,
+    )
+
+    # Fallback: allow same-source pairs if cross-source produced nothing
+    if not pairs:
+        if verbose:
+            print("  No cross-source pairs possible, allowing same-source pairs...")
+        pairs = generate_pairs(
+            concepts=concepts,
+            pairs_to_generate=pairs_to_generate,
+            require_cross_source=False,
+            reference_date=reference_date,
+            verbose=verbose,
+        )
+
+    if verbose and pairs:
+        print(f"  Generated {len(pairs)} pairs")
+        print()
+
+    return pairs
 
 
 def _build_dreams(scored_pairs: list, fragments: list, verbose: bool) -> list:
@@ -124,33 +160,14 @@ def generate_dreams(
         print()
 
     # Step 2: Generate pairs
-    if verbose:
-        print("Step 2: Generating concept pairs...")
-
-    pairs = generate_pairs(
-        concepts=concepts,
-        pairs_to_generate=pairs_to_generate,
-        require_cross_source=True,
-        reference_date=reference_date,
-        verbose=verbose,
-    )
-
-    # Fallback: allow same-source pairs if cross-source produced nothing
-    if not pairs:
-        if verbose:
-            print("  No cross-source pairs possible, allowing same-source pairs...")
-        pairs = generate_pairs(
-            concepts=concepts,
-            pairs_to_generate=pairs_to_generate,
-            require_cross_source=False,
-            reference_date=reference_date,
-            verbose=verbose,
-        )
+    pairs = _generate_concept_pairs(concepts, pairs_to_generate, reference_date, verbose)
 
     if not pairs:
         if verbose:
             print("Could not generate any pairs.")
-        return _create_error_result(reference_date, len(source_files), len(concepts), "Could not generate concept pairs")
+        return _create_error_result(
+            reference_date, len(source_files), len(concepts), "Could not generate concept pairs"
+        )
 
     if verbose:
         print(f"  Generated {len(pairs)} pairs")
@@ -382,7 +399,9 @@ def _handle_status_command(config: dict):
         print(f"  {key}: {value}")
 
 
-def _handle_run_command(config: dict, reference_date: Optional[datetime], dry_run: bool, verbose: bool) -> bool:
+def _handle_run_command(
+    config: dict, reference_date: Optional[datetime], dry_run: bool, verbose: bool
+) -> bool:
     """Handle the 'run' command. Returns success status."""
     success, dreams_data = run_dream_generation(
         config=config, reference_date=reference_date, dry_run=dry_run, verbose=verbose
@@ -398,7 +417,9 @@ def _handle_run_command(config: dict, reference_date: Optional[datetime], dry_ru
     return success
 
 
-def _handle_test_command(args: list, config: dict, reference_date: Optional[datetime], verbose: bool) -> bool:
+def _handle_test_command(
+    args: list, config: dict, reference_date: Optional[datetime], verbose: bool
+) -> bool:
     """Handle the 'test' command. Returns success status."""
     # Test mode: always dry-run unless explicitly told otherwise
     dry_run = "--write" not in args
@@ -456,57 +477,15 @@ def main():
     config = load_config(config_path)
 
     if command == "status":
-        status = get_status(config)
-        print("Dream Engine Status")
-        print("==================")
-        print(f"Memory directory: {status['memory_dir']}")
-        print(f"Dream directory: {status['dream_dir']}")
-        print(f"Recent memory files (7 days): {status['recent_memory_files']}")
-        print(f"Existing dream files: {status['existing_dreams']}")
-        if status["latest_dreams"]:
-            print(f"Latest dreams: {', '.join(status['latest_dreams'])}")
-        print()
-        print("Configuration:")
-        for key, value in status["config"].items():
-            print(f"  {key}: {value}")
+        _handle_status_command(config)
         sys.exit(0)
 
     elif command == "run":
-        success, dreams_data = run_dream_generation(
-            config=config, reference_date=reference_date, dry_run=dry_run, verbose=verbose
-        )
-
-        if verbose:
-            print()
-            if success:
-                print("✓ Dream generation complete")
-            else:
-                print("✗ Dream generation failed")
-
+        success = _handle_run_command(config, reference_date, dry_run, verbose)
         sys.exit(0 if success else 1)
 
     elif command == "test":
-        # Test mode: always dry-run unless explicitly told otherwise
-        if "--write" not in args:
-            dry_run = True
-            if verbose:
-                print("Test mode (dry-run). Use --write to actually save.")
-                print()
-
-        success, dreams_data = run_dream_generation(
-            config=config, reference_date=reference_date, dry_run=dry_run, verbose=verbose
-        )
-
-        # Print sample output
-        if dreams_data.get("dreams"):
-            print("\nSample dreams:")
-            print("==============")
-            for i, dream in enumerate(dreams_data["dreams"][:3], 1):
-                print(f"\n{i}. Score: {dream['insight_score']}")
-                print(f"   Concepts: {', '.join(dream['concepts'])}")
-                print(f"   Fragment: \"{dream['fragment']}\"")
-                print(f"   Template: {dream['template']}")
-
+        success = _handle_test_command(args, config, reference_date, verbose)
         sys.exit(0 if success else 1)
 
     else:
