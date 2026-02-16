@@ -67,95 +67,83 @@ def log_trigger_event(
         pass
 
 
-def update_session_status(session_key: str, new_status: str) -> bool:
-    """Update the status of a session in trigger-log.jsonl.
-
-    Rewrites the entire log file with the updated status. Not optimized for
-    very large logs, but adequate for typical usage (< 10K entries).
+def _parse_ago_format(time_str: str, now: datetime) -> Optional[datetime]:
+    """Parse 'X units ago' format.
 
     Args:
-        session_key: Session key to update
-        new_status: New status value (active/completed/timeout)
+        time_str: Time string (already lowercased)
+        now: Current datetime
 
     Returns:
-        True if session was found and updated, False otherwise
+        Datetime or None
     """
-    log_path = get_trigger_log_path()
-
-    if not log_path.exists():
-        return False
-
-    updated = False
-    new_lines = []
+    parts = time_str.replace("ago", "").strip().split()
+    if len(parts) < 2:
+        return None
 
     try:
-        # Read all entries
-        with log_path.open("r") as f:
-            for line in f:
-                try:
-                    event = json.loads(line.strip())
-                    if event.get("session_key") == session_key:
-                        event["session_status"] = new_status
-                        updated = True
-                    new_lines.append(json.dumps(event))
-                except json.JSONDecodeError:
-                    # Preserve invalid lines as-is
-                    new_lines.append(line.rstrip("\n"))
+        amount = float(parts[0])
+        unit = parts[1].rstrip("s")  # Normalize plural
 
-        # Rewrite file if we made changes
-        if updated:
-            with log_path.open("w") as f:
-                for line in new_lines:
-                    f.write(line + "\n")
+        if unit in ("hour", "hr"):
+            return now - timedelta(hours=amount)
+        elif unit in ("minute", "min"):
+            return now - timedelta(minutes=amount)
+        elif unit in ("day", "d"):
+            return now - timedelta(days=amount)
+        elif unit == "week":
+            return now - timedelta(weeks=amount)
+    except (ValueError, IndexError):
+        pass
 
-        return updated
-
-    except OSError:
-        return False
+    return None
 
 
-def get_active_sessions(timeout_seconds: int = 900) -> list[dict]:
-    """Get list of active sessions from trigger-log.jsonl.
-
-    Returns sessions with session_status = "spawned" or "active".
-    Enriches events with spawned_epoch for timeout checking.
+def _parse_iso_format(time_str: str) -> Optional[datetime]:
+    """Parse ISO 8601 format.
 
     Args:
-        timeout_seconds: Session timeout in seconds (for epoch calculation)
+        time_str: Time string
 
     Returns:
-        List of trigger events with active sessions (includes spawned_epoch)
+        Datetime or None
     """
-    log_path = get_trigger_log_path()
-
-    if not log_path.exists():
-        return []
-
-    active = []
-
     try:
-        with log_path.open("r") as f:
-            for line in f:
-                try:
-                    event = json.loads(line.strip())
-                    status = event.get("session_status", "")
-                    # Only include spawned or active sessions (exclude completed/timeout)
-                    if status in ("spawned", "active") and event.get("session_key"):
-                        # Add spawned_epoch from timestamp for timeout checking
-                        if "timestamp" in event and "spawned_epoch" not in event:
-                            ts_str = event["timestamp"]
-                            # Handle both +00:00 and Z timezone formats
-                            if ts_str.endswith("Z"):
-                                ts_str = ts_str[:-1] + "+00:00"
-                            ts = datetime.fromisoformat(ts_str)
-                            event["spawned_epoch"] = int(ts.timestamp())
-                        active.append(event)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-    except OSError:
-        return []
+        iso_str = (
+            time_str.upper().replace("Z", "+00:00")
+            if "t" in time_str
+            else time_str.replace("z", "+00:00")
+        )
+        return datetime.fromisoformat(iso_str)
+    except (ValueError, TypeError):
+        return None
 
-    return active
+
+def _parse_common_formats(time_str: str) -> Optional[datetime]:
+    """Parse common date formats.
+
+    Args:
+        time_str: Time string
+
+    Returns:
+        Datetime or None
+    """
+    formats = [
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%d/%m/%Y %H:%M",
+        "%d/%m/%Y",
+    ]
+
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(time_str, fmt)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+
+    return None
 
 
 def parse_time_string(time_str: str) -> Optional[datetime]:
@@ -187,51 +175,17 @@ def parse_time_string(time_str: str) -> Optional[datetime]:
 
     # Handle "X units ago" format
     if "ago" in time_str:
-        parts = time_str.replace("ago", "").strip().split()
-        if len(parts) >= 2:
-            try:
-                amount = float(parts[0])
-                unit = parts[1].rstrip("s")  # Normalize plural
-
-                if unit in ("hour", "hr"):
-                    return now - timedelta(hours=amount)
-                elif unit in ("minute", "min"):
-                    return now - timedelta(minutes=amount)
-                elif unit in ("day", "d"):
-                    return now - timedelta(days=amount)
-                elif unit == "week":
-                    return now - timedelta(weeks=amount)
-            except (ValueError, IndexError):
-                pass
+        result = _parse_ago_format(time_str, now)
+        if result:
+            return result
 
     # Try ISO format (use original case for ISO parsing)
-    try:
-        iso_str = (
-            time_str.upper().replace("Z", "+00:00")
-            if "t" in time_str
-            else time_str.replace("z", "+00:00")
-        )
-        return datetime.fromisoformat(iso_str)
-    except (ValueError, TypeError):
-        pass
+    result = _parse_iso_format(time_str)
+    if result:
+        return result
 
     # Try common date formats
-    formats = [
-        "%Y-%m-%d %H:%M",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d",
-        "%d/%m/%Y %H:%M",
-        "%d/%m/%Y",
-    ]
-
-    for fmt in formats:
-        try:
-            dt = datetime.strptime(time_str, fmt)
-            return dt.replace(tzinfo=timezone.utc)
-        except ValueError:
-            pass
-
-    return None
+    return _parse_common_formats(time_str)
 
 
 def read_trigger_log(state: Optional[dict] = None, limit: int = 1000) -> list[dict]:
@@ -507,6 +461,65 @@ def get_stats(log_entries: list[dict]) -> dict:
     }
 
 
+def _read_and_update_entries(
+    log_path: Path, session_key: str, status: str
+) -> tuple[list[dict], bool]:
+    """Read log entries and update matching session.
+
+    Args:
+        log_path: Path to log file
+        session_key: Session key to update
+        status: New status
+
+    Returns:
+        Tuple of (entries list, found boolean)
+    """
+    entries = []
+    found = False
+
+    try:
+        with log_path.open("r") as f:
+            for line in f:
+                try:
+                    entry = json.loads(line.strip())
+                    # Update matching session
+                    if entry.get("session_key") == session_key and entry.get(
+                        "session_status"
+                    ) not in ["completed", "error"]:
+                        entry["session_status"] = status
+                        entry["completed_at"] = datetime.now(timezone.utc).isoformat()
+                        found = True
+                    entries.append(entry)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return [], False
+
+    return entries, found
+
+
+def _atomic_write_entries(log_path: Path, entries: list[dict]) -> bool:
+    """Atomically write entries to log file.
+
+    Args:
+        log_path: Path to log file
+        entries: List of entries to write
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Atomic write: write to temp file, then rename
+        tmp_path = log_path.with_suffix(".tmp")
+        with tmp_path.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+        tmp_path.rename(log_path)
+        return True
+    except OSError:
+        return False
+
+
 def update_session_status(session_key: str, status: str) -> bool:
     """Update the session_status for a specific session in the trigger log.
 
@@ -529,42 +542,68 @@ def update_session_status(session_key: str, status: str) -> bool:
     if not log_path.exists():
         return False
 
-    # Read all entries
-    entries = []
-    found = False
-
-    try:
-        with log_path.open("r") as f:
-            for line in f:
-                try:
-                    entry = json.loads(line.strip())
-                    # Update matching session
-                    if entry.get("session_key") == session_key and entry.get(
-                        "session_status"
-                    ) not in ["completed", "error"]:
-                        entry["session_status"] = status
-                        entry["completed_at"] = datetime.now(timezone.utc).isoformat()
-                        found = True
-                    entries.append(entry)
-                except json.JSONDecodeError:
-                    continue
-    except OSError:
-        return False
+    # Read and update entries
+    entries, found = _read_and_update_entries(log_path, session_key, status)
 
     if not found:
         return False
 
-    # Rewrite file with updated entry
-    try:
-        # Atomic write: write to temp file, then rename
-        tmp_path = log_path.with_suffix(".tmp")
-        with tmp_path.open("w") as f:
-            for entry in entries:
-                f.write(json.dumps(entry) + "\n")
-        tmp_path.rename(log_path)
-        return True
-    except OSError:
+    # Atomically write updated entries
+    return _atomic_write_entries(log_path, entries)
+
+
+def _enrich_entry_with_epoch(entry: dict) -> None:
+    """Add spawned_epoch to entry if missing.
+
+    Args:
+        entry: Entry dict to enrich (modified in place)
+    """
+    if "timestamp" in entry and "spawned_epoch" not in entry:
+        ts_str = entry["timestamp"]
+        if ts_str.endswith("Z"):
+            ts_str = ts_str[:-1] + "+00:00"
+        try:
+            ts = datetime.fromisoformat(ts_str)
+            entry["spawned_epoch"] = int(ts.timestamp())
+        except (ValueError, TypeError):
+            pass
+
+
+def _is_active_session(
+    entry: dict, drive_name: Optional[str], now_epoch: int, max_age: int
+) -> bool:
+    """Check if entry represents an active session.
+
+    Args:
+        entry: Entry dict to check
+        drive_name: Optional drive filter
+        now_epoch: Current epoch time
+        max_age: Maximum age in seconds
+
+    Returns:
+        True if entry is an active session
+    """
+    # Filter: must have spawned a session
+    if not entry.get("session_spawned"):
         return False
+
+    # Filter: drive name if specified
+    if drive_name and entry.get("drive") != drive_name:
+        return False
+
+    # Filter: session_status must be spawned/active (not completed/error/timeout)
+    status = entry.get("session_status", "pending")
+    if status not in ("spawned", "active", "pending"):
+        return False
+
+    # Filter: not stale (spawned within timeout window)
+    spawn_epoch = entry.get("spawned_epoch", 0)
+    if spawn_epoch > 0:
+        age = now_epoch - spawn_epoch
+        if age > max_age:
+            return False
+
+    return True
 
 
 def get_active_sessions(drive_name: Optional[str] = None, timeout_seconds: int = 900) -> list[dict]:
@@ -604,35 +643,12 @@ def get_active_sessions(drive_name: Optional[str] = None, timeout_seconds: int =
                 try:
                     entry = json.loads(line.strip())
 
-                    # Filter: must have spawned a session
-                    if not entry.get("session_spawned"):
-                        continue
+                    # Enrich entry with epoch timestamp
+                    _enrich_entry_with_epoch(entry)
 
-                    # Filter: drive name if specified
-                    if drive_name and entry.get("drive") != drive_name:
-                        continue
-
-                    # Filter: session_status must be spawned/active (not completed/error/timeout)
-                    status = entry.get("session_status", "pending")
-                    if status not in ("spawned", "active", "pending"):
-                        continue
-
-                    # Add spawned_epoch from timestamp if not already present
-                    if "timestamp" in entry and "spawned_epoch" not in entry:
-                        ts_str = entry["timestamp"]
-                        if ts_str.endswith("Z"):
-                            ts_str = ts_str[:-1] + "+00:00"
-                        ts = datetime.fromisoformat(ts_str)
-                        entry["spawned_epoch"] = int(ts.timestamp())
-
-                    # Filter: not stale (spawned within timeout window)
-                    spawn_epoch = entry.get("spawned_epoch", 0)
-                    if spawn_epoch > 0:
-                        age = now_epoch - spawn_epoch
-                        if age > max_age:
-                            continue
-
-                    active.append(entry)
+                    # Check if this is an active session
+                    if _is_active_session(entry, drive_name, now_epoch, max_age):
+                        active.append(entry)
 
                 except (json.JSONDecodeError, ValueError):
                     continue
