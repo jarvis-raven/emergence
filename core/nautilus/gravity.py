@@ -279,6 +279,188 @@ def gravity_score_modifier(effective_mass: float) -> float:
     return modifier
 
 
+def _parse_lines_arg(line_str: str) -> tuple:
+    """
+    Parse line range from string "START:END".
+
+    Args:
+        line_str: Line range string (e.g., "10:20" or "10")
+
+    Returns:
+        Tuple of (line_start, line_end)
+    """
+    try:
+        parts = line_str.split(":")
+        line_start = int(parts[0])
+        line_end = int(parts[1]) if len(parts) > 1 else line_start
+        return line_start, line_end
+    except (ValueError, IndexError) as e:
+        logger.warning(f"Invalid line range {line_str}: {e}")
+        return 0, 0
+
+
+def _parse_record_access_args(args: List[str]) -> tuple:
+    """Parse arguments for cmd_record_access."""
+    path = args[0]
+    line_start, line_end = 0, 0
+    query, score = None, None
+
+    i = 1
+    while i < len(args):
+        if args[i] == "--lines" and i + 1 < len(args):
+            line_start, line_end = _parse_lines_arg(args[i + 1])
+            i += 2
+        elif args[i] == "--query" and i + 1 < len(args):
+            query = args[i + 1]
+            i += 2
+        elif args[i] == "--score" and i + 1 < len(args):
+            try:
+                score = float(args[i + 1])
+            except ValueError as e:
+                logger.warning(f"Invalid score {args[i+1]}: {e}")
+            i += 2
+        else:
+            i += 1
+
+    return path, line_start, line_end, query, score
+
+
+def _create_access_result(
+    row: Optional[sqlite3.Row], path: str, line_start: int, line_end: int
+) -> Dict[str, Any]:
+    """Create result dictionary for access record."""
+    if row:
+        mass = compute_effective_mass(row)
+        return {
+            "path": path,
+            "lines": f"{line_start}:{line_end}",
+            "access_count": row["access_count"],
+            "effective_mass": round(mass, 3),
+            "modifier": round(gravity_score_modifier(mass), 3),
+        }
+    else:
+        logger.warning(f"Failed to find row after insert for {path}")
+        return {"error": "Row not found after insert"}
+
+
+def _parse_boost_args(args: List[str]) -> tuple:
+    """Parse arguments for cmd_boost."""
+    path = args[0]
+    amount = 2.0
+    line_start, line_end = 0, 0
+
+    i = 1
+    while i < len(args):
+        if args[i] == "--amount" and i + 1 < len(args):
+            try:
+                amount = float(args[i + 1])
+            except ValueError as e:
+                logger.warning(f"Invalid amount {args[i+1]}: {e}")
+            i += 2
+        elif args[i] == "--lines" and i + 1 < len(args):
+            line_start, line_end = _parse_lines_arg(args[i + 1])
+            i += 2
+        else:
+            i += 1
+
+    return path, amount, line_start, line_end
+
+
+def _create_boost_result(row: Optional[sqlite3.Row], path: str) -> Dict[str, Any]:
+    """Create result dictionary for boost operation."""
+    if row:
+        mass = compute_effective_mass(row)
+        return {
+            "path": path,
+            "explicit_importance": row["explicit_importance"],
+            "effective_mass": round(mass, 3),
+            "modifier": round(gravity_score_modifier(mass), 3),
+        }
+    else:
+        return {"error": "Row not found after boost"}
+
+
+def _get_json_input(args: List[str]) -> str:
+    """Extract JSON input from args or stdin."""
+    json_str = None
+    i = 0
+    while i < len(args):
+        if args[i] == "--json" and i + 1 < len(args):
+            json_str = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    if not json_str:
+        if not sys.stdin.isatty():
+            json_str = sys.stdin.read()
+        else:
+            logger.error("No JSON input provided to rerank")
+            print(
+                "Usage: gravity rerank --json '<results>' or pipe JSON via stdin",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    return json_str
+
+
+def _lookup_gravity_row(
+    db: sqlite3.Connection, path: str, start: int, end: int
+) -> Optional[sqlite3.Row]:
+    """Look up gravity row, trying exact match then file-level."""
+    row = db.execute(
+        """
+        SELECT * FROM gravity WHERE path = ? AND line_start = ? AND line_end = ?
+    """,
+        (path, start, end),
+    ).fetchone()
+
+    if not row:
+        row = db.execute("SELECT * FROM gravity WHERE path = ? LIMIT 1", (path,)).fetchone()
+
+    return row
+
+
+def _compute_rerank_score(row: Optional[sqlite3.Row], base_score: float) -> tuple:
+    """Compute reranked score with gravity modifier."""
+    if row:
+        mass = compute_effective_mass(row)
+        modifier = gravity_score_modifier(mass)
+        is_superseded = row["superseded_by"] is not None
+
+        if is_superseded:
+            modifier *= 0.5
+
+        adjusted_score = base_score * modifier
+    else:
+        mass = 0
+        modifier = 1.0
+        adjusted_score = base_score
+        is_superseded = False
+
+    return adjusted_score, mass, modifier, is_superseded
+
+
+def _record_rerank_access(
+    db: sqlite3.Connection, path: str, start: int, end: int, now: str
+) -> None:
+    """Record access for a reranked result."""
+    try:
+        db.execute(
+            """
+            INSERT INTO gravity (path, line_start, line_end, access_count, last_accessed_at)
+            VALUES (?, ?, ?, 1, ?)
+            ON CONFLICT(path, line_start, line_end) DO UPDATE SET
+                access_count = access_count + 1,
+                last_accessed_at = ?
+        """,
+            (path, start, end, now, now),
+        )
+    except sqlite3.Error as e:
+        logger.warning(f"Failed to record access for {path}: {e}")
+
+
 # === Commands ===
 
 
@@ -300,31 +482,7 @@ def cmd_record_access(args: List[str]) -> Dict[str, Any]:
         )
         sys.exit(1)
 
-    path = args[0]
-    line_start, line_end = 0, 0
-    query, score = None, None
-
-    i = 1
-    while i < len(args):
-        if args[i] == "--lines" and i + 1 < len(args):
-            try:
-                parts = args[i + 1].split(":")
-                line_start = int(parts[0])
-                line_end = int(parts[1]) if len(parts) > 1 else line_start
-            except (ValueError, IndexError) as e:
-                logger.warning(f"Invalid line range {args[i+1]}: {e}")
-            i += 2
-        elif args[i] == "--query" and i + 1 < len(args):
-            query = args[i + 1]
-            i += 2
-        elif args[i] == "--score" and i + 1 < len(args):
-            try:
-                score = float(args[i + 1])
-            except ValueError as e:
-                logger.warning(f"Invalid score {args[i+1]}: {e}")
-            i += 2
-        else:
-            i += 1
+    path, line_start, line_end, query, score = _parse_record_access_args(args)
 
     try:
         db = get_db()
@@ -333,7 +491,10 @@ def cmd_record_access(args: List[str]) -> Dict[str, Any]:
         # Upsert gravity record
         db.execute(
             """
-            INSERT INTO gravity (path, line_start, line_end, access_count, last_accessed_at, last_written_at)
+            INSERT INTO gravity (
+                path, line_start, line_end, access_count,
+                last_accessed_at, last_written_at
+            )
             VALUES (?, ?, ?, 1, ?, ?)
             ON CONFLICT(path, line_start, line_end) DO UPDATE SET
                 access_count = access_count + 1,
@@ -360,21 +521,12 @@ def cmd_record_access(args: List[str]) -> Dict[str, Any]:
             (path, line_start, line_end),
         ).fetchone()
 
+        result = _create_access_result(row, path, line_start, line_end)
         if row:
-            mass = compute_effective_mass(row)
-            result = {
-                "path": path,
-                "lines": f"{line_start}:{line_end}",
-                "access_count": row["access_count"],
-                "effective_mass": round(mass, 3),
-                "modifier": round(gravity_score_modifier(mass), 3),
-            }
             logger.info(
-                f"Recorded access to {path}:{line_start}:{line_end} (count={row['access_count']})"
+                f"Recorded access to {path}:{line_start}:{line_end} "
+                f"(count={row['access_count']})"
             )
-        else:
-            logger.warning(f"Failed to find row after insert for {path}")
-            result = {"error": "Row not found after insert"}
 
         print(json.dumps(result))
         db.close()
@@ -458,28 +610,7 @@ def cmd_boost(args: List[str]) -> Dict[str, Any]:
         print("Usage: gravity boost <path> [--amount N] [--lines START:END]", file=sys.stderr)
         sys.exit(1)
 
-    path = args[0]
-    amount = 2.0
-    line_start, line_end = 0, 0
-
-    i = 1
-    while i < len(args):
-        if args[i] == "--amount" and i + 1 < len(args):
-            try:
-                amount = float(args[i + 1])
-            except ValueError as e:
-                logger.warning(f"Invalid amount {args[i+1]}: {e}")
-            i += 2
-        elif args[i] == "--lines" and i + 1 < len(args):
-            try:
-                parts = args[i + 1].split(":")
-                line_start = int(parts[0])
-                line_end = int(parts[1]) if len(parts) > 1 else line_start
-            except (ValueError, IndexError) as e:
-                logger.warning(f"Invalid line range {args[i+1]}: {e}")
-            i += 2
-        else:
-            i += 1
+    path, amount, line_start, line_end = _parse_boost_args(args)
 
     try:
         db = get_db()
@@ -505,19 +636,12 @@ def cmd_boost(args: List[str]) -> Dict[str, Any]:
             (path, line_start, line_end),
         ).fetchone()
 
+        result = _create_boost_result(row, path)
         if row:
-            mass = compute_effective_mass(row)
-            result = {
-                "path": path,
-                "explicit_importance": row["explicit_importance"],
-                "effective_mass": round(mass, 3),
-                "modifier": round(gravity_score_modifier(mass), 3),
-            }
             logger.info(
-                f"Boosted {path}:{line_start}:{line_end} by {amount} (total importance={row['explicit_importance']})"
+                f"Boosted {path}:{line_start}:{line_end} by {amount} "
+                f"(total importance={row['explicit_importance']})"
             )
-        else:
-            result = {"error": "Row not found after boost"}
 
         print(json.dumps(result))
         db.close()
@@ -725,25 +849,7 @@ def cmd_rerank(args: List[str]) -> List[Dict[str, Any]]:
     Returns:
         Re-ranked list of results.
     """
-    json_str = None
-    i = 0
-    while i < len(args):
-        if args[i] == "--json" and i + 1 < len(args):
-            json_str = args[i + 1]
-            i += 2
-        else:
-            i += 1
-
-    if not json_str:
-        # Try stdin
-        if not sys.stdin.isatty():
-            json_str = sys.stdin.read()
-        else:
-            logger.error("No JSON input provided to rerank")
-            print(
-                "Usage: gravity rerank --json '<results>' or pipe JSON via stdin", file=sys.stderr
-            )
-            sys.exit(1)
+    json_str = _get_json_input(args)
 
     try:
         results = json.loads(json_str)
@@ -764,32 +870,10 @@ def cmd_rerank(args: List[str]) -> List[Dict[str, Any]]:
             base_score = r.get("score", 0)
 
             # Look up gravity
-            row = db.execute(
-                """
-                SELECT * FROM gravity WHERE path = ? AND line_start = ? AND line_end = ?
-            """,
-                (path, start, end),
-            ).fetchone()
+            row = _lookup_gravity_row(db, path, start, end)
 
-            if not row:
-                # Try file-level match
-                row = db.execute("SELECT * FROM gravity WHERE path = ? LIMIT 1", (path,)).fetchone()
-
-            if row:
-                mass = compute_effective_mass(row)
-                modifier = gravity_score_modifier(mass)
-                is_superseded = row["superseded_by"] is not None
-
-                # Penalize superseded chunks
-                if is_superseded:
-                    modifier *= 0.5
-
-                adjusted_score = base_score * modifier
-            else:
-                mass = 0
-                modifier = 1.0
-                adjusted_score = base_score
-                is_superseded = False
+            # Compute adjusted score
+            adjusted_score, mass, modifier, is_superseded = _compute_rerank_score(row, base_score)
 
             entry = dict(r)
             entry["original_score"] = base_score
@@ -802,19 +886,7 @@ def cmd_rerank(args: List[str]) -> List[Dict[str, Any]]:
             reranked.append(entry)
 
             # Record access
-            try:
-                db.execute(
-                    """
-                    INSERT INTO gravity (path, line_start, line_end, access_count, last_accessed_at)
-                    VALUES (?, ?, ?, 1, ?)
-                    ON CONFLICT(path, line_start, line_end) DO UPDATE SET
-                        access_count = access_count + 1,
-                        last_accessed_at = ?
-                """,
-                    (path, start, end, now, now),
-                )
-            except sqlite3.Error as e:
-                logger.warning(f"Failed to record access for {path}: {e}")
+            _record_rerank_access(db, path, start, end, now)
 
         commit_with_retry(db)
         db.close()
@@ -955,7 +1027,7 @@ COMMANDS = {
 def main() -> None:
     """Main entry point for gravity command."""
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        print(f"Usage: python -m core.nautilus gravity <command> [args]")
+        print("Usage: python -m core.nautilus gravity <command> [args]")
         print(f"Commands: {', '.join(COMMANDS.keys())}")
         sys.exit(1)
 
