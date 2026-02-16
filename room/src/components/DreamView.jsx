@@ -94,7 +94,7 @@ function DreamCard({ dream, expanded, onToggle }) {
               `}
               title="Insight score"
             >
-              insight {score}/10
+              insight {score}/100
             </span>
 
             {/* Date */}
