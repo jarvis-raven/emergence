@@ -135,6 +135,97 @@ def get_last_satisfaction_time(drive_name: str) -> Optional[str]:
     return None
 
 
+def _parse_breadcrumb(bc_path: Path) -> Optional[dict]:
+    """Parse breadcrumb file and extract relevant data.
+
+    Args:
+        bc_path: Path to breadcrumb file
+
+    Returns:
+        Dict with breadcrumb data or None if invalid
+    """
+    try:
+        breadcrumb = json.loads(bc_path.read_text())
+        drive_name = breadcrumb.get("drive", "")
+        session_key = breadcrumb.get("session_key", "")
+        spawned_at = breadcrumb.get("spawned_at", "")
+        spawned_epoch = breadcrumb.get("spawned_epoch", 0)
+
+        if not drive_name or not session_key:
+            return None
+
+        return {
+            "drive": drive_name,
+            "session_key": session_key,
+            "spawned_at": spawned_at,
+            "spawned_epoch": spawned_epoch,
+        }
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _check_completion_markers(ingest_dir: Path, drive_name: str, session_key: str) -> str:
+    """Check for completion marker files and return session status.
+
+    Args:
+        ingest_dir: Path to sessions_ingest directory
+        drive_name: Name of the drive
+        session_key: Session key to match
+
+    Returns:
+        Session status string (pending/completed)
+    """
+    for cf in ingest_dir.glob(f"COMPLETE-*-{drive_name}.json"):
+        try:
+            cdata = json.loads(cf.read_text())
+            if cdata.get("drive") == drive_name or cdata.get("session_key") == session_key:
+                session_status = cdata.get("status", "completed")
+                # Clean up completion marker
+                cf.unlink()
+                return session_status
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return "pending"
+
+
+def _write_trigger_log_event(
+    drive_name: str,
+    session_key: str,
+    spawned_at: str,
+    spawned_epoch: int,
+    session_status: str,
+) -> None:
+    """Write trigger log event for migrated breadcrumb.
+
+    Args:
+        drive_name: Name of the drive
+        session_key: Session key
+        spawned_at: Spawn timestamp (ISO)
+        spawned_epoch: Spawn epoch time
+        session_status: Session status string
+    """
+    from .history import get_trigger_log_path
+
+    log_path = get_trigger_log_path()
+
+    event = {
+        "drive": drive_name,
+        "pressure": 0.0,  # Unknown from breadcrumb
+        "threshold": 0.0,  # Unknown from breadcrumb
+        "timestamp": spawned_at,
+        "session_spawned": True,
+        "reason": "Migrated from breadcrumb",
+        "session_key": session_key,
+        "session_status": session_status,
+        "spawned_epoch": spawned_epoch,
+    }
+
+    # Append to trigger log
+    with log_path.open("a") as f:
+        f.write(json.dumps(event) + "\n")
+
+
 def migrate_breadcrumbs_to_trigger_log() -> int:
     """Migrate existing breadcrumb files to trigger-log.jsonl entries.
 
@@ -144,7 +235,6 @@ def migrate_breadcrumbs_to_trigger_log() -> int:
     Returns:
         Number of breadcrumbs migrated
     """
-
     state_dir = os.environ.get("EMERGENCE_STATE", str(Path.home() / ".openclaw" / "state"))
     ingest_dir = Path(state_dir) / "sessions_ingest"
 
@@ -159,64 +249,30 @@ def migrate_breadcrumbs_to_trigger_log() -> int:
             if bc_path.name.startswith(".tmp-") or bc_path.name.startswith("COMPLETE-"):
                 continue
 
-            try:
-                breadcrumb = json.loads(bc_path.read_text())
-
-                # Extract breadcrumb data
-                drive_name = breadcrumb.get("drive", "")
-                session_key = breadcrumb.get("session_key", "")
-                spawned_at = breadcrumb.get("spawned_at", "")
-                spawned_epoch = breadcrumb.get("spawned_epoch", 0)
-
-                if not drive_name or not session_key:
-                    # Invalid breadcrumb, skip it
-                    continue
-
-                # Check if there's a matching completion marker
-                session_status = "pending"
-                for cf in ingest_dir.glob(f"COMPLETE-*-{drive_name}.json"):
-                    try:
-                        cdata = json.loads(cf.read_text())
-                        if (
-                            cdata.get("drive") == drive_name
-                            or cdata.get("session_key") == session_key
-                        ):
-                            session_status = cdata.get("status", "completed")
-                            # Clean up completion marker
-                            cf.unlink()
-                            break
-                    except (json.JSONDecodeError, OSError):
-                        pass
-
-                # Create trigger log entry (manual to preserve timestamp)
-                from .history import get_trigger_log_path
-
-                log_path = get_trigger_log_path()
-
-                event = {
-                    "drive": drive_name,
-                    "pressure": 0.0,  # Unknown from breadcrumb
-                    "threshold": 0.0,  # Unknown from breadcrumb
-                    "timestamp": spawned_at,
-                    "session_spawned": True,
-                    "reason": "Migrated from breadcrumb",
-                    "session_key": session_key,
-                    "session_status": session_status,
-                    "spawned_epoch": spawned_epoch,
-                }
-
-                # Append to trigger log
-                with log_path.open("a") as f:
-                    f.write(json.dumps(event) + "\n")
-
-                migrated += 1
-
-                # Remove breadcrumb file
-                bc_path.unlink()
-
-            except (json.JSONDecodeError, OSError) as e:
-                # Skip corrupted breadcrumbs
+            breadcrumb_data = _parse_breadcrumb(bc_path)
+            if not breadcrumb_data:
                 continue
+
+            # Check for completion markers
+            session_status = _check_completion_markers(
+                ingest_dir,
+                breadcrumb_data["drive"],
+                breadcrumb_data["session_key"],
+            )
+
+            # Write to trigger log
+            _write_trigger_log_event(
+                breadcrumb_data["drive"],
+                breadcrumb_data["session_key"],
+                breadcrumb_data["spawned_at"],
+                breadcrumb_data["spawned_epoch"],
+                session_status,
+            )
+
+            migrated += 1
+
+            # Remove breadcrumb file
+            bc_path.unlink()
 
     except OSError:
         return migrated
@@ -311,7 +367,10 @@ def get_aversive_satisfaction_options(
             "description": "Reflective session to identify what's preventing satisfaction",
             "pressure_reduction": 0.0,  # No immediate reduction
             "resets_thwarting": False,
-            "prompt": f"What's blocking your ability to satisfy {drive_name}? Explore obstacles, constraints, and alternative approaches.",
+            "prompt": (
+                f"What's blocking your ability to satisfy {drive_name}? "
+                "Explore obstacles, constraints, and alternative approaches."
+            ),
         }
     )
 
@@ -325,7 +384,10 @@ def get_aversive_satisfaction_options(
             "description": "Try a different route to partial satisfaction",
             "pressure_reduction": alt_reduction,
             "resets_thwarting": False,
-            "prompt": f"Find an alternative way to engage with {drive_name} that works around current blockages.",
+            "prompt": (
+                f"Find an alternative way to engage with {drive_name} "
+                "that works around current blockages."
+            ),
         }
     )
 
@@ -338,7 +400,10 @@ def get_aversive_satisfaction_options(
             "description": "Full engagement attempt (resets thwarting count)",
             "pressure_reduction": deep_reduction,
             "resets_thwarting": True,
-            "prompt": f"Fully engage with {drive_name}, acknowledging past blockages. Document what's different this time.",
+            "prompt": (
+                f"Fully engage with {drive_name}, acknowledging past "
+                "blockages. Document what's different this time."
+            ),
         }
     )
 
@@ -347,7 +412,10 @@ def get_aversive_satisfaction_options(
         options["threshold_adjustment"] = {
             "recommended": True,
             "reason": f"Drive has been thwarted {thwarting_count} times",
-            "suggestion": f"Consider temporarily raising threshold to {threshold * 1.25:.1f} to reduce pressure",
+            "suggestion": (
+                f"Consider temporarily raising threshold to "
+                f"{threshold * 1.25:.1f} to reduce pressure"
+            ),
             "temporary_duration": "24-48 hours",
         }
 
@@ -500,6 +568,133 @@ def assess_depth(
     return (band, depth_name, ratio)
 
 
+def _handle_completed_session(
+    state: DriveState,
+    config: dict,
+    entry: dict,
+    drive_name: str,
+    timeout_seconds: int,
+) -> bool:
+    """Handle a completed session and apply satisfaction.
+
+    Args:
+        state: Current drive state (modified in place)
+        config: Configuration dict
+        entry: Trigger log entry
+        drive_name: Name of the drive
+        timeout_seconds: Session timeout in seconds
+
+    Returns:
+        True if drive was satisfied
+    """
+    from .engine import satisfy_drive
+    from .models import get_drive_thresholds
+
+    # Get drive data for threshold calculation
+    drive_data = state.get("drives", {}).get(drive_name, {})
+    current_pressure = drive_data.get("pressure", 0.0)
+
+    # Get thresholds
+    thresholds = get_drive_thresholds(drive_data, config.get("drives", {}).get("thresholds"))
+
+    # Assess satisfaction depth using threshold bands
+    band, depth_name, ratio = assess_depth(entry, current_pressure, thresholds, timeout_seconds)
+
+    # Calculate new pressure
+    pressure_after = max(0.0, current_pressure * (1.0 - ratio))
+
+    # Satisfy the drive
+    try:
+        satisfy_drive(state, drive_name, depth=depth_name)
+
+        # Log satisfaction history
+        log_satisfaction(
+            drive_name=drive_name,
+            pressure_before=current_pressure,
+            pressure_after=pressure_after,
+            band=band,
+            depth=depth_name,
+            ratio=ratio,
+            source="session",
+        )
+    except (KeyError, ValueError):
+        # Drive doesn't exist — just continue
+        pass
+
+    # Remove from triggered list
+    triggered = state.get("triggered_drives", [])
+    if drive_name in triggered:
+        state["triggered_drives"] = [d for d in triggered if d != drive_name]
+
+    return True
+
+
+def _handle_timed_out_session(
+    state: DriveState,
+    config: dict,
+    entry: dict,
+    drive_name: str,
+    session_key: str,
+    timeout_seconds: int,
+) -> bool:
+    """Handle a timed-out session and apply reduced satisfaction.
+
+    Args:
+        state: Current drive state (modified in place)
+        config: Configuration dict
+        entry: Trigger log entry (modified in place)
+        drive_name: Name of the drive
+        session_key: Session key
+        timeout_seconds: Session timeout in seconds
+
+    Returns:
+        True if drive was satisfied
+    """
+    from .engine import satisfy_drive
+    from .history import update_session_status
+    from .models import get_drive_thresholds
+
+    # Session timed out - mark as error and apply reduced satisfaction
+    update_session_status(session_key, "timeout")
+
+    # Get drive data
+    drive_data = state.get("drives", {}).get(drive_name, {})
+    current_pressure = drive_data.get("pressure", 0.0)
+
+    # Get thresholds
+    thresholds = get_drive_thresholds(drive_data, config.get("drives", {}).get("thresholds"))
+
+    # Mark entry as timed out for assessment
+    entry["session_status"] = "timeout"
+    band, depth_name, ratio = assess_depth(entry, current_pressure, thresholds, timeout_seconds)
+
+    # Apply reduced satisfaction (shallow due to timeout)
+    pressure_after = max(0.0, current_pressure * (1.0 - ratio))
+
+    try:
+        satisfy_drive(state, drive_name, depth=depth_name)
+
+        log_satisfaction(
+            drive_name=drive_name,
+            pressure_before=current_pressure,
+            pressure_after=pressure_after,
+            band=band,
+            depth=depth_name,
+            ratio=ratio,
+            source="session-timeout",
+        )
+    except (KeyError, ValueError):
+        # Drive doesn't exist — just continue
+        pass
+
+    # Remove from triggered list
+    triggered = state.get("triggered_drives", [])
+    if drive_name in triggered:
+        state["triggered_drives"] = [d for d in triggered if d != drive_name]
+
+    return True
+
+
 def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
     """Query trigger-log.jsonl for completed drive sessions and satisfy them.
 
@@ -518,8 +713,7 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
         >>> isinstance(satisfied, list)
         True
     """
-    from .engine import satisfy_drive
-    from .history import get_active_sessions, update_session_status
+    from .history import get_active_sessions
 
     timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
     satisfied = []
@@ -533,97 +727,18 @@ def check_completed_sessions(state: DriveState, config: dict) -> list[str]:
         session_status = entry.get("session_status", "pending")
         spawn_epoch = entry.get("spawned_epoch", 0)
 
-        # Check if session has completed (status updated by external completion signal)
+        # Check if session has completed
         if session_status == "completed":
-            # Get drive data for threshold calculation
-            drive_data = state.get("drives", {}).get(drive_name, {})
-            current_pressure = drive_data.get("pressure", 0.0)
-
-            # Get thresholds
-            from .models import get_drive_thresholds
-
-            thresholds = get_drive_thresholds(
-                drive_data, config.get("drives", {}).get("thresholds")
-            )
-
-            # Assess satisfaction depth using threshold bands
-            band, depth_name, ratio = assess_depth(
-                entry, current_pressure, thresholds, timeout_seconds
-            )
-
-            # Calculate new pressure
-            pressure_after = max(0.0, current_pressure * (1.0 - ratio))
-
-            # Satisfy the drive
-            try:
-                satisfy_drive(state, drive_name, depth=depth_name)
+            if _handle_completed_session(state, config, entry, drive_name, timeout_seconds):
                 satisfied.append(drive_name)
-
-                # Log satisfaction history
-                log_satisfaction(
-                    drive_name=drive_name,
-                    pressure_before=current_pressure,
-                    pressure_after=pressure_after,
-                    band=band,
-                    depth=depth_name,
-                    ratio=ratio,
-                    source="session",
-                )
-            except (KeyError, ValueError):
-                # Drive doesn't exist — just mark as satisfied
-                satisfied.append(drive_name)
-
-            # Remove from triggered list
-            triggered = state.get("triggered_drives", [])
-            if drive_name in triggered:
-                state["triggered_drives"] = [d for d in triggered if d != drive_name]
 
         # Check for timeout (stale sessions)
         elif session_status == "pending" and spawn_epoch > 0:
             age = time.time() - spawn_epoch
             if age > (timeout_seconds + 60):
-                # Session timed out - mark as error and apply reduced satisfaction
-                update_session_status(session_key, "timeout")
-
-                # Get drive data
-                drive_data = state.get("drives", {}).get(drive_name, {})
-                current_pressure = drive_data.get("pressure", 0.0)
-
-                # Get thresholds
-                from .models import get_drive_thresholds
-
-                thresholds = get_drive_thresholds(
-                    drive_data, config.get("drives", {}).get("thresholds")
-                )
-
-                # Mark entry as timed out for assessment
-                entry["session_status"] = "timeout"
-                band, depth_name, ratio = assess_depth(
-                    entry, current_pressure, thresholds, timeout_seconds
-                )
-
-                # Apply reduced satisfaction (shallow due to timeout)
-                pressure_after = max(0.0, current_pressure * (1.0 - ratio))
-
-                try:
-                    satisfy_drive(state, drive_name, depth=depth_name)
+                if _handle_timed_out_session(
+                    state, config, entry, drive_name, session_key, timeout_seconds
+                ):
                     satisfied.append(drive_name)
-
-                    log_satisfaction(
-                        drive_name=drive_name,
-                        pressure_before=current_pressure,
-                        pressure_after=pressure_after,
-                        band=band,
-                        depth=depth_name,
-                        ratio=ratio,
-                        source="session-timeout",
-                    )
-                except (KeyError, ValueError):
-                    satisfied.append(drive_name)
-
-                # Remove from triggered list
-                triggered = state.get("triggered_drives", [])
-                if drive_name in triggered:
-                    state["triggered_drives"] = [d for d in triggered if d != drive_name]
 
     return satisfied
