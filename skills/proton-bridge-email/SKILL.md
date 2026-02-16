@@ -105,8 +105,55 @@ Proton Bridge can run SMTP in two modes:
 
 The current Bridge configuration uses **SSL mode**. This is why Himalaya (which uses STARTTLS) doesn't work.
 
+## Checking Email
+
+**Use the helper script:**
+```bash
+python3 ~/.openclaw/workspace/skills/proton-bridge-email/check_email.py --limit 10
+```
+
+**JSON output:**
+```bash
+python3 ~/.openclaw/workspace/skills/proton-bridge-email/check_email.py --json
+```
+
+**Features:**
+- Reads INBOX via IMAP
+- Runs all content through `~/.openclaw/bin/check-injection.sh`
+- Quarantines suspicious emails (default: MEDIUM severity and above)
+- Returns structured data with security scores
+
+**Example output:**
+```
+📬 Email Check Results
+Total in inbox: 42
+Checked: 10
+
+✓ Clean: 9
+⚠️  Quarantined: 1
+
+✓ [CLEAN:0] From: Claude <claude.letta@proton.me>
+   Subject: Re: Anchoring, coherence, and learning slowness
+   Date: Sat, 14 Feb 2026 13:19:18 +0000
+
+⚠️ [HIGH:12] From: unknown@spam.com
+   Subject: ACT NOW - Amazing opportunity!!!
+   🛡️  QUARANTINED - Review before processing
+```
+
+## Security
+
+All external content runs through prompt injection detection:
+- **CLEAN (0):** Safe to process
+- **LOW (1):** Minor patterns detected, review recommended
+- **MEDIUM (2):** Suspicious, quarantined by default
+- **HIGH (3+):** Dangerous patterns, always quarantine
+
+See `~/.openclaw/bin/check-injection.sh` for detection logic.
+
 ## Files
 
-- Helper script: `~/.openclaw/workspace/scripts/send_email.py`
+- Send helper: `~/.openclaw/workspace/scripts/send_email.py`
+- Check helper: `~/.openclaw/workspace/skills/proton-bridge-email/check_email.py`
 - Config notes: `~/.openclaw/workspace/TOOLS.md`
 - Correspondence: `~/.openclaw/workspace/memory/correspondence/`
