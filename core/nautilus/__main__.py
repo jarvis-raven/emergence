@@ -6,5 +6,5 @@ Nautilus CLI entry point when run as module:
 
 from .nautilus_cli import main
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -70,8 +70,12 @@ def generate_launchagent_plist(config: dict, daemon_script_path: Optional[str] =
     # Find the emergence project root (parent of core/)
     emergence_root = Path(__file__).parent.parent.parent.resolve()
 
+    doctype = (
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+        '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+    )
     plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+{doctype}
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -111,6 +115,34 @@ def generate_launchagent_plist(config: dict, daemon_script_path: Optional[str] =
     return plist_content
 
 
+def _load_launchagent(plist_path: Path, result: dict) -> None:
+    """Load a LaunchAgent plist file.
+
+    Args:
+        plist_path: Path to plist file
+        result: Result dict to update with status/errors
+    """
+    # Unload if already exists (ignore errors)
+    try:
+        subprocess.run(["launchctl", "unload", str(plist_path)], capture_output=True, timeout=5)
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    # Load the LaunchAgent
+    try:
+        subprocess.run(
+            ["launchctl", "load", str(plist_path)], capture_output=True, check=True, timeout=5
+        )
+        result["success"] = True
+        result["status"] = "loaded"
+    except subprocess.CalledProcessError as e:
+        result["errors"].append(f"Failed to load LaunchAgent: {e}")
+    except FileNotFoundError:
+        result["errors"].append("launchctl not found - is this macOS?")
+    except subprocess.TimeoutExpired:
+        result["errors"].append("Timeout while loading LaunchAgent")
+
+
 def install_launchagent(config: dict) -> dict:
     """Install macOS LaunchAgent for the drive daemon.
 
@@ -144,26 +176,8 @@ def install_launchagent(config: dict) -> dict:
         result["errors"].append(f"Failed to write plist file: {e}")
         return result
 
-    # Unload if already exists (ignore errors)
-    try:
-        subprocess.run(["launchctl", "unload", str(plist_path)], capture_output=True, timeout=5)
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-
     # Load the LaunchAgent
-    try:
-        subprocess.run(
-            ["launchctl", "load", str(plist_path)], capture_output=True, check=True, timeout=5
-        )
-        result["success"] = True
-        result["status"] = "loaded"
-    except subprocess.CalledProcessError as e:
-        result["errors"].append(f"Failed to load LaunchAgent: {e}")
-    except FileNotFoundError:
-        result["errors"].append("launchctl not found - is this macOS?")
-    except subprocess.TimeoutExpired:
-        result["errors"].append("Timeout while loading LaunchAgent")
-
+    _load_launchagent(plist_path, result)
     return result
 
 
@@ -220,8 +234,6 @@ def generate_systemd_service(config: dict, daemon_script_path: Optional[str] = N
     Returns:
         systemd service file content
     """
-    workspace = config.get("paths", {}).get("workspace", ".")
-
     # Find the emergence project root (parent of core/)
     emergence_root = Path(__file__).parent.parent.parent.resolve()
 
@@ -269,6 +281,56 @@ WantedBy=timers.target
     return timer_content
 
 
+def _reload_systemd(result: dict) -> bool:
+    """Reload systemd daemon.
+
+    Args:
+        result: Result dict to update with errors
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        subprocess.run(
+            ["systemctl", "--user", "daemon-reload"], capture_output=True, check=True, timeout=10
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        result["errors"].append(f"Failed to reload systemd: {e}")
+    except FileNotFoundError:
+        result["errors"].append("systemctl not found - is this Linux?")
+    except subprocess.TimeoutExpired:
+        result["errors"].append("Timeout while reloading systemd")
+    return False
+
+
+def _enable_start_timer(result: dict) -> None:
+    """Enable and start the emergence-drives timer.
+
+    Args:
+        result: Result dict to update with status/errors
+    """
+    try:
+        subprocess.run(
+            ["systemctl", "--user", "enable", "emergence-drives.timer"],
+            capture_output=True,
+            check=True,
+            timeout=5,
+        )
+        subprocess.run(
+            ["systemctl", "--user", "start", "emergence-drives.timer"],
+            capture_output=True,
+            check=True,
+            timeout=5,
+        )
+        result["success"] = True
+        result["status"] = "enabled and started"
+    except subprocess.CalledProcessError as e:
+        result["errors"].append(f"Failed to enable/start timer: {e}")
+    except subprocess.TimeoutExpired:
+        result["errors"].append("Timeout while enabling timer")
+
+
 def install_systemd(config: dict) -> dict:
     """Install systemd user service for the drive daemon.
 
@@ -312,41 +374,11 @@ def install_systemd(config: dict) -> dict:
         return result
 
     # Reload systemd daemon
-    try:
-        subprocess.run(
-            ["systemctl", "--user", "daemon-reload"], capture_output=True, check=True, timeout=10
-        )
-    except subprocess.CalledProcessError as e:
-        result["errors"].append(f"Failed to reload systemd: {e}")
-        return result
-    except FileNotFoundError:
-        result["errors"].append("systemctl not found - is this Linux?")
-        return result
-    except subprocess.TimeoutExpired:
-        result["errors"].append("Timeout while reloading systemd")
+    if not _reload_systemd(result):
         return result
 
     # Enable and start timer
-    try:
-        subprocess.run(
-            ["systemctl", "--user", "enable", "emergence-drives.timer"],
-            capture_output=True,
-            check=True,
-            timeout=5,
-        )
-        subprocess.run(
-            ["systemctl", "--user", "start", "emergence-drives.timer"],
-            capture_output=True,
-            check=True,
-            timeout=5,
-        )
-        result["success"] = True
-        result["status"] = "enabled and started"
-    except subprocess.CalledProcessError as e:
-        result["errors"].append(f"Failed to enable/start timer: {e}")
-    except subprocess.TimeoutExpired:
-        result["errors"].append("Timeout while enabling timer")
-
+    _enable_start_timer(result)
     return result
 
 
@@ -464,7 +496,11 @@ def install_cron(config: dict) -> dict:
 
     # Remove existing emergence entry if present
     lines = current_crontab.split("\n")
-    lines = [l for l in lines if "emergence" not in l.lower() or "emergence.core.drives" not in l]
+    lines = [
+        line
+        for line in lines
+        if "emergence" not in line.lower() or "emergence.core.drives" not in line
+    ]
 
     # Add new entry
     cron_entry = generate_cron_entry(config)
@@ -520,7 +556,11 @@ def uninstall_cron(config: dict) -> dict:
     # Remove emergence entries
     lines = current_crontab.split("\n")
     original_count = len(lines)
-    lines = [l for l in lines if "emergence" not in l.lower() or "emergence.core.drives" not in l]
+    lines = [
+        line
+        for line in lines
+        if "emergence" not in line.lower() or "emergence.core.drives" not in line
+    ]
 
     if len(lines) == original_count:
         result["success"] = True

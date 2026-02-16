@@ -163,18 +163,6 @@ def build_session_prompt(
     session_dir = config.get("memory", {}).get("session_dir", "memory/sessions")
     session_file = f"{session_dir}/{file_date}-{file_time}-{drive_name}.md"
 
-    # Get workspace path dynamically
-    # If config has _config_dir (from load_config), use it to resolve relative paths
-    config_dir = Path(config.get("_config_dir", "."))
-    workspace_rel = Path(config.get("paths", {}).get("workspace", "."))
-    if not workspace_rel.is_absolute():
-        workspace = (config_dir / workspace_rel).resolve()
-    else:
-        workspace = workspace_rel.resolve()
-
-    # Use the same python that's running this code (handles venv correctly)
-    python_path = sys.executable
-
     # Build prompt based on valence
     if valence == "aversive":
         # Aversive state: Focus on investigating blockages
@@ -253,22 +241,12 @@ This triggers instant satisfaction of your drive. Without it, satisfaction is de
 """
 
 
-def spawn_via_api(
-    prompt: str, config: dict, drive_name: str, pressure: float, threshold: float
-) -> Optional[str]:
-    """Spawn session via OpenClaw Gateway API.
-
-    Args:
-        prompt: The full session prompt
-        config: Configuration dict
-        drive_name: Name of the triggering drive
-        pressure: Current pressure level
-        threshold: Drive's threshold level
+def _get_gateway_token() -> Optional[str]:
+    """Get OpenClaw Gateway token from environment or file.
 
     Returns:
-        Session key if spawned successfully, None otherwise
+        Gateway token or None if not found
     """
-    gateway_url = os.environ.get("OPENCLAW_GATEWAY_URL", "http://localhost:54646")
     gateway_token = os.environ.get("OPENCLAW_GATEWAY_TOKEN")
 
     # Fallback: read token from file (common in LaunchAgent contexts)
@@ -279,10 +257,28 @@ def spawn_via_api(
         except (FileNotFoundError, IOError):
             pass
 
-    if not gateway_token:
-        return None
+    return gateway_token
 
-    # Get timeout from config
+
+def _build_api_request_data(
+    prompt: str,
+    config: dict,
+    drive_name: str,
+    pressure: float,
+    threshold: float,
+) -> dict:
+    """Build API request data dict for session spawning.
+
+    Args:
+        prompt: The full session prompt
+        config: Configuration dict
+        drive_name: Name of the triggering drive
+        pressure: Current pressure level
+        threshold: Drive's threshold level
+
+    Returns:
+        Request data dict
+    """
     timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
     model = config.get("drives", {}).get("session_model")
     announce = config.get("drives", {}).get("announce_session", False)
@@ -309,10 +305,38 @@ def spawn_via_api(
     if announce:
         req_data["announce"] = True
 
+    return req_data
+
+
+def spawn_via_api(
+    prompt: str, config: dict, drive_name: str, pressure: float, threshold: float
+) -> Optional[str]:
+    """Spawn session via OpenClaw Gateway API.
+
+    Args:
+        prompt: The full session prompt
+        config: Configuration dict
+        drive_name: Name of the triggering drive
+        pressure: Current pressure level
+        threshold: Drive's threshold level
+
+    Returns:
+        Session key if spawned successfully, None otherwise
+    """
+    gateway_url = os.environ.get("OPENCLAW_GATEWAY_URL", "http://localhost:54646")
+    gateway_token = _get_gateway_token()
+
+    if not gateway_token:
+        return None
+
+    req_data = _build_api_request_data(prompt, config, drive_name, pressure, threshold)
+
     try:
         req_json = json.dumps(req_data).encode("utf-8")
-
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {gateway_token}"}
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {gateway_token}",
+        }
 
         req = urllib.request.Request(
             f"{gateway_url}/v1/cron/add", data=req_json, headers=headers, method="POST"
@@ -332,34 +356,47 @@ def spawn_via_api(
         return None
 
 
-def spawn_via_cli(
-    prompt: str, config: dict, drive_name: str, pressure: float, threshold: float
-) -> Optional[str]:
-    """Fallback: Spawn session via openclaw CLI.
+def _get_openclaw_path(config: dict) -> str:
+    """Get openclaw binary path from config or auto-detection.
+
+    Priority: config-specified > auto-detected > fallback to "openclaw"
 
     Args:
-        prompt: The full session prompt
         config: Configuration dict
-        drive_name: Name of the triggering drive
-        pressure: Current pressure level
-        threshold: Drive's threshold level
 
     Returns:
-        Session key if spawned successfully, None otherwise
+        Path to openclaw binary
     """
-    timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
-    model = config.get("drives", {}).get("session_model")
-    announce = config.get("drives", {}).get("announce_session", False)
-
-    # Get openclaw binary path
-    # Priority: config-specified > auto-detected > fallback to "openclaw"
     openclaw_path = config.get("drives", {}).get("openclaw_path")
     if not openclaw_path:
         openclaw_path = config.get("_openclaw_path")  # Auto-detected at daemon startup
     if not openclaw_path:
         openclaw_path = "openclaw"  # Fallback (will fail if not in PATH)
 
-    # Build the cron command with --json to get the job ID
+    return openclaw_path
+
+
+def _build_cli_command(
+    openclaw_path: str,
+    drive_name: str,
+    prompt: str,
+    timeout_seconds: int,
+    model: Optional[str],
+    announce: bool,
+) -> list[str]:
+    """Build openclaw CLI command for session spawning.
+
+    Args:
+        openclaw_path: Path to openclaw binary
+        drive_name: Name of the triggering drive
+        prompt: The full session prompt
+        timeout_seconds: Session timeout in seconds
+        model: Optional model name
+        announce: Whether to announce session
+
+    Returns:
+        Command list for subprocess
+    """
     cmd = [
         openclaw_path,
         "cron",
@@ -384,6 +421,31 @@ def spawn_via_cli(
 
     if announce:
         cmd.append("--announce")
+
+    return cmd
+
+
+def spawn_via_cli(
+    prompt: str, config: dict, drive_name: str, pressure: float, threshold: float
+) -> Optional[str]:
+    """Fallback: Spawn session via openclaw CLI.
+
+    Args:
+        prompt: The full session prompt
+        config: Configuration dict
+        drive_name: Name of the triggering drive
+        pressure: Current pressure level
+        threshold: Drive's threshold level
+
+    Returns:
+        Session key if spawned successfully, None otherwise
+    """
+    timeout_seconds = config.get("drives", {}).get("session_timeout", 900)
+    model = config.get("drives", {}).get("session_model")
+    announce = config.get("drives", {}).get("announce_session", False)
+
+    openclaw_path = _get_openclaw_path(config)
+    cmd = _build_cli_command(openclaw_path, drive_name, prompt, timeout_seconds, model, announce)
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -660,8 +722,6 @@ def tick_with_spawning(config: dict, state: DriveState) -> DriveState:
 
     satisfied = check_completed_sessions(state, config)
     if satisfied:
-        import sys
-
         print(f"✓ Satisfied drives: {', '.join(satisfied)}", file=sys.stderr)
 
     return state

@@ -125,12 +125,11 @@ def format_drive_status_for_agent(status_result: dict) -> str:
     # Summary line
     total = summary.get("total_drives", 0)
     triggered = summary.get("triggered", 0)
-    building = summary.get("building", 0)
 
     if triggered > 0:
-        lines.append(
-            f"I have {triggered} drive{'s' if triggered > 1 else ''} that {'are' if triggered > 1 else 'is'} ready for attention."
-        )
+        drive_word = "drive" + ("s" if triggered > 1 else "")
+        verb = "are" if triggered > 1 else "is"
+        lines.append(f"I have {triggered} {drive_word} that {verb} ready for attention.")
     else:
         lines.append(f"All {total} drives are building pressure, none triggered yet.")
 
@@ -144,7 +143,9 @@ def format_drive_status_for_agent(status_result: dict) -> str:
         threshold = drive_info.get("threshold", 20.0)
 
         lines.append(
-            f"\nMy {drive_name} drive is at {percentage}% ({pressure:.1f}/{threshold:.1f}) - this feels most present right now."
+            f"\nMy {drive_name} drive is at {percentage}% "
+            f"({pressure:.1f}/{threshold:.1f}) - "
+            f"this feels most present right now."
         )
 
         # Add description if available

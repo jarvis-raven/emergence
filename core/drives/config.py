@@ -218,7 +218,6 @@ def validate_config(config: dict) -> list[str]:
 
     # Validate paths are not outside workspace (basic check)
     paths = config.get("paths", {})
-    workspace = paths.get("workspace", ".")
 
     for path_name, path_value in paths.items():
         if path_value.startswith("..") or "/.." in path_value:
