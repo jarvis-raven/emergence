@@ -411,8 +411,13 @@ def cmd_maintain(args):  # noqa: C901
         classify = {}
 
     print("\n🏷️ Auto-tagging contexts...", file=sys.stderr)
+    auto_tag_args = ["auto-tag"]
+    if "--register-recent" in args:
+        auto_tag_args.append("--new-only")  # Only tag untagged files during incremental runs
     tags_result = subprocess.run(
-        [sys.executable, "-m", "core.nautilus.doors", "auto-tag"], capture_output=True, text=True
+        [sys.executable, "-m", "core.nautilus.doors"] + auto_tag_args,
+        capture_output=True,
+        text=True,
     )
     try:
         tags = json.loads(tags_result.stdout)
@@ -421,7 +426,7 @@ def cmd_maintain(args):  # noqa: C901
         print("   Auto-tagging failed", file=sys.stderr)
         tags = {}
 
-    print("\n⚖️ Running gravity decay...", file=sys.stderr)
+    print("\n⚖️ Running gravity decay (importance)...", file=sys.stderr)
     decay_result = subprocess.run(
         [sys.executable, "-m", "core.nautilus.gravity", "decay"], capture_output=True, text=True
     )
@@ -431,6 +436,22 @@ def cmd_maintain(args):  # noqa: C901
     except BaseException:
         print("   Gravity decay failed", file=sys.stderr)
         decay = {}
+
+    print("\n📉 Running access count decay (half-life=30d)...", file=sys.stderr)
+    access_decay_result = subprocess.run(
+        [sys.executable, "-m", "core.nautilus.gravity", "decay-access", "--half-life", "30"],
+        capture_output=True,
+        text=True,
+    )
+    try:
+        access_decay = json.loads(access_decay_result.stdout)
+        print(
+            f"   {access_decay.get('decayed', 0)} access counts decayed",
+            file=sys.stderr,
+        )
+    except BaseException:
+        print("   Access count decay failed", file=sys.stderr)
+        access_decay = {}
 
     print("\n🔗 Auto-linking mirrors...", file=sys.stderr)
     mirrors_result = subprocess.run(
@@ -452,6 +473,7 @@ def cmd_maintain(args):  # noqa: C901
                 "chambers": classify.get("classified", {}),
                 "tagged": tags.get("files_tagged", 0),
                 "decayed": decay.get("decayed", 0),
+                "access_decayed": access_decay.get("decayed", 0),
                 "mirrors_linked": mir.get("linked", 0),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             },
@@ -479,10 +501,28 @@ def cmd_chambers(args):
     )
 
 
+def cmd_gravity(args):
+    """Pass through to gravity module (record-read, record-access, stats, decay, etc.)."""
+    subprocess.run(
+        [sys.executable, "-m", "core.nautilus.gravity"] + args,
+        cwd=get_workspace().parent,  # emergence repo root
+    )
+
+
+def cmd_doors(args):
+    """Pass through to doors module (classify, tag, untag, show, auto-tag)."""
+    subprocess.run(
+        [sys.executable, "-m", "core.nautilus.doors"] + args,
+        cwd=get_workspace().parent,  # emergence repo root
+    )
+
+
 # === Main ===
 
 COMMANDS = {
     "search": cmd_search,
+    "gravity": cmd_gravity,
+    "doors": cmd_doors,
     "status": cmd_status,
     "maintain": cmd_maintain,
     "migrate": cmd_migrate,
@@ -499,15 +539,27 @@ def main():
             "  nautilus search <query> [--n 5] [--context TAG]"
             " [--chamber atrium,corridor] [--verbose]"
         )
+        print("  nautilus gravity record-read <path> [--line-start N] [--line-end M] [--query Q]")
+        print("  nautilus gravity access-stats [--top 20]")
+        print("  nautilus gravity decay-access [--half-life 30]")
+        print("  nautilus gravity <record-access|score|top|rerank|stats|...>")
         print("  nautilus status")
         print("  nautilus maintain [--register-recent]")
         print("  nautilus migrate [--dry-run] [--verbose]")
         print("  nautilus chambers <promote|crystallize|status> [--dry-run]")
+        print("  nautilus doors <classify|tag|untag|show|auto-tag> [args]")
         print("\nExamples:")
         print('  nautilus search "project nautilus" --verbose')
         print('  nautilus search "budget issue" --n 10 --context work --chamber atrium,corridor')
+        print(
+            "  nautilus gravity record-read memory/daily/2026-02-16.md --line-start 1 --line-end 50"
+        )
+        print("  nautilus gravity access-stats --top 10")
         print("  nautilus maintain --register-recent")
         print("  nautilus chambers promote --dry-run")
+        print("  nautilus doors tag memory/daily/2026-02-14.md work project:emergence")
+        print("  nautilus doors untag memory/daily/2026-02-14.md personal")
+        print("  nautilus doors show memory/daily/2026-02-14.md")
         sys.exit(1)
 
     COMMANDS[sys.argv[1]](sys.argv[2:])

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # Suppress runpy import warning
-import warnings as _w; _w.filterwarnings("ignore", category=RuntimeWarning, module="runpy"); del _w
+import warnings as _w
+
+_w.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
+del _w
 """
 Nautilus Gravity Engine — Phase 1
 Importance-weighted memory scoring layer.
@@ -968,6 +971,337 @@ def cmd_stats(args: List[str]) -> Dict[str, Any]:
         sys.exit(1)
 
 
+def record_access(
+    path: str, line_start: int = 0, line_end: int = 0, query: str = None
+) -> Dict[str, Any]:
+    """
+    Record that a memory chunk was accessed. Increments access_count and logs to access_log.
+
+    This is the programmatic API that CLI commands and hooks can call directly.
+
+    Args:
+        path: File path of the accessed memory
+        line_start: Start line of the chunk (0 for whole file)
+        line_end: End line of the chunk (0 for whole file)
+        query: Optional search query that led to this access
+
+    Returns:
+        Dictionary with access information.
+    """
+    try:
+        db = get_db()
+        now = now_iso()
+
+        # Upsert gravity record — increment access_count
+        db.execute(
+            """
+            INSERT INTO gravity (
+                path, line_start, line_end, access_count,
+                last_accessed_at, last_written_at
+            )
+            VALUES (?, ?, ?, 1, ?, ?)
+            ON CONFLICT(path, line_start, line_end) DO UPDATE SET
+                access_count = access_count + 1,
+                last_accessed_at = ?
+        """,
+            (path, line_start, line_end, now, now, now),
+        )
+
+        # Log to access_log for history/analysis
+        db.execute(
+            """
+            INSERT INTO access_log (path, line_start, line_end, query)
+            VALUES (?, ?, ?, ?)
+        """,
+            (path, line_start, line_end, query),
+        )
+
+        commit_with_retry(db)
+
+        row = db.execute(
+            """
+            SELECT * FROM gravity WHERE path = ? AND line_start = ? AND line_end = ?
+        """,
+            (path, line_start, line_end),
+        ).fetchone()
+
+        result = _create_access_result(row, path, line_start, line_end)
+        if row:
+            logger.info(
+                f"Recorded access to {path}:{line_start}:{line_end} "
+                f"(count={row['access_count']})"
+            )
+
+        db.close()
+        return result
+
+    except sqlite3.Error as e:
+        logger.error(f"Database error in record_access: {e}")
+        return {"error": str(e)}
+
+
+def decay_access_counts(half_life_days: int = 30) -> Dict[str, Any]:
+    """
+    Apply exponential decay to access_count values based on time since last access.
+
+    Formula: new_count = access_count * 0.5^(days_since_last_access / half_life_days)
+
+    This means a memory accessed 30 days ago loses half its access weight.
+    Run this periodically (e.g. nightly via `nautilus maintain`).
+
+    Args:
+        half_life_days: Number of days for access count to halve (default 30)
+
+    Returns:
+        Dictionary with decay statistics.
+    """
+    try:
+        db = get_db()
+
+        rows = db.execute(
+            "SELECT *, rowid FROM gravity WHERE last_accessed_at IS NOT NULL AND access_count > 0"
+        ).fetchall()
+
+        decayed = 0
+        total_before = 0
+        total_after = 0
+
+        for row in rows:
+            days_elapsed = days_since(row["last_accessed_at"])
+            old_count = row["access_count"] or 0
+            total_before += old_count
+
+            if days_elapsed <= 0:
+                total_after += old_count
+                continue
+
+            # Exponential decay: new = old * 0.5^(days/half_life)
+            decay_factor = math.pow(0.5, days_elapsed / half_life_days)
+            new_count = old_count * decay_factor
+
+            # Round to int, minimum 0; if it rounds to same value, skip
+            new_count_int = max(0, round(new_count))
+            total_after += new_count_int
+
+            if new_count_int != old_count:
+                db.execute(
+                    """
+                    UPDATE gravity SET access_count = ?
+                    WHERE path = ? AND line_start = ? AND line_end = ?
+                """,
+                    (new_count_int, row["path"], row["line_start"], row["line_end"]),
+                )
+                decayed += 1
+                logger.debug(
+                    f"Decayed {row['path']}:{row['line_start']}:{row['line_end']} "
+                    f"from {old_count} to {new_count_int} "
+                    f"(days={days_elapsed:.1f}, factor={decay_factor:.4f})"
+                )
+
+        commit_with_retry(db)
+        db.close()
+
+        result = {
+            "total_records": len(rows),
+            "decayed": decayed,
+            "half_life_days": half_life_days,
+            "total_access_before": total_before,
+            "total_access_after": total_after,
+            "timestamp": now_iso(),
+        }
+        logger.info(
+            f"Access count decay complete: {decayed}/{len(rows)} records decayed "
+            f"(half_life={half_life_days}d)"
+        )
+        return result
+
+    except sqlite3.Error as e:
+        logger.error(f"Database error in decay_access_counts: {e}")
+        return {"error": str(e)}
+
+
+def cmd_record_read(args: List[str]) -> Dict[str, Any]:
+    """
+    CLI command: Record a memory read access.
+
+    Usage: gravity record-read <path> [--line-start N] [--line-end M] [--query Q]
+
+    Args:
+        args: Command arguments
+
+    Returns:
+        Dictionary with access information.
+    """
+    if not args:
+        logger.error("No path provided to record-read")
+        print(
+            "Usage: gravity record-read <path> [--line-start N] [--line-end M] [--query Q]",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    path = args[0]
+    line_start, line_end = 0, 0
+    query = None
+
+    i = 1
+    while i < len(args):
+        if args[i] == "--line-start" and i + 1 < len(args):
+            try:
+                line_start = int(args[i + 1])
+            except ValueError:
+                logger.warning(f"Invalid line-start: {args[i + 1]}")
+            i += 2
+        elif args[i] == "--line-end" and i + 1 < len(args):
+            try:
+                line_end = int(args[i + 1])
+            except ValueError:
+                logger.warning(f"Invalid line-end: {args[i + 1]}")
+            i += 2
+        elif args[i] == "--query" and i + 1 < len(args):
+            query = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    result = record_access(path, line_start, line_end, query)
+    print(json.dumps(result))
+    return result
+
+
+def cmd_access_stats(args: List[str]) -> Dict[str, Any]:
+    """
+    CLI command: Show most accessed memory chunks.
+
+    Usage: gravity stats [--top 20]
+
+    Args:
+        args: Command arguments
+
+    Returns:
+        Dictionary with access statistics.
+    """
+    top_n = 20
+
+    i = 0
+    while i < len(args):
+        if args[i] == "--top" and i + 1 < len(args):
+            try:
+                top_n = int(args[i + 1])
+            except ValueError:
+                logger.warning(f"Invalid --top value: {args[i + 1]}")
+            i += 2
+        else:
+            i += 1
+
+    try:
+        db = get_db()
+
+        # Overall stats
+        total_chunks = db.execute("SELECT COUNT(*) FROM gravity").fetchone()[0]
+        total_with_access = db.execute(
+            "SELECT COUNT(*) FROM gravity WHERE access_count > 0"
+        ).fetchone()[0]
+        total_access_events = db.execute("SELECT COUNT(*) FROM access_log").fetchone()[0]
+        sum_access = db.execute("SELECT COALESCE(SUM(access_count), 0) FROM gravity").fetchone()[0]
+
+        # Top accessed chunks
+        top_rows = db.execute(
+            """
+            SELECT path, line_start, line_end, access_count,
+                   last_accessed_at, chamber, explicit_importance
+            FROM gravity
+            WHERE access_count > 0
+            ORDER BY access_count DESC
+            LIMIT ?
+        """,
+            (top_n,),
+        ).fetchall()
+
+        top_accessed = []
+        for row in top_rows:
+            entry = {
+                "path": row["path"],
+                "lines": f"{row['line_start']}:{row['line_end']}",
+                "access_count": row["access_count"],
+                "last_accessed": row["last_accessed_at"],
+                "chamber": row["chamber"],
+            }
+            if row["explicit_importance"]:
+                entry["importance"] = row["explicit_importance"]
+            top_accessed.append(entry)
+
+        # Recent access log entries
+        recent = db.execute(
+            """
+            SELECT path, line_start, line_end, query, accessed_at
+            FROM access_log ORDER BY id DESC LIMIT 10
+        """
+        ).fetchall()
+
+        recent_accesses = [
+            {
+                "path": r["path"],
+                "lines": f"{r['line_start']}:{r['line_end']}",
+                "query": r["query"],
+                "accessed_at": r["accessed_at"],
+            }
+            for r in recent
+        ]
+
+        db.close()
+
+        result = {
+            "summary": {
+                "total_chunks": total_chunks,
+                "chunks_with_access": total_with_access,
+                "total_access_events": total_access_events,
+                "cumulative_access_count": sum_access,
+            },
+            "top_accessed": top_accessed,
+            "recent_accesses": recent_accesses,
+        }
+
+        logger.info(f"Access stats: {total_with_access}/{total_chunks} chunks accessed")
+        print(json.dumps(result, indent=2, default=str))
+        return result
+
+    except sqlite3.Error as e:
+        logger.error(f"Database error in access_stats: {e}")
+        print(json.dumps({"error": str(e)}), file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_decay_access(args: List[str]) -> Dict[str, Any]:
+    """
+    CLI command: Run exponential decay on access counts.
+
+    Usage: gravity decay-access [--half-life 30]
+
+    Args:
+        args: Command arguments
+
+    Returns:
+        Dictionary with decay statistics.
+    """
+    half_life = 30
+
+    i = 0
+    while i < len(args):
+        if args[i] == "--half-life" and i + 1 < len(args):
+            try:
+                half_life = int(args[i + 1])
+            except ValueError:
+                logger.warning(f"Invalid --half-life value: {args[i + 1]}")
+            i += 2
+        else:
+            i += 1
+
+    result = decay_access_counts(half_life_days=half_life)
+    print(json.dumps(result, indent=2))
+    return result
+
+
 def cmd_supersede(args: List[str]) -> Dict[str, Any]:
     """
     Mark a chunk as superseded by a newer one.
@@ -1015,13 +1349,16 @@ def cmd_supersede(args: List[str]) -> Dict[str, Any]:
 
 COMMANDS = {
     "record-access": cmd_record_access,
+    "record-read": cmd_record_read,
     "record-write": cmd_record_write,
     "boost": cmd_boost,
     "decay": cmd_decay,
+    "decay-access": cmd_decay_access,
     "score": cmd_score,
     "top": cmd_top,
     "rerank": cmd_rerank,
     "stats": cmd_stats,
+    "access-stats": cmd_access_stats,
     "supersede": cmd_supersede,
 }
 
@@ -1040,6 +1377,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     import warnings
+
     warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
     # Logging already configured by logging_config module
     main()
