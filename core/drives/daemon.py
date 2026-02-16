@@ -94,7 +94,7 @@ def write_log(log_path: Path, message: str, level: str = "INFO") -> None:
         pass
 
 
-def _check_emergency_spawns(
+def _check_emergency_spawns(  # noqa: C901
     state: dict,
     config: dict,
     log_path: Path,
@@ -204,7 +204,9 @@ def _check_emergency_spawns(
     return spawned_drives
 
 
-def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) -> dict:
+def run_tick_cycle(  # noqa: C901
+    state: dict, config: dict, state_path: Path, log_path: Path
+) -> dict:
     """Run a single tick cycle: update pressures and check triggers.
 
     Args:
@@ -250,7 +252,7 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
         emergency_cooldown_hours = config.get("drives", {}).get("emergency_cooldown_hours", 6)
 
         if emergency_spawn_enabled and manual_mode:
-            emergency_spawned = _check_emergency_spawns(
+            _check_emergency_spawns(
                 state, config, log_path, result, emergency_threshold_ratio, emergency_cooldown_hours
             )
 
@@ -373,7 +375,9 @@ def run_tick_cycle(state: dict, config: dict, state_path: Path, log_path: Path) 
     return result
 
 
-def run_daemon(config: dict, foreground: bool = False, pid_path: Optional[Path] = None) -> int:
+def run_daemon(  # noqa: C901
+    config: dict, foreground: bool = False, pid_path: Optional[Path] = None
+) -> int:
     """Run the main daemon loop.
 
     This is the core daemon function that runs until shutdown is requested.
@@ -447,7 +451,7 @@ def run_daemon(config: dict, foreground: bool = False, pid_path: Optional[Path] 
 
     if foreground:
         print(f"Daemon running in foreground (PID {os.getpid()})")
-        print(f"Press Ctrl+C to stop")
+        print("Press Ctrl+C to stop")
 
     try:
         # Main loop
@@ -474,9 +478,11 @@ def run_daemon(config: dict, foreground: bool = False, pid_path: Optional[Path] 
 
                 # Log summary
                 if result["triggered"]:
+                    updated_count = len(result["updated"])
+                    triggered_count = len(result["triggered"])
                     write_log(
                         log_path,
-                        f"Tick complete: {len(result['updated'])} updated, {len(result['triggered'])} triggered",
+                        f"Tick complete: {updated_count} updated, {triggered_count} triggered",
                         "INFO",
                     )
                 elif result["updated"]:
@@ -702,7 +708,7 @@ def daemon_status(config: dict, pid_path: Optional[Path] = None) -> dict:
     return status
 
 
-def main():
+def main():  # noqa: C901
     """Main entry point for daemon command-line usage.
 
     Usage:
