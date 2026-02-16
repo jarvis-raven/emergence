@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# Suppress runpy import warning
-import warnings as _w; _w.filterwarnings("ignore", category=RuntimeWarning, module="runpy"); del _w
 """
 Nautilus Doors — Phase 3
 Context-aware pre-filtering for memory search.
@@ -17,7 +15,9 @@ Doors:
 
 Usage:
   python -m core.nautilus doors classify <query>
-  python -m core.nautilus doors tag <path> <tag>
+  python -m core.nautilus doors tag <path> <tags...>
+  python -m core.nautilus doors untag <path> <tags...>
+  python -m core.nautilus doors show <path>
   python -m core.nautilus doors auto-tag
 """
 
@@ -25,18 +25,23 @@ import sqlite3
 import json
 import sys
 import re
+import warnings
 from collections import Counter
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 
 from . import config
 from .gravity import get_db as get_gravity_db
 from .logging_config import get_logger
 from .db_utils import commit_with_retry, DatabaseError
 
+# Suppress runpy import warning
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
+
 # Setup logging
 logger = get_logger("doors")
 
-# Context patterns for auto-classification
+# Context patterns for auto-classification (used by classify_text for query classification)
 CONTEXT_PATTERNS = {
     # General categories
     "project": [
@@ -156,6 +161,28 @@ CONTEXT_PATTERNS = {
     ],
 }
 
+# Path-based auto-tagging rules: (path substring → tag)
+PATH_TAG_RULES = [
+    ("sessions/", "jarvis-time"),
+    ("correspondence/", "communication"),
+    ("memory/", "memory"),
+]
+
+# Content-based auto-tagging rules: (keywords list → tag)
+CONTENT_TAG_RULES = [
+    (["dan", "katy", "walter"], "personal"),
+    (["github", " pr ", "issue", "commit", "merge"], "work"),
+    (["moltbook"], "social"),
+]
+
+# Path-based project inference: (path substring → tag)
+PATH_PROJECT_RULES = [
+    ("emergence", "project:emergence"),
+    ("openclaw", "project:openclaw"),
+    ("ourblock", "project:ourblock"),
+    ("nautilus", "project:nautilus"),
+]
+
 
 def get_db() -> sqlite3.Connection:
     """
@@ -200,6 +227,163 @@ def classify_text(text: str) -> List[str]:
     return result
 
 
+# === Auto-tagging API ===
+
+
+def _tags_from_path(path_lower: str) -> List[str]:
+    """Infer tags from file path patterns."""
+    tags = []
+    for path_substr, tag in PATH_TAG_RULES:
+        if path_substr in path_lower:
+            tags.append(tag)
+    for path_substr, tag in PATH_PROJECT_RULES:
+        if path_substr in path_lower:
+            tags.append(tag)
+    return tags
+
+
+def _read_file_content(path: str) -> str:
+    """Read up to 5KB of file content for classification."""
+    workspace = config.get_workspace()
+    file_path = Path(path)
+    if not file_path.is_absolute():
+        file_path = workspace / file_path
+
+    if not (file_path.exists() and file_path.is_file()):
+        return ""
+
+    try:
+        return file_path.read_text(encoding="utf-8")[:5000]
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning(f"Could not read {path} for auto-tagging: {e}")
+        return ""
+
+
+def _tags_from_content(content: str) -> List[str]:
+    """Infer tags from file content using keywords and CONTEXT_PATTERNS."""
+    tags = []
+    content_lower = content.lower()
+
+    for keywords, tag in CONTENT_TAG_RULES:
+        if any(kw in content_lower for kw in keywords):
+            tags.append(tag)
+
+    tags.extend(classify_text(content))
+    return tags
+
+
+def _deduplicate_tags(tags: List[str]) -> List[str]:
+    """Deduplicate tags while preserving order."""
+    seen: set = set()
+    result = []
+    for tag in tags:
+        if tag not in seen:
+            seen.add(tag)
+            result.append(tag)
+    return result
+
+
+def auto_tag_file(path: str) -> List[str]:
+    """
+    Infer context tags from file path and content.
+
+    Combines:
+    1. Path-based rules (e.g. sessions/ → jarvis-time)
+    2. Path-based project inference (e.g. emergence → project:emergence)
+    3. Content-based keyword matching (e.g. "dan" → personal)
+    4. Full content classification via CONTEXT_PATTERNS
+
+    Args:
+        path: File path (relative to workspace or absolute)
+
+    Returns:
+        Deduplicated list of inferred context tags.
+    """
+    tags = _tags_from_path(path.lower())
+
+    content = _read_file_content(path)
+    if content:
+        tags.extend(_tags_from_content(content))
+
+    unique_tags = _deduplicate_tags(tags)
+    logger.debug(f"Auto-tagged {path} → {unique_tags}")
+    return unique_tags
+
+
+def update_context_tags(path: str, db: Optional[sqlite3.Connection] = None) -> List[str]:
+    """
+    Auto-tag a file and save the tags to gravity.db.
+
+    Runs auto_tag_file() and merges results with any existing tags
+    in the database. Creates a gravity record if one doesn't exist.
+
+    Args:
+        path: File path (relative to workspace)
+        db: Optional database connection (caller manages lifecycle).
+            If None, opens and closes its own connection.
+
+    Returns:
+        The final merged list of context tags for the file.
+    """
+    tags = auto_tag_file(path)
+    if not tags:
+        return []
+
+    own_db = db is None
+    if own_db:
+        db = get_db()
+
+    try:
+        _merge_tags_to_db(db, path, tags)
+        if own_db:
+            commit_with_retry(db)
+
+        # Read back the final merged tags
+        row = db.execute(
+            "SELECT context_tags FROM gravity WHERE path = ? LIMIT 1", (path,)
+        ).fetchone()
+
+        final_tags = []
+        if row:
+            try:
+                final_tags = json.loads(row["context_tags"] or "[]")
+            except json.JSONDecodeError:
+                final_tags = tags
+
+        logger.info(f"Updated context tags for {path}: {final_tags}")
+        return final_tags
+
+    finally:
+        if own_db:
+            db.close()
+
+
+def get_context_tags(path: str) -> List[str]:
+    """
+    Get the current context tags for a file from gravity.db.
+
+    Args:
+        path: File path (relative to workspace)
+
+    Returns:
+        List of context tags, or empty list if not found.
+    """
+    db = get_db()
+    try:
+        row = db.execute(
+            "SELECT context_tags FROM gravity WHERE path = ? LIMIT 1", (path,)
+        ).fetchone()
+
+        if row:
+            try:
+                return json.loads(row["context_tags"] or "[]")
+            except json.JSONDecodeError:
+                return []
+        return []
+    finally:
+        db.close()
+
+
 # === Commands ===
 
 
@@ -228,60 +412,72 @@ def cmd_classify(args: List[str]) -> Dict[str, Any]:
     return result
 
 
-def cmd_tag(args: List[str]) -> Dict[str, Any]:
+def _add_tags_to_record(db: sqlite3.Connection, path: str, new_tags: List[str]) -> List[str]:
+    """Add tags to a gravity record, creating one if needed. Returns added tags."""
+    row = db.execute("SELECT context_tags FROM gravity WHERE path = ? LIMIT 1", (path,)).fetchone()
+
+    if row:
+        existing = _parse_context_tags(row["context_tags"], path)
+        added = [t for t in new_tags if t not in existing]
+        existing.extend(added)
+        if added:
+            logger.info(f"Added tags {added} to {path}")
+        db.execute(
+            "UPDATE gravity SET context_tags = ? WHERE path = ?",
+            (json.dumps(existing), path),
+        )
+        return added
+
+    logger.info(f"Creating new gravity record for {path} with tags {new_tags}")
+    db.execute(
+        "INSERT INTO gravity (path, line_start, line_end, context_tags) VALUES (?, 0, 0, ?)",
+        (path, json.dumps(new_tags)),
+    )
+    return list(new_tags)
+
+
+def _parse_context_tags(raw: Optional[str], path: str = "") -> List[str]:
+    """Parse context_tags JSON, returning empty list on error."""
+    try:
+        return json.loads(raw or "[]")
+    except json.JSONDecodeError as e:
+        logger.warning(f"Corrupted context_tags for {path}: {e}")
+        return []
+
+
+def cmd_tag(args: List[str]) -> Dict[str, Any]:  # noqa: C901
     """
-    Manually tag a file with a context.
+    Manually tag a file with one or more context tags.
+
+    Usage: doors tag <path> <tag1> [tag2] [tag3...]
 
     Args:
-        args: Command arguments [path, tag]
+        args: Command arguments [path, tag1, tag2, ...]
 
     Returns:
         Dictionary with tagging result.
     """
     if len(args) < 2:
         logger.error("Insufficient arguments for tag")
-        print("Usage: doors tag <path> <tag>", file=sys.stderr)
+        print("Usage: doors tag <path> <tag1> [tag2] [tag3...]", file=sys.stderr)
         sys.exit(1)
 
-    path, tag = args[0], args[1]
+    path = args[0]
+    new_tags = args[1:]
 
     try:
         db = get_db()
+        added = _add_tags_to_record(db, path, new_tags)
+        commit_with_retry(db)
 
         row = db.execute(
             "SELECT context_tags FROM gravity WHERE path = ? LIMIT 1", (path,)
         ).fetchone()
+        final_tags = _parse_context_tags(row["context_tags"] if row else None, path) or new_tags
 
-        if row:
-            try:
-                existing = json.loads(row["context_tags"] or "[]")
-            except json.JSONDecodeError as e:
-                logger.warning(f"Corrupted context_tags for {path}: {e}")
-                existing = []
-
-            if tag not in existing:
-                existing.append(tag)
-                logger.info(f"Added tag '{tag}' to {path}")
-            else:
-                logger.debug(f"Tag '{tag}' already present on {path}")
-
-            db.execute(
-                "UPDATE gravity SET context_tags = ? WHERE path = ?", (json.dumps(existing), path)
-            )
-        else:
-            logger.info(f"Creating new gravity record for {path} with tag '{tag}'")
-            db.execute(
-                """
-                INSERT INTO gravity (path, line_start, line_end, context_tags)
-                VALUES (?, 0, 0, ?)
-            """,
-                (path, json.dumps([tag])),
-            )
-
-        commit_with_retry(db)
         db.close()
 
-        result = {"path": path, "tag": tag, "status": "added"}
+        result = {"path": path, "added": added, "tags": final_tags, "status": "updated"}
         print(json.dumps(result, indent=2))
         return result
 
@@ -295,9 +491,102 @@ def cmd_tag(args: List[str]) -> Dict[str, Any]:
         sys.exit(1)
 
 
+def cmd_untag(args: List[str]) -> Dict[str, Any]:
+    """
+    Remove one or more context tags from a file.
+
+    Usage: doors untag <path> <tag1> [tag2] [tag3...]
+
+    Args:
+        args: Command arguments [path, tag1, tag2, ...]
+
+    Returns:
+        Dictionary with untagging result.
+    """
+    if len(args) < 2:
+        logger.error("Insufficient arguments for untag")
+        print("Usage: doors untag <path> <tag1> [tag2] [tag3...]", file=sys.stderr)
+        sys.exit(1)
+
+    path = args[0]
+    remove_tags = args[1:]
+
+    try:
+        db = get_db()
+
+        row = db.execute(
+            "SELECT context_tags FROM gravity WHERE path = ? LIMIT 1", (path,)
+        ).fetchone()
+
+        if not row:
+            db.close()
+            result = {
+                "path": path,
+                "removed": [],
+                "tags": [],
+                "status": "not_found",
+                "message": f"No gravity record for {path}",
+            }
+            print(json.dumps(result, indent=2))
+            return result
+
+        existing = _parse_context_tags(row["context_tags"], path)
+        removed = [t for t in remove_tags if t in existing]
+        remaining = [t for t in existing if t not in remove_tags]
+
+        db.execute(
+            "UPDATE gravity SET context_tags = ? WHERE path = ?", (json.dumps(remaining), path)
+        )
+        commit_with_retry(db)
+        db.close()
+
+        if removed:
+            logger.info(f"Removed tags {removed} from {path}")
+        else:
+            logger.debug(f"None of {remove_tags} found on {path}")
+
+        result = {"path": path, "removed": removed, "tags": remaining, "status": "updated"}
+        print(json.dumps(result, indent=2))
+        return result
+
+    except DatabaseError as e:
+        logger.error(f"Database error in untag: {e}")
+        print(json.dumps({"error": str(e)}), file=sys.stderr)
+        sys.exit(1)
+    except sqlite3.Error as e:
+        logger.error(f"Unexpected database error in untag: {e}")
+        print(json.dumps({"error": str(e)}), file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_show(args: List[str]) -> Dict[str, Any]:
+    """
+    Show current context tags for a file.
+
+    Usage: doors show <path>
+
+    Args:
+        args: Command arguments [path]
+
+    Returns:
+        Dictionary with current tags.
+    """
+    if not args:
+        logger.error("No path provided to show")
+        print("Usage: doors show <path>", file=sys.stderr)
+        sys.exit(1)
+
+    path = args[0]
+    tags = get_context_tags(path)
+
+    result = {"path": path, "context_tags": tags}
+    print(json.dumps(result, indent=2))
+    return result
+
+
 def _read_and_classify_file(md_file, workspace) -> tuple:
     """
-    Read file content and classify it.
+    Read file content and classify it using auto_tag_file.
 
     Args:
         md_file: Path to markdown file
@@ -311,13 +600,7 @@ def _read_and_classify_file(md_file, workspace) -> tuple:
     except ValueError:
         rel_path = str(md_file)
 
-    try:
-        content = md_file.read_text(encoding="utf-8")[:5000]  # First 5KB
-    except (OSError, UnicodeDecodeError) as e:
-        logger.warning(f"Could not read {rel_path}: {e}")
-        return None, None
-
-    tags = classify_text(content)
+    tags = auto_tag_file(rel_path)
     if not tags:
         logger.debug(f"No tags found for {rel_path}")
         return None, None
@@ -380,45 +663,77 @@ def _collect_tag_stats(db: sqlite3.Connection) -> Dict[str, int]:
     return dict(Counter(all_tags).most_common(20))
 
 
+def _auto_tag_db_rows(db: sqlite3.Connection, new_only: bool) -> int:
+    """Auto-tag existing gravity.db rows. Returns count of tagged files."""
+    query = "SELECT path FROM gravity"
+    if new_only:
+        query += " WHERE context_tags = '[]' OR context_tags IS NULL"
+    rows = db.execute(query).fetchall()
+
+    tagged = 0
+    logger.info(f"Auto-tagging {len(rows)} files (new_only={new_only})")
+
+    for row in rows:
+        tags = auto_tag_file(row["path"])
+        if tags:
+            _merge_tags_to_db(db, row["path"], tags)
+            tagged += 1
+    return tagged
+
+
+def _auto_tag_new_memory_files(db: sqlite3.Connection) -> int:
+    """Scan memory dir for files not in gravity.db and tag them."""
+    workspace = config.get_workspace()
+    memory_dir = config.get_memory_dir()
+    if not memory_dir.exists():
+        return 0
+
+    tagged = 0
+    for md_file in sorted(memory_dir.glob("**/*.md")):
+        try:
+            rel_path = str(md_file.relative_to(workspace))
+        except ValueError:
+            rel_path = str(md_file)
+
+        if db.execute("SELECT 1 FROM gravity WHERE path = ? LIMIT 1", (rel_path,)).fetchone():
+            continue
+
+        tags = auto_tag_file(rel_path)
+        if tags:
+            _merge_tags_to_db(db, rel_path, tags)
+            tagged += 1
+    return tagged
+
+
 def cmd_auto_tag(args: List[str]) -> Dict[str, Any]:
     """
-    Auto-tag all memory files based on content analysis.
+    Auto-tag all files in gravity.db based on path and content analysis.
+
+    Uses auto_tag_file() which combines path-based rules, project inference,
+    content keyword matching, and full CONTEXT_PATTERNS classification.
+
+    Flags:
+        --new-only  Only tag files that currently have no context tags
 
     Args:
-        args: Command arguments (currently unused)
+        args: Command arguments
 
     Returns:
         Dictionary with auto-tagging statistics.
     """
+    new_only = "--new-only" in args
+
     try:
         db = get_db()
-        memory_dir = config.get_memory_dir()
-        workspace = config.get_workspace()
 
-        if not memory_dir.exists():
-            error_msg = f"Memory directory not found: {memory_dir}"
-            logger.error(error_msg)
-            return {"files_tagged": 0, "error": error_msg}
-
-        tagged = 0
-        logger.info(f"Auto-tagging files in {memory_dir}")
-
-        for md_file in sorted(memory_dir.glob("*.md")):
-            rel_path, tags = _read_and_classify_file(md_file, workspace)
-            if rel_path is None or tags is None:
-                continue
-
-            _merge_tags_to_db(db, rel_path, tags)
-            tagged += 1
+        tagged = _auto_tag_db_rows(db, new_only)
+        tagged += _auto_tag_new_memory_files(db)
 
         commit_with_retry(db)
-
-        # Collect statistics
         tag_counts = _collect_tag_stats(db)
         db.close()
 
-        result = {"files_tagged": tagged, "tag_distribution": tag_counts}
-
+        result = {"files_tagged": tagged, "new_only": new_only, "tag_distribution": tag_counts}
         logger.info(f"Auto-tagged {tagged} files with {len(tag_counts)} unique tags")
         print(json.dumps(result, indent=2))
         return result
@@ -438,6 +753,8 @@ def cmd_auto_tag(args: List[str]) -> Dict[str, Any]:
 COMMANDS = {
     "classify": cmd_classify,
     "tag": cmd_tag,
+    "untag": cmd_untag,
+    "show": cmd_show,
     "auto-tag": cmd_auto_tag,
 }
 
@@ -456,6 +773,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     import warnings
+
     warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
     # Logging already configured by logging_config module
     main()

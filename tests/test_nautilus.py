@@ -94,6 +94,64 @@ def test_doors_classify_text():
     assert isinstance(tags, list)
 
 
+def test_doors_auto_tag_file():
+    """Test auto_tag_file infers tags from path and content."""
+    # Path-based: sessions/ → jarvis-time
+    tags = doors.auto_tag_file("memory/sessions/2026-02-16.md")
+    assert "jarvis-time" in tags
+    assert "memory" in tags
+
+    # Path-based: correspondence/ → communication
+    tags = doors.auto_tag_file("correspondence/email.md")
+    assert "communication" in tags
+
+    # Path-based project inference
+    tags = doors.auto_tag_file("projects/emergence/README.md")
+    assert "project:emergence" in tags
+
+
+def test_doors_tag_untag_show():
+    """Test manual tag, untag, and show commands."""
+    import sqlite3
+    from core.nautilus.config import get_gravity_db_path
+
+    test_path = "__test_doors_tag_untag__.md"
+    db = sqlite3.connect(str(get_gravity_db_path()))
+    db.row_factory = sqlite3.Row
+
+    try:
+        # Clean up any previous test data
+        db.execute("DELETE FROM gravity WHERE path = ?", (test_path,))
+        db.commit()
+
+        # Tag
+        result = doors.cmd_tag([test_path, "test-tag-1", "test-tag-2"])
+        assert result["status"] == "updated"
+        assert "test-tag-1" in result["tags"]
+        assert "test-tag-2" in result["tags"]
+
+        # Show
+        result = doors.cmd_show([test_path])
+        assert "test-tag-1" in result["context_tags"]
+        assert "test-tag-2" in result["context_tags"]
+
+        # Untag
+        result = doors.cmd_untag([test_path, "test-tag-1"])
+        assert "test-tag-1" in result["removed"]
+        assert "test-tag-1" not in result["tags"]
+        assert "test-tag-2" in result["tags"]
+
+        # Verify via show
+        result = doors.cmd_show([test_path])
+        assert result["context_tags"] == ["test-tag-2"]
+
+    finally:
+        # Clean up
+        db.execute("DELETE FROM gravity WHERE path = ?", (test_path,))
+        db.commit()
+        db.close()
+
+
 def test_mirrors_get_db():
     """Test mirrors database connection."""
     db = mirrors.get_db()
