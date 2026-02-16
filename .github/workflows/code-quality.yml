@@ -71,7 +71,8 @@ jobs:
         run: npx prettier --check "**/*.{js,jsx,json,md,yml,yaml}" --ignore-path .prettierignore
 
       - name: Lint with ESLint
-        run: npx eslint "**/*.{js,jsx}" --ignore-pattern "room/node_modules/**" --max-warnings 0
+        working-directory: room
+        run: npx eslint "**/*.{js,jsx}" --max-warnings 0
 
   commit-quality:
     name: Commit Message Quality
@@ -86,8 +87,8 @@ jobs:
 
       - name: Validate commit messages
         run: |
-          # Get all commits in this PR
-          commits=$(git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%H")
+          # Get all commits in this PR (excluding merge commits)
+          commits=$(git log origin/${{ github.base_ref }}..HEAD --no-merges --pretty=format:"%H")
 
           # Conventional commit pattern
           pattern='^(feat|fix|docs|chore|test|refactor|ci|perf|style|build|revert)(\(.+\))?: .{1,72}'
