@@ -68,9 +68,9 @@ def get_state_path_from_config(config_path: Optional[Path] = None) -> Path:
                 content = f.read()
             # Strip comments
             lines = [
-                l
-                for l in content.split("\n")
-                if not l.strip().startswith("//") and not l.strip().startswith("#")
+                line
+                for line in content.split("\n")
+                if not line.strip().startswith("//") and not line.strip().startswith("#")
             ]
             config = json.loads("\n".join(lines))
         except (json.JSONDecodeError, IOError):
@@ -135,7 +135,7 @@ def cmd_tree(args) -> int:
                 )
                 print(f"   {status_icon} {proj_name} ({proj_cat}, {status})")
         else:
-            print(f"   (no projects yet)")
+            print("   (no projects yet)")
 
     return EXIT_SUCCESS
 
@@ -521,12 +521,12 @@ def cmd_overview(args) -> int:
     if barren_count:
         print(f"  ⚠ Barren aspirations: {barren_count} (use 'barren' command)")
     else:
-        print(f"  ✓ No barren aspirations")
+        print("  ✓ No barren aspirations")
 
     if orphan_count:
         print(f"  ⚠ Orphaned projects: {orphan_count} (use 'orphans' command)")
     else:
-        print(f"  ✓ No orphaned projects")
+        print("  ✓ No orphaned projects")
 
     print()
     print("Commands:")

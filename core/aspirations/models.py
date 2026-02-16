@@ -146,6 +146,27 @@ def create_default_data() -> AspirationsData:
     }
 
 
+def _validate_aspiration_id(data: dict, errors: list[str]) -> None:
+    """Validate aspiration id field."""
+    if "id" in data:
+        id_val = data["id"]
+        if not isinstance(id_val, str):
+            errors.append(f"Aspiration id must be a string, got {type(id_val).__name__}")
+        elif " " in id_val:
+            errors.append(f"Aspiration id should be kebab-case (no spaces): {id_val}")
+
+
+def _validate_aspiration_category(data: dict, errors: list[str]) -> None:
+    """Validate aspiration category field."""
+    if "category" in data:
+        cat = data["category"]
+        if cat not in ASPIRATION_CATEGORIES:
+            errors.append(
+                f"Invalid aspiration category: {cat}. "
+                f"Must be one of: {', '.join(ASPIRATION_CATEGORIES)}"
+            )
+
+
 def validate_aspiration(data: dict) -> tuple[bool, list[str]]:
     """Validate an aspiration definition and return any errors.
 
@@ -156,7 +177,10 @@ def validate_aspiration(data: dict) -> tuple[bool, list[str]]:
         Tuple of (is_valid, list_of_error_messages)
 
     Examples:
-        >>> aspiration = {"id": "test", "title": "Test", "description": "A test", "category": "creative", "createdAt": "2026-01-01"}
+        >>> aspiration = {
+        ...     "id": "test", "title": "Test", "description": "A test",
+        ...     "category": "creative", "createdAt": "2026-01-01"
+        ... }
         >>> valid, errors = validate_aspiration(aspiration)
         >>> valid
         True
@@ -168,21 +192,11 @@ def validate_aspiration(data: dict) -> tuple[bool, list[str]]:
         if field not in data:
             errors.append(f"Aspiration missing required field: {field}")
 
-    # Validate id is kebab-case
-    if "id" in data:
-        id_val = data["id"]
-        if not isinstance(id_val, str):
-            errors.append(f"Aspiration id must be a string, got {type(id_val).__name__}")
-        elif " " in id_val:
-            errors.append(f"Aspiration id should be kebab-case (no spaces): {id_val}")
+    # Validate id
+    _validate_aspiration_id(data, errors)
 
     # Validate category
-    if "category" in data:
-        cat = data["category"]
-        if cat not in ASPIRATION_CATEGORIES:
-            errors.append(
-                f"Invalid aspiration category: {cat}. Must be one of: {', '.join(ASPIRATION_CATEGORIES)}"
-            )
+    _validate_aspiration_category(data, errors)
 
     # Validate string fields
     string_fields = ["title", "description", "createdAt"]
@@ -198,6 +212,48 @@ def validate_aspiration(data: dict) -> tuple[bool, list[str]]:
     return len(errors) == 0, errors
 
 
+def _validate_project_id(data: dict, errors: list[str]) -> None:
+    """Validate project id field."""
+    if "id" in data:
+        id_val = data["id"]
+        if not isinstance(id_val, str):
+            errors.append(f"Project id must be a string, got {type(id_val).__name__}")
+        elif " " in id_val:
+            errors.append(f"Project id should be kebab-case (no spaces): {id_val}")
+
+
+def _validate_project_status(data: dict, errors: list[str]) -> None:
+    """Validate project status field."""
+    if "status" in data:
+        status = data["status"]
+        if status not in PROJECT_STATUSES:
+            errors.append(
+                f"Invalid project status: {status}. Must be one of: {', '.join(PROJECT_STATUSES)}"
+            )
+
+
+def _validate_project_category(data: dict, errors: list[str]) -> None:
+    """Validate project category field."""
+    if "category" in data:
+        cat = data["category"]
+        if cat not in PROJECT_CATEGORIES:
+            errors.append(
+                f"Invalid project category: {cat}. Must be one of: {', '.join(PROJECT_CATEGORIES)}"
+            )
+
+
+def _validate_project_aspiration_link(
+    data: dict, valid_aspiration_ids: Optional[set], errors: list[str]
+) -> None:
+    """Validate project aspirationId link."""
+    if "aspirationId" in data and valid_aspiration_ids is not None:
+        if data["aspirationId"] not in valid_aspiration_ids:
+            errors.append(
+                f"Project aspirationId '{data['aspirationId']}' "
+                "does not reference a valid aspiration"
+            )
+
+
 def validate_project(
     data: dict, valid_aspiration_ids: Optional[set] = None
 ) -> tuple[bool, list[str]]:
@@ -211,7 +267,11 @@ def validate_project(
         Tuple of (is_valid, list_of_error_messages)
 
     Examples:
-        >>> project = {"id": "test", "name": "Test", "aspirationId": "dream", "status": "active", "category": "tool", "description": "A test", "updatedAt": "2026-01-01"}
+        >>> project = {
+        ...     "id": "test", "name": "Test", "aspirationId": "dream",
+        ...     "status": "active", "category": "tool",
+        ...     "description": "A test", "updatedAt": "2026-01-01"
+        ... }
         >>> valid, errors = validate_project(project)
         >>> valid
         True
@@ -223,36 +283,17 @@ def validate_project(
         if field not in data:
             errors.append(f"Project missing required field: {field}")
 
-    # Validate id is kebab-case
-    if "id" in data:
-        id_val = data["id"]
-        if not isinstance(id_val, str):
-            errors.append(f"Project id must be a string, got {type(id_val).__name__}")
-        elif " " in id_val:
-            errors.append(f"Project id should be kebab-case (no spaces): {id_val}")
+    # Validate id
+    _validate_project_id(data, errors)
 
     # Validate status
-    if "status" in data:
-        status = data["status"]
-        if status not in PROJECT_STATUSES:
-            errors.append(
-                f"Invalid project status: {status}. Must be one of: {', '.join(PROJECT_STATUSES)}"
-            )
+    _validate_project_status(data, errors)
 
     # Validate category
-    if "category" in data:
-        cat = data["category"]
-        if cat not in PROJECT_CATEGORIES:
-            errors.append(
-                f"Invalid project category: {cat}. Must be one of: {', '.join(PROJECT_CATEGORIES)}"
-            )
+    _validate_project_category(data, errors)
 
     # Validate aspirationId exists if provided
-    if "aspirationId" in data and valid_aspiration_ids is not None:
-        if data["aspirationId"] not in valid_aspiration_ids:
-            errors.append(
-                f"Project aspirationId '{data['aspirationId']}' does not reference a valid aspiration"
-            )
+    _validate_project_aspiration_link(data, valid_aspiration_ids, errors)
 
     # Validate string fields
     string_fields = ["name", "description", "aspirationId", "updatedAt"]

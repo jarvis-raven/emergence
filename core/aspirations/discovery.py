@@ -182,5 +182,8 @@ def run_post_emergence_discovery(config: dict, barren_aspirations: list[dict]) -
     return {
         "count": len(suggestions),
         "suggestions": suggestions,
-        "message": f"Generated {len(suggestions)} drive suggestion(s) from {len(barren_aspirations)} barren aspiration(s)",
+        "message": (
+            f"Generated {len(suggestions)} drive suggestion(s) from "
+            f"{len(barren_aspirations)} barren aspiration(s)"
+        ),
     }

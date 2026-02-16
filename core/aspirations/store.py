@@ -48,7 +48,7 @@ def load_aspirations(state_path: Path) -> AspirationsData:
         print(f"Aspirations file corrupted: {state_path}", file=sys.stderr)
         print(f"  Error: {e}", file=sys.stderr)
         print("  Options:", file=sys.stderr)
-        print(f"    1. Fix the JSON manually", file=sys.stderr)
+        print("    1. Fix the JSON manually", file=sys.stderr)
         print(f"    2. Reset: mv '{state_path}' '{state_path}.bak'", file=sys.stderr)
         sys.exit(1)
     except IOError as e:
@@ -66,6 +66,39 @@ def load_aspirations(state_path: Path) -> AspirationsData:
         data["meta"] = {"updatedAt": datetime.now(timezone.utc).isoformat()}
 
     return data
+
+
+def _create_backup(state_path: Path) -> None:
+    """Create a backup of the state file if it exists."""
+    if state_path.exists():
+        backup_path = state_path.with_suffix(".json.bak")
+        try:
+            with open(state_path, "r", encoding="utf-8") as src:
+                with open(backup_path, "w", encoding="utf-8") as dst:
+                    dst.write(src.read())
+        except IOError:
+            # Backup failure shouldn't prevent save
+            pass
+
+
+def _write_temp_file(temp_path: Path, data: AspirationsData) -> bool:
+    """Write data to temporary file and rename atomically."""
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        # Atomic rename
+        temp_path.rename(temp_path.with_suffix(".json"))
+        return True
+
+    except Exception:
+        # Clean up temp file on failure
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except OSError:
+                pass
+        return False
 
 
 def save_aspirations(state_path: Path, data: AspirationsData, backup: bool = True) -> bool:
@@ -98,16 +131,9 @@ def save_aspirations(state_path: Path, data: AspirationsData, backup: bool = Tru
     except IOError:
         return False
 
-    # Create backup if requested and target exists
-    if backup and state_path.exists():
-        backup_path = state_path.with_suffix(".json.bak")
-        try:
-            with open(state_path, "r", encoding="utf-8") as src:
-                with open(backup_path, "w", encoding="utf-8") as dst:
-                    dst.write(src.read())
-        except IOError:
-            # Backup failure shouldn't prevent save
-            pass
+    # Create backup if requested
+    if backup:
+        _create_backup(state_path)
 
     # Write to temp file in same directory (for atomic rename)
     temp_path = state_path.with_suffix(".tmp")
@@ -157,7 +183,10 @@ def add_aspiration(data: AspirationsData, aspiration: dict) -> tuple[bool, str]:
 
     Examples:
         >>> data = create_default_data()
-        >>> aspiration = {"id": "test", "title": "Test", "description": "A test", "category": "creative", "createdAt": "2026-01-01"}
+        >>> aspiration = {
+        ...     "id": "test", "title": "Test", "description": "A test",
+        ...     "category": "creative", "createdAt": "2026-01-01"
+        ... }
         >>> success, msg = add_aspiration(data, aspiration)
         >>> success
         True
@@ -191,8 +220,15 @@ def add_project(data: AspirationsData, project: dict) -> tuple[bool, str]:
 
     Examples:
         >>> data = create_default_data()
-        >>> data["aspirations"].append({"id": "dream", "title": "Dream", "description": "A dream", "category": "creative", "createdAt": "2026-01-01"})
-        >>> project = {"id": "proj", "name": "Project", "aspirationId": "dream", "status": "active", "category": "tool", "description": "A project", "updatedAt": "2026-01-01"}
+        >>> data["aspirations"].append({
+        ...     "id": "dream", "title": "Dream", "description": "A dream",
+        ...     "category": "creative", "createdAt": "2026-01-01"
+        ... })
+        >>> project = {
+        ...     "id": "proj", "name": "Project", "aspirationId": "dream",
+        ...     "status": "active", "category": "tool",
+        ...     "description": "A project", "updatedAt": "2026-01-01"
+        ... }
         >>> success, msg = add_project(data, project)
         >>> success
         True
@@ -245,7 +281,8 @@ def remove_aspiration(
     if linked_count > 0 and not force:
         return (
             False,
-            f"Cannot remove aspiration '{aspiration_id}' — it has {linked_count} linked project(s). Use force=True to orphan them.",
+            f"Cannot remove aspiration '{aspiration_id}' — it has "
+            f"{linked_count} linked project(s). Use force=True to orphan them.",
         )
 
     # Remove the aspiration
@@ -329,7 +366,8 @@ def link_project(data: AspirationsData, project_id: str, aspiration_id: str) -> 
             p["updatedAt"] = datetime.now(timezone.utc).isoformat()
             return (
                 True,
-                f"Linked project '{project_id}' to aspiration '{aspiration_id}' (was '{old_aspiration}')",
+                f"Linked project '{project_id}' to aspiration '{aspiration_id}' "
+                f"(was '{old_aspiration}')",
             )
 
     return False, f"Project '{project_id}' not found"
