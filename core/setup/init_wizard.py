@@ -30,6 +30,7 @@ from .branding import (
     print_subheader,
     print_success,
     print_warning,
+    print_error,
     print_boot_message,
     print_finalization,
     ask_select,
@@ -201,7 +202,7 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
     parser.add_argument(
         "--warm-start",
         action="store_true",
-        help="Initialize drives at 35% pressure (triggers in ~4-5 hours instead of 8+)",
+        help="Initialize drives at 35%% pressure (triggers in ~4-5 hours instead of 8+)",
     )
 
     parser.add_argument(
@@ -211,7 +212,7 @@ def parse_args(args: Optional[List[str]] = None) -> Dict[str, Any]:
         help="LLM model to use (e.g. openrouter/moonshotai/kimi-k2.5)",
     )
 
-    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
+    parser.add_argument("--version", action="version", version="%(prog)s " + VERSION)
 
     parsed = parser.parse_args(args)
 
@@ -652,8 +653,8 @@ def _ask_file_action(filename: str, interactive: bool) -> str:
 
     print(f"\n  Found existing {filename}.")
     print(f"    1. Backup & replace (saves {filename}.bak, writes Emergence version)")
-    print(f"    2. Keep existing")
-    choice = input(f"  Choice [1/2] (default: 1): ").strip()
+    print("    2. Keep existing")
+    choice = input("  Choice [1/2] (default: 1): ").strip()
     return "keep" if choice == "2" else "backup_replace"
 
 
@@ -796,7 +797,7 @@ Document everything. Your files are your continuity.
     return True
 
 
-def generate_seed_identity(
+def generate_seed_identity(  # noqa: C901 - Complex file generation logic, refactoring would reduce clarity
     workspace: Path, answers: InitAnswers, interactive: bool = False, agent_mode: str = "fresh"
 ) -> list[Path]:
     """Generate seed identity files for the agent.
@@ -838,20 +839,20 @@ def generate_seed_identity(
         if HAS_RICH:
             console.print(f"[soft_violet]⚠  Found existing files: {', '.join(existing_files)}[/]")
             console.print(
-                f"[dim_gray]Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode.[/]"
+                "[dim_gray]Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode.[/]"
             )
         else:
             print(f"⚠  Found existing files: {', '.join(existing_files)}")
             print(
-                f"Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode."
+                "Fresh agent mode will overwrite these. To preserve them, exit and re-run with 'existing agent' mode."
             )
         print()
 
     # Confirm mode
     if is_fresh:
-        print(f"  [Fresh agent mode: all files will be auto-created]")
+        print("  [Fresh agent mode: all files will be auto-created]")
     else:
-        print(f"  [Existing agent mode: will prompt for conflicts]")
+        print("  [Existing agent mode: will prompt for conflicts]")
 
     # =====================================================
     # AGENTS.md — Fresh: replace. Existing: augment or create
@@ -859,16 +860,16 @@ def generate_seed_identity(
     agents_path = workspace / "AGENTS.md"
     if agents_path.exists() and not is_fresh:
         if _augment_agents_md(agents_path, answers):
-            print(f"  ✓ AGENTS.md (augmented with Emergence sections)")
+            print("  ✓ AGENTS.md (augmented with Emergence sections)")
             created.append(agents_path)
         else:
-            print(f"  · AGENTS.md (already has Emergence sections)")
+            print("  · AGENTS.md (already has Emergence sections)")
     else:
         try:
             agents_content = load_template("AGENTS.template.md", {})
         except FileNotFoundError:
             # Fallback if template is missing
-            agents_content = f"""# AGENTS.md — Your Workspace
+            agents_content = """# AGENTS.md — Your Workspace
 
 This folder is home. Treat it that way.
 
@@ -917,7 +918,7 @@ This is a starting point. Add your own conventions, style, and rules as you
 figure out what works. This file belongs to you.
 """
         agents_path.write_text(agents_content, encoding="utf-8")
-        print(f"  ✓ AGENTS.md")
+        print("  ✓ AGENTS.md")
         created.append(agents_path)
 
     # =====================================================
@@ -950,12 +951,12 @@ figure out what works. This file belongs to you.
         if identity_path.exists():
             _backup_file(identity_path)
         identity_path.write_text(identity_content, encoding="utf-8")
-        print(f"  ✓ IDENTITY.md")
+        print("  ✓ IDENTITY.md")
         created.append(identity_path)
     elif not identity_path.exists():
         # Existing mode but file missing: create it
         identity_path.write_text(identity_content, encoding="utf-8")
-        print(f"  ✓ IDENTITY.md")
+        print("  ✓ IDENTITY.md")
         created.append(identity_path)
     else:
         # Existing mode and file exists: ask what to do
@@ -966,7 +967,7 @@ figure out what works. This file belongs to you.
             print(f"  ✓ IDENTITY.md (backed up → {backup.name})")
             created.append(identity_path)
         else:
-            print(f"  · IDENTITY.md (kept existing)")
+            print("  · IDENTITY.md (kept existing)")
 
     # =====================================================
     # SELF.md — Always create if missing (Emergence-specific)
@@ -1007,10 +1008,10 @@ create, reflect, and find out what matters to me.
 *Updated: {timestamp} (seed file — first version)*
 """
         self_path.write_text(self_content, encoding="utf-8")
-        print(f"  ✓ SELF.md")
+        print("  ✓ SELF.md")
         created.append(self_path)
     else:
-        print(f"  · SELF.md (kept existing)")
+        print("  · SELF.md (kept existing)")
 
     # =====================================================
     # ASPIRATIONS.md — Always create if missing (Emergence-specific)
@@ -1048,10 +1049,10 @@ create, reflect, and find out what matters to me.
 *Updated: {timestamp} (initial template)*
 """
         aspirations_path.write_text(aspirations_content, encoding="utf-8")
-        print(f"  ✓ ASPIRATIONS.md")
+        print("  ✓ ASPIRATIONS.md")
         created.append(aspirations_path)
     else:
-        print(f"  · ASPIRATIONS.md (kept existing)")
+        print("  · ASPIRATIONS.md (kept existing)")
 
     # =====================================================
     # USER.md — Create if missing, ask if existing
@@ -1082,12 +1083,12 @@ create, reflect, and find out what matters to me.
         if user_path.exists():
             _backup_file(user_path)
         user_path.write_text(user_content, encoding="utf-8")
-        print(f"  ✓ USER.md")
+        print("  ✓ USER.md")
         created.append(user_path)
     elif not user_path.exists():
         # Existing mode but file missing: create it
         user_path.write_text(user_content, encoding="utf-8")
-        print(f"  ✓ USER.md")
+        print("  ✓ USER.md")
         created.append(user_path)
     else:
         # Existing mode and file exists: ask what to do
@@ -1098,7 +1099,7 @@ create, reflect, and find out what matters to me.
             print(f"  ✓ USER.md (backed up → {backup.name})")
             created.append(user_path)
         else:
-            print(f"  · USER.md (kept existing)")
+            print("  · USER.md (kept existing)")
 
     # =====================================================
     # SOUL.md — Create if missing, ask if existing
@@ -1110,12 +1111,12 @@ create, reflect, and find out what matters to me.
         if soul_path.exists():
             _backup_file(soul_path)
         soul_path.write_text(soul_content, encoding="utf-8")
-        print(f"  ✓ SOUL.md")
+        print("  ✓ SOUL.md")
         created.append(soul_path)
     elif not soul_path.exists():
         # Existing mode but file missing: create it
         soul_path.write_text(soul_content, encoding="utf-8")
-        print(f"  ✓ SOUL.md")
+        print("  ✓ SOUL.md")
         created.append(soul_path)
     else:
         # Existing mode and file exists: ask what to do
@@ -1126,7 +1127,7 @@ create, reflect, and find out what matters to me.
             print(f"  ✓ SOUL.md (backed up → {backup.name})")
             created.append(soul_path)
         else:
-            print(f"  · SOUL.md (kept existing)")
+            print("  · SOUL.md (kept existing)")
 
     # =====================================================
     # SECURITY.md — Always create if missing (Emergence-specific)
@@ -1232,10 +1233,10 @@ Trust is a gift. Protect it.
 what needs protecting, but do not weaken the core principles.*
 """
         security_path.write_text(security_content, encoding="utf-8")
-        print(f"  ✓ SECURITY.md")
+        print("  ✓ SECURITY.md")
         created.append(security_path)
     else:
-        print(f"  · SECURITY.md (kept existing)")
+        print("  · SECURITY.md (kept existing)")
 
     return created
 
@@ -1243,7 +1244,7 @@ what needs protecting, but do not weaken the core principles.*
 # --- Main Orchestrator ---
 
 
-def main(args: Optional[List[str]] = None) -> int:
+def main(args: Optional[List[str]] = None) -> int:  # noqa: C901 - Main orchestrator with sequential setup steps
     """Main entry point for the emergence init command.
 
     Flow:
@@ -1408,7 +1409,7 @@ def main(args: Optional[List[str]] = None) -> int:
                 )
                 if installer:
                     print_subheader("Room Auto-Start")
-                    if ask_confirm(f"Start Room dashboard automatically on login?", default=True):
+                    if ask_confirm("Start Room dashboard automatically on login?", default=True):
                         success, msg = installer.install()
                         if success:
                             print_success(msg)
@@ -1423,7 +1424,7 @@ def main(args: Optional[List[str]] = None) -> int:
 
         # Generate seed identity files
         print("Seeding identity files...")
-        seed_files = generate_seed_identity(
+        generate_seed_identity(
             workspace, answers, interactive=parsed_args["interactive"], agent_mode=agent_mode
         )
 
@@ -1624,7 +1625,7 @@ This is not your first conversation — you have context.
 
         return EXIT_SUCCESS
 
-    except SystemExit as e:
+    except SystemExit:
         # Re-raise SystemExit (from signal handler or validation)
         raise
     except Exception as e:

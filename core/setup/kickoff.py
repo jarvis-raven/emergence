@@ -472,7 +472,7 @@ def run_kickoff(answers: dict, config: dict, placement_plan: dict) -> bool:
         if drives_initialized:
             print(f"  ✓ Core drives initialized: {state_dir / 'drives.json'}")
         else:
-            print(f"  ✗ Failed to initialize drives")
+            print("  ✗ Failed to initialize drives")
             return False
 
         # Step 4: Initialize First Light state
@@ -481,7 +481,7 @@ def run_kickoff(answers: dict, config: dict, placement_plan: dict) -> bool:
         if fl_initialized:
             print(f"  ✓ First Light state initialized: {state_dir / 'first-light.json'}")
         else:
-            print(f"  ✗ Failed to initialize First Light state")
+            print("  ✗ Failed to initialize First Light state")
             return False
 
         # Write kickoff summary
@@ -596,22 +596,15 @@ def _schedule_first_light_tick(emergence_dir: Path, frequency_hours: float = 4) 
         return False
 
 
-def kickoff_first_light(config: dict, workspace: Path) -> bool:
-    """Bridge called by init_wizard after setup completes.
-
-    Sets up the full autonomous loop for a new agent:
-    1. Initialize drives state (core drives at zero pressure)
-    2. Initialize First Light state (active)
-    3. Schedule drives tick (every 15 min, free — just pressure math)
-    4. Schedule First Light tick (spawns exploration sessions at configured frequency)
-    5. Spawn first exploration session immediately
+def _setup_drives_and_state(config: dict, workspace: Path) -> tuple[bool, Path]:
+    """Initialize drives and First Light state.
 
     Args:
-        config: Emergence configuration dictionary
-        workspace: Path to the workspace
+        config: Emergence configuration
+        workspace: Workspace path
 
     Returns:
-        True if First Light started successfully
+        Tuple of (success, state_dir_path)
     """
     state_dir = Path(config.get("paths", {}).get("state", str(workspace / ".emergence" / "state")))
 
@@ -626,46 +619,55 @@ def kickoff_first_light(config: dict, workspace: Path) -> bool:
     fl_ok = initialize_first_light_state(state_dir)
     if not fl_ok:
         print("  ✗ Failed to initialize First Light state")
-        return False
+        return False, state_dir
     print("  ✓ First Light state: active")
 
-    # Step 3: Determine emergence directory (where core/ lives)
-    # This is either the workspace itself or a subdirectory
-    emergence_dir = _find_emergence_dir(workspace)
+    return True, state_dir
 
-    # Step 4: Schedule drives tick (every 15 min)
-    if emergence_dir:
-        tick_ok = _schedule_drives_tick(emergence_dir, tick_interval_min=15)
-        if tick_ok:
-            print("  ✓ Drives tick scheduled (every 15 min)")
-        else:
-            print("  ⚠ Could not schedule drives tick via crontab")
-            print(
-                "    Add manually: */15 * * * * cd {emergence_dir} && python3 -m core.drives tick"
-            )
 
-    # Step 5: Schedule First Light tick
+def _schedule_ticks(emergence_dir: Optional[Path], config: dict) -> None:
+    """Schedule drives and First Light ticks via crontab.
+
+    Args:
+        emergence_dir: Path to emergence directory (where core/ lives)
+        config: Emergence configuration
+    """
+    if not emergence_dir:
+        return
+
+    # Schedule drives tick (every 15 min)
+    tick_ok = _schedule_drives_tick(emergence_dir, tick_interval_min=15)
+    if tick_ok:
+        print("  ✓ Drives tick scheduled (every 15 min)")
+    else:
+        print("  ⚠ Could not schedule drives tick via crontab")
+        print("    Add manually: */15 * * * * cd {emergence_dir} && python3 -m core.drives tick")
+
+    # Schedule First Light tick
     fl_frequency = config.get("first_light", {}).get("frequency", "balanced")
-    # Map presets to hours
     freq_map = {"patient": 24, "balanced": 8, "accelerated": 4, "custom": 4}
     freq_hours = freq_map.get(fl_frequency, 4)
 
-    # For balanced (3/day), tick every 8 hours spawning 1 session each
-    # For accelerated (6+/day), tick every 4 hours spawning sessions
     sessions_per_day = config.get("first_light", {}).get("sessions_per_day", 3)
     if sessions_per_day and sessions_per_day > 0:
         freq_hours = max(1, 24 / sessions_per_day)
 
-    if emergence_dir:
-        fl_tick_ok = _schedule_first_light_tick(emergence_dir, freq_hours)
-        if fl_tick_ok:
-            print(
-                f"  ✓ First Light tick scheduled (every {freq_hours:.0f}h, ~{sessions_per_day} sessions/day)"
-            )
-        else:
-            print("  ⚠ Could not schedule First Light tick via crontab")
+    fl_tick_ok = _schedule_first_light_tick(emergence_dir, freq_hours)
+    if fl_tick_ok:
+        print(
+            f"  ✓ First Light tick scheduled (every {freq_hours:.0f}h, ~{sessions_per_day} sessions/day)"
+        )
+    else:
+        print("  ⚠ Could not schedule First Light tick via crontab")
 
-    # Step 6: Spawn first exploration session immediately
+
+def _spawn_first_session(config: dict, freq_hours: float) -> None:
+    """Spawn the initial exploration session.
+
+    Args:
+        config: Emergence configuration
+        freq_hours: Frequency in hours for next run calculation
+    """
     try:
         from ..first_light.orchestrator import (
             load_first_light_state,
@@ -699,6 +701,45 @@ def kickoff_first_light(config: dict, workspace: Path) -> bool:
 
     except Exception as e:
         print(f"  ⚠ Could not schedule first session: {e}")
+
+
+def kickoff_first_light(config: dict, workspace: Path) -> bool:
+    """Bridge called by init_wizard after setup completes.
+
+    Sets up the full autonomous loop for a new agent:
+    1. Initialize drives state (core drives at zero pressure)
+    2. Initialize First Light state (active)
+    3. Schedule drives tick (every 15 min, free — just pressure math)
+    4. Schedule First Light tick (spawns exploration sessions at configured frequency)
+    5. Spawn first exploration session immediately
+
+    Args:
+        config: Emergence configuration dictionary
+        workspace: Path to the workspace
+
+    Returns:
+        True if First Light started successfully
+    """
+    # Step 1-2: Initialize drives and First Light state
+    success, state_dir = _setup_drives_and_state(config, workspace)
+    if not success:
+        return False
+
+    # Step 3-4: Determine emergence directory and schedule ticks
+    emergence_dir = _find_emergence_dir(workspace)
+    _schedule_ticks(emergence_dir, config)
+
+    # Step 5: Calculate frequency for first session
+    fl_frequency = config.get("first_light", {}).get("frequency", "balanced")
+    freq_map = {"patient": 24, "balanced": 8, "accelerated": 4, "custom": 4}
+    freq_hours = freq_map.get(fl_frequency, 4)
+
+    sessions_per_day = config.get("first_light", {}).get("sessions_per_day", 3)
+    if sessions_per_day and sessions_per_day > 0:
+        freq_hours = max(1, 24 / sessions_per_day)
+
+    # Step 6: Spawn first exploration session
+    _spawn_first_session(config, freq_hours)
 
     return True
 

@@ -9,7 +9,6 @@ from .orchestrator import (
     run_first_light_tick,
     start_first_light,
     pause_first_light,
-    get_status as get_first_light_status,
 )
 
 from .analyzer import (

@@ -425,6 +425,51 @@ def should_run(state: dict, frequency_hours: float) -> bool:
         return True
 
 
+def _check_and_fix_runaway_spawning(state: dict, frequency_hours: float):
+    """Check if we're behind schedule and adjust next_run to catch up."""
+    next_run_str = state.get("next_run_time")
+    if not next_run_str:
+        return
+
+    try:
+        next_run = datetime.fromisoformat(next_run_str.replace("Z", "+00:00"))
+        hours_behind = (datetime.now(timezone.utc) - next_run).total_seconds() / 3600
+        if hours_behind > frequency_hours * 2:
+            # We're more than 2 cycles behind, catch up by adjusting next_run
+            state["next_run_time"] = datetime.now(timezone.utc).isoformat()
+    except (ValueError, AttributeError):
+        pass
+
+
+def _spawn_sessions(config: dict, state: dict, size: int, dry_run: bool) -> tuple[int, int]:
+    """Spawn First Light sessions."""
+    spawned = 0
+    failed = 0
+
+    for i in range(size):
+        session_num = state["sessions_scheduled"] + 1
+
+        if dry_run:
+            print(f"[DRY RUN] Would spawn session #{session_num}")
+            spawned += 1
+            state["sessions_scheduled"] += 1
+            continue
+
+        if schedule_exploration_session(config, state, session_num):
+            spawned += 1
+            state["sessions_scheduled"] += 1
+            state["sessions"].append({
+                "session_number": session_num,
+                "scheduled_at": datetime.now(timezone.utc).isoformat(),
+                "status": "scheduled",
+            })
+        else:
+            failed += 1
+            break  # Stop trying if one fails
+
+    return spawned, failed
+
+
 def run_first_light_tick(config: dict, dry_run: bool = False) -> dict:
     """Check if it's time to spawn sessions and spawn if needed.
 
@@ -435,17 +480,10 @@ def run_first_light_tick(config: dict, dry_run: bool = False) -> dict:
     Returns:
         Results dictionary with stats
     """
-    results = {
-        "spawned": 0,
-        "failed": 0,
-        "skipped": False,
-        "next_run": None,
-    }
+    results = {"spawned": 0, "failed": 0, "skipped": False, "next_run": None}
 
     # Load state and config
     state = load_first_light_state(config)
-
-    # Get dials
     frequency_hours = parse_frequency(get_config_value(config, "frequency", 4))
     size = int(get_config_value(config, "size", 3))
 
@@ -455,17 +493,8 @@ def run_first_light_tick(config: dict, dry_run: bool = False) -> dict:
         results["next_run"] = state.get("next_run_time")
         return results
 
-    # Check for runaway spawning (don't spawn if we're way behind)
-    next_run_str = state.get("next_run_time")
-    if next_run_str:
-        try:
-            next_run = datetime.fromisoformat(next_run_str.replace("Z", "+00:00"))
-            hours_behind = (datetime.now(timezone.utc) - next_run).total_seconds() / 3600
-            if hours_behind > frequency_hours * 2:
-                # We're more than 2 cycles behind, catch up by adjusting next_run
-                state["next_run_time"] = datetime.now(timezone.utc).isoformat()
-        except (ValueError, AttributeError):
-            pass
+    # Check for runaway spawning
+    _check_and_fix_runaway_spawning(state, frequency_hours)
 
     # Update state to active if not already
     if state["status"] == "not_started":
@@ -473,28 +502,9 @@ def run_first_light_tick(config: dict, dry_run: bool = False) -> dict:
         state["started_at"] = datetime.now(timezone.utc).isoformat()
 
     # Spawn sessions
-    for i in range(size):
-        session_num = state["sessions_scheduled"] + 1
-
-        if dry_run:
-            print(f"[DRY RUN] Would spawn session #{session_num}")
-            results["spawned"] += 1
-            state["sessions_scheduled"] += 1
-            continue
-
-        if schedule_exploration_session(config, state, session_num):
-            results["spawned"] += 1
-            state["sessions_scheduled"] += 1
-            state["sessions"].append(
-                {
-                    "session_number": session_num,
-                    "scheduled_at": datetime.now(timezone.utc).isoformat(),
-                    "status": "scheduled",
-                }
-            )
-        else:
-            results["failed"] += 1
-            break  # Stop trying if one fails
+    spawned, failed = _spawn_sessions(config, state, size, dry_run)
+    results["spawned"] = spawned
+    results["failed"] = failed
 
     # Update next run time
     state["next_run_time"] = calculate_next_run_time(
@@ -607,6 +617,103 @@ def strip_json_comments(text: str) -> str:
     return result
 
 
+def _get_config_defaults() -> dict:
+    """Get default configuration structure."""
+    return {
+        "agent": {"name": "My Agent", "model": None},
+        "paths": {"workspace": ".", "state": ".emergence/state"},
+        "first_light": {
+            "frequency": 4,
+            "size": 3,
+            "model": None,
+            "timeout_seconds": 900,
+        },
+    }
+
+
+def _resolve_config_path(config_path: Optional[Path]) -> Optional[Path]:
+    """Resolve configuration file path using search order."""
+    if config_path is not None:
+        return config_path
+
+    # Check environment variable first
+    env_config = os.environ.get("EMERGENCE_CONFIG")
+    if env_config and Path(env_config).exists():
+        return Path(env_config)
+
+    # Check workspace directory
+    workspace = os.environ.get(
+        "OPENCLAW_WORKSPACE", str(Path.home() / ".openclaw" / "workspace")
+    )
+    workspace_config = Path(workspace) / "emergence.json"
+    if workspace_config.exists():
+        return workspace_config
+
+    # CWD fallback
+    for name in CONFIG_FILENAMES:
+        if Path(name).exists():
+            return Path(name)
+
+    return None
+
+
+def _parse_yaml_value(val_str: str):
+    """Parse a YAML value string to appropriate Python type."""
+    val = val_str.strip().strip('"').strip("'")
+
+    if val.lower() in ("true", "yes"):
+        return True
+    elif val.lower() in ("false", "no"):
+        return False
+    elif val.isdigit():
+        return int(val)
+    elif val.replace(".", "").isdigit() and val.count(".") == 1:
+        return float(val)
+    elif val == "null" or val == "":
+        return None
+    return val
+
+
+def _parse_yaml_config(content: str, defaults: dict) -> dict:
+    """Parse simple YAML configuration."""
+    config = defaults.copy()
+    current_section = None
+
+    for line in content.split("\n"):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        # Section header
+        if line.endswith(":") and not line.startswith("-"):
+            current_section = line[:-1].strip()
+            if current_section not in config:
+                config[current_section] = {}
+            continue
+
+        # Key-value pair
+        if ":" in line and current_section:
+            key, val = line.split(":", 1)
+            config[current_section][key.strip()] = _parse_yaml_value(val)
+
+    return config
+
+
+def _merge_config_with_defaults(config: dict, defaults: dict) -> dict:
+    """Deep merge configuration with defaults."""
+    merged = {}
+    for key in set(list(defaults.keys()) + list(config.keys())):
+        default_val = defaults.get(key, {})
+        config_val = config.get(key, {})
+        if isinstance(default_val, dict) and isinstance(config_val, dict):
+            merged[key] = {**default_val, **config_val}
+        elif key in config:
+            merged[key] = config_val
+        else:
+            merged[key] = default_val
+    return merged
+
+
 def load_config(config_path: Optional[Path] = None) -> dict:
     """Load configuration from YAML or JSON file.
 
@@ -622,103 +729,149 @@ def load_config(config_path: Optional[Path] = None) -> dict:
     Returns:
         Configuration dictionary
     """
-    defaults = {
-        "agent": {"name": "My Agent", "model": None},
-        "paths": {"workspace": ".", "state": ".emergence/state"},
-        "first_light": {
-            "frequency": 4,
-            "size": 3,
-            "model": None,
-            "timeout_seconds": 900,
-        },
-    }
+    defaults = _get_config_defaults()
+    resolved_path = _resolve_config_path(config_path)
 
-    # Resolve config path
-    if config_path is None:
-        # Check environment variable first
-        env_config = os.environ.get("EMERGENCE_CONFIG")
-        if env_config and Path(env_config).exists():
-            config_path = Path(env_config)
-        else:
-            # Check workspace directory
-            workspace = os.environ.get(
-                "OPENCLAW_WORKSPACE", str(Path.home() / ".openclaw" / "workspace")
-            )
-            workspace_config = Path(workspace) / "emergence.json"
-            if workspace_config.exists():
-                config_path = workspace_config
-            else:
-                # CWD fallback
-                for name in CONFIG_FILENAMES:
-                    if Path(name).exists():
-                        config_path = Path(name)
-                        break
-
-    if config_path is None or not config_path.exists():
+    if resolved_path is None or not resolved_path.exists():
         return defaults
 
     try:
-        content = config_path.read_text(encoding="utf-8")
-        ext = config_path.suffix.lower()
+        content = resolved_path.read_text(encoding="utf-8")
+        ext = resolved_path.suffix.lower()
 
         if ext == ".json":
-            # JSON with comments support
             clean = strip_json_comments(content)
             config = json.loads(clean)
         elif ext in (".yaml", ".yml"):
-            # Simple YAML parsing (sufficient for our config structure)
-            config = defaults.copy()
-            current_section = None
-
-            for line in content.split("\n"):
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-
-                # Section header
-                if line.endswith(":") and not line.startswith("-"):
-                    current_section = line[:-1].strip()
-                    if current_section not in config:
-                        config[current_section] = {}
-                    continue
-
-                # Key-value pair
-                if ":" in line and current_section:
-                    key, val = line.split(":", 1)
-                    key = key.strip()
-                    val = val.strip().strip('"').strip("'")
-
-                    # Type conversion
-                    if val.lower() in ("true", "yes"):
-                        val = True
-                    elif val.lower() in ("false", "no"):
-                        val = False
-                    elif val.isdigit():
-                        val = int(val)
-                    elif val.replace(".", "").isdigit() and val.count(".") == 1:
-                        val = float(val)
-                    elif val == "null" or val == "":
-                        val = None
-
-                    config[current_section][key] = val
+            config = _parse_yaml_config(content, defaults)
         else:
             return defaults
 
-        # Merge with defaults (deep merge top-level dicts)
-        merged = {}
-        for key in set(list(defaults.keys()) + list(config.keys())):
-            default_val = defaults.get(key, {})
-            config_val = config.get(key, {})
-            if isinstance(default_val, dict) and isinstance(config_val, dict):
-                merged[key] = {**default_val, **config_val}
-            elif key in config:
-                merged[key] = config_val
-            else:
-                merged[key] = default_val
-
-        return merged
+        return _merge_config_with_defaults(config, defaults)
     except (IOError, json.JSONDecodeError):
         return defaults
+
+
+def _handle_run_command(config: dict, args) -> int:
+    """Handle the run command."""
+    results = run_first_light_tick(config, dry_run=args.dry_run)
+
+    if args.dry_run:
+        print("First Light Tick (DRY RUN)")
+        print("=" * 25)
+    else:
+        print("First Light Tick")
+        print("=" * 16)
+
+    print(f"Status: {'Active' if not results['skipped'] else 'Skipped (not due)'}")
+    print(f"Sessions spawned: {results['spawned']}")
+    print(f"Sessions failed: {results['failed']}")
+    if results.get("next_run"):
+        print(f"Next run: {results['next_run']}")
+
+    return 0 if results["failed"] == 0 else 1
+
+
+def _handle_status_command(config: dict) -> int:
+    """Handle the status command."""
+    from .completion import get_first_light_status, format_status_display
+
+    workspace = Path(config.get("workspace", Path.cwd()))
+    status = get_first_light_status(workspace)
+    print(format_status_display(status))
+    return 0
+
+
+def _handle_analyze_command(config: dict, args) -> int:
+    """Handle the analyze command."""
+    from .post_session import analyze_session, analyze_recent_sessions
+
+    workspace = Path(config.get("workspace", Path.cwd()))
+    auto_activate = not args.no_activate
+
+    if args.session:
+        analyze_session(workspace, args.session, auto_activate=auto_activate)
+    else:
+        analyze_recent_sessions(workspace, limit=args.limit, auto_activate=auto_activate)
+
+    return 0
+
+
+def _handle_complete_command(config: dict, args) -> int:
+    """Handle the complete command."""
+    from .completion import (
+        manual_complete_first_light,
+        grandfather_first_light,
+        get_first_light_status,
+        format_status_display,
+    )
+
+    workspace = Path(config.get("workspace", Path.cwd()))
+
+    if args.grandfather:
+        print("🔍 Scanning for historical First Light sessions...")
+        print()
+        result = grandfather_first_light(workspace)
+
+        if result["success"]:
+            print(result["message"])
+            return 0
+        else:
+            print(f"❌ {result['message']}")
+            if "evidence" in result:
+                evidence = result["evidence"]
+                print()
+                print("Historical evidence found:")
+                print(f"  • Sessions: {evidence.get('historical_sessions', 0)}")
+                print(f"  • Unique days: {evidence.get('unique_days', 0)}")
+                print(f"  • Drives: {evidence.get('discovered_drives', 0)}")
+                if evidence.get("drive_names"):
+                    print(f"    ({', '.join(evidence['drive_names'])})")
+            return 1
+
+    elif args.force:
+        print(format_status_display(get_first_light_status(workspace)))
+        print("⚠️  Force completion requested. This will:")
+        print("   • Lock in your discovered drives")
+        print("   • Enable consolidation review for new discoveries")
+        print("   • Transition to normal operation")
+        print()
+
+    result = manual_complete_first_light(workspace, force=args.force)
+
+    if result["success"]:
+        print(result["message"])
+        return 0
+    else:
+        print(f"Error: {result['message']}")
+        return 1
+
+
+def _handle_grandfather_command(config: dict) -> int:
+    """Handle the grandfather command."""
+    from .completion import grandfather_first_light
+
+    workspace = Path(config.get("workspace", Path.cwd()))
+
+    print("🔍 Scanning for historical First Light sessions...")
+    print()
+    result = grandfather_first_light(workspace)
+
+    if result["success"]:
+        print(result["message"])
+        return 0
+    else:
+        print(f"❌ {result['message']}")
+        if "evidence" in result:
+            evidence = result["evidence"]
+            print()
+            print("Historical evidence found:")
+            print(f"  • Sessions: {evidence.get('historical_sessions', 0)}")
+            print(f"  • Unique days: {evidence.get('unique_days', 0)}")
+            print(f"  • Drives: {evidence.get('discovered_drives', 0)}")
+            if evidence.get("drive_names"):
+                print(f"    ({', '.join(evidence['drive_names'])})")
+        return 1
 
 
 def main():
@@ -782,132 +935,22 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    # Load config
     config = load_config(args.config)
 
     if args.command == "run":
-        results = run_first_light_tick(config, dry_run=args.dry_run)
-
-        if args.dry_run:
-            print("First Light Tick (DRY RUN)")
-            print("=" * 25)
-        else:
-            print("First Light Tick")
-            print("=" * 16)
-
-        print(f"Status: {'Active' if not results['skipped'] else 'Skipped (not due)'}")
-        print(f"Sessions spawned: {results['spawned']}")
-        print(f"Sessions failed: {results['failed']}")
-        if results.get("next_run"):
-            print(f"Next run: {results['next_run']}")
-
-        sys.exit(0 if results["failed"] == 0 else 1)
-
+        sys.exit(_handle_run_command(config, args))
     elif args.command == "status":
-        from .completion import get_first_light_status, format_status_display
-
-        workspace = Path(config.get("workspace", Path.cwd()))
-        status = get_first_light_status(workspace)
-
-        print(format_status_display(status))
-
-        sys.exit(0)
-
+        sys.exit(_handle_status_command(config))
     elif args.command == "start":
-        success = start_first_light(config)
-        sys.exit(0 if success else 1)
-
+        sys.exit(0 if start_first_light(config) else 1)
     elif args.command == "pause":
-        success = pause_first_light(config)
-        sys.exit(0 if success else 1)
-
+        sys.exit(0 if pause_first_light(config) else 1)
     elif args.command == "analyze":
-        from .post_session import analyze_session, analyze_recent_sessions
-
-        workspace = Path(config.get("workspace", Path.cwd()))
-        auto_activate = not args.no_activate
-
-        if args.session:
-            analyze_session(workspace, args.session, auto_activate=auto_activate)
-        else:
-            analyze_recent_sessions(workspace, limit=args.limit, auto_activate=auto_activate)
-
-        sys.exit(0)
-
+        sys.exit(_handle_analyze_command(config, args))
     elif args.command == "complete":
-        from .completion import (
-            manual_complete_first_light,
-            grandfather_first_light,
-            get_first_light_status,
-            format_status_display,
-        )
-
-        workspace = Path(config.get("workspace", Path.cwd()))
-
-        if args.grandfather:
-            # Grandfather mode - scan historical sessions
-            print("🔍 Scanning for historical First Light sessions...")
-            print()
-            result = grandfather_first_light(workspace)
-
-            if result["success"]:
-                print(result["message"])
-                sys.exit(0)
-            else:
-                print(f"❌ {result['message']}")
-                if "evidence" in result:
-                    evidence = result["evidence"]
-                    print()
-                    print("Historical evidence found:")
-                    print(f"  • Sessions: {evidence.get('historical_sessions', 0)}")
-                    print(f"  • Unique days: {evidence.get('unique_days', 0)}")
-                    print(f"  • Drives: {evidence.get('discovered_drives', 0)}")
-                    if evidence.get("drive_names"):
-                        print(f"    ({', '.join(evidence['drive_names'])})")
-                sys.exit(1)
-
-        elif args.force:
-            # Show current status first
-            print(format_status_display(get_first_light_status(workspace)))
-            print("⚠️  Force completion requested. This will:")
-            print("   • Lock in your discovered drives")
-            print("   • Enable consolidation review for new discoveries")
-            print("   • Transition to normal operation")
-            print()
-
-        result = manual_complete_first_light(workspace, force=args.force)
-
-        if result["success"]:
-            print(result["message"])
-            sys.exit(0)
-        else:
-            print(f"Error: {result['message']}")
-            sys.exit(1)
-
+        sys.exit(_handle_complete_command(config, args))
     elif args.command == "grandfather":
-        from .completion import grandfather_first_light
-
-        workspace = Path(config.get("workspace", Path.cwd()))
-
-        print("🔍 Scanning for historical First Light sessions...")
-        print()
-        result = grandfather_first_light(workspace)
-
-        if result["success"]:
-            print(result["message"])
-            sys.exit(0)
-        else:
-            print(f"❌ {result['message']}")
-            if "evidence" in result:
-                evidence = result["evidence"]
-                print()
-                print("Historical evidence found:")
-                print(f"  • Sessions: {evidence.get('historical_sessions', 0)}")
-                print(f"  • Unique days: {evidence.get('unique_days', 0)}")
-                print(f"  • Drives: {evidence.get('discovered_drives', 0)}")
-                if evidence.get("drive_names"):
-                    print(f"    ({', '.join(evidence['drive_names'])})")
-            sys.exit(1)
+        sys.exit(_handle_grandfather_command(config))
 
 
 if __name__ == "__main__":
