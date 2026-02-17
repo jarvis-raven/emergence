@@ -237,12 +237,28 @@ def _build_ollama_prompt(concept_pairs: list) -> str:
     )
 
     n = len(concept_pairs)
-    return f"""Write {n} dream fragments. One poetic sentence each.
+    return f"""You are a dream engine. Generate surreal, poetic dream fragments.
 
-Pairs:
+For each pair below, write ONE dream fragment: a single evocative sentence \
+that connects the two concepts in an unexpected, dreamlike way.
+
+Guidelines:
+- Be SURREAL but coherent (dreamlike, not nonsense)
+- Be POETIC, not technical or explanatory
+- Use unexpected imagery and connections
+- Avoid "Just as X, Y is Z" essay patterns
+- Each fragment should feel like a moment from an actual dream
+
+Examples of good dream fragments:
+- "A neural network tends a garden where thoughts bloom in unexpected colors."
+- "The silence between code and poetry hums with forgotten songs."
+- "In the mirror, memory sees only potential looking back."
+
+Concept pairs:
 {pairs_text}
 
-Output as JSON array: ["fragment 1", "fragment 2", ...]"""
+Output ONLY a JSON array of {n} strings (one fragment per pair):
+["fragment 1", "fragment 2", ...]"""
 
 
 def _parse_ollama_response(reply: str, verbose: bool) -> Optional[list]:
