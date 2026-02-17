@@ -236,22 +236,13 @@ def _build_ollama_prompt(concept_pairs: list) -> str:
         f'  {i+1}. "{p.concept_a}" + "{p.concept_b}"' for i, p in enumerate(concept_pairs)
     )
 
-    return f"""You are a dream engine — you generate surreal, poetic dream \
-fragments from concept pairs.
+    n = len(concept_pairs)
+    return f"""Write {n} dream fragments. One poetic sentence each.
 
-For each pair below, write ONE dream fragment: a single evocative sentence \
-that connects the two concepts in an unexpected, dreamlike way. Be surreal \
-but coherent. Be poetic, not technical. Each fragment should feel like a \
-moment from a dream.
-
-Concept pairs:
+Pairs:
 {pairs_text}
 
-Respond with ONLY a JSON array of strings, one fragment per pair. Example:
-["A neural network tends a garden where thoughts bloom...", "The silence \
-between code and poetry hums with color."]
-
-Respond with the JSON array only, no other text."""
+Output as JSON array: ["fragment 1", "fragment 2", ...]"""
 
 
 def _parse_ollama_response(reply: str, verbose: bool) -> Optional[list]:
@@ -279,25 +270,41 @@ def _parse_ollama_response(reply: str, verbose: bool) -> Optional[list]:
 
     # Handle both list format and dict format
     if isinstance(parsed, dict):
-        # Some models wrap in {"fragments": [...]} or similar
-        for key in ("fragments", "dreams", "results", "items"):
+        # Try common wrapper keys first
+        for key in ("fragments", "dreams", "results", "items", " fragments"):
             if key in parsed and isinstance(parsed[key], list):
                 parsed = parsed[key]
                 break
         else:
-            # Model might use concept names as keys (e.g., llama3.2)
-            # Extract all string values from the dict
+            # Model might use concept names as keys with string values
             if all(isinstance(v, str) for v in parsed.values()):
                 parsed = list(parsed.values())
                 if verbose:
-                    print(
-                        f"  ℹ Ollama returned dict with concept-name keys, "
-                        f"extracted {len(parsed)} values"
-                    )
+                    print(f"  ℹ Extracted {len(parsed)} string values from dict")
             else:
-                if verbose:
-                    print("  ⚠ Ollama response is dict but no array found")
-                return None
+                # Try extracting strings from nested dicts/lists
+                fragments = []
+                for v in parsed.values():
+                    if isinstance(v, str):
+                        fragments.append(v)
+                    elif isinstance(v, list):
+                        for item in v:
+                            if isinstance(item, str):
+                                fragments.append(item)
+                            elif isinstance(item, dict):
+                                # Extract first string value from nested dict
+                                for sv in item.values():
+                                    if isinstance(sv, str):
+                                        fragments.append(sv)
+                                        break
+                if fragments:
+                    parsed = fragments
+                    if verbose:
+                        print(f"  ℹ Extracted {len(parsed)} fragments from nested structure")
+                else:
+                    if verbose:
+                        print("  ⚠ Ollama response is dict but no fragments found")
+                    return None
 
     if not isinstance(parsed, list):
         if verbose:
