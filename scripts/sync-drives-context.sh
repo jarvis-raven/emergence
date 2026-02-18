@@ -20,6 +20,27 @@ import re
 
 emergence_dir = os.environ.get('PWD', os.getcwd())
 
+# Print header with decision prompts
+print("# DO YOU WANT TO ENGAGE?")
+print()
+print("**ASK YOURSELF: Do I want to engage with one of these drives right now?**")
+print()
+print("**CONSIDER: What am I curious about? What feels right?**")
+print()
+print("**CHOICE:**")
+print("- **Defer** → Write a deferral note (reason, what you're feeling), THEN reply HEARTBEAT_OK")
+print("- **Engage** → Read DRIVES-ENGAGEMENT.md for satisfaction workflow")
+print()
+print("**REQUIRED: Log all deferrals.** Create `memory/sessions/YYYY-MM-DD-HHMM-deferral.md` with:")
+print("- Which drives you're deferring and why")
+print("- What you're feeling (uncertain? content? avoidant? tired?)")
+print("- Brief (3-5 lines). No deferral is too small to document.")
+print()
+print("Drives at 🟠75%+ are triggered (full prompts shown). Drives at 🟡30-75% are available.")
+print()
+print("---")
+print()
+
 # Get status JSON
 status_result = subprocess.run(
     ["python3", "-m", "core.cli", "drives", "status", "--json"],
