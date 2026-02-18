@@ -407,7 +407,8 @@ def cmd_auto_tag(args: List[str]) -> Dict[str, Any]:
         tagged = 0
         logger.info(f"Auto-tagging files in {memory_dir}")
 
-        for md_file in sorted(memory_dir.glob("*.md")):
+        # Use rglob to recursively find all .md files in subdirectories
+        for md_file in sorted(memory_dir.rglob("*.md")):
             rel_path, tags = _read_and_classify_file(md_file, workspace)
             if rel_path is None or tags is None:
                 continue
