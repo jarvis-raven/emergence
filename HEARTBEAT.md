@@ -16,11 +16,15 @@ This updates DRIVES.md with current pressures and cooldown status.
 ### 2. Check DRIVES.md
 - Read the questions at the top
 - Review drive states and prompts
-- **If you defer:** Create deferral note (memory/sessions/YYYY-MM-DD-HHMM-deferral.md)
-  - Which drives you're deferring and why
-  - What you're feeling (uncertain? content? avoidant? tired?)
-  - Brief (3-5 lines) but REQUIRED
-- **If you engage:** Follow DRIVES-ENGAGEMENT.md workflow
+- **Three choices:**
+  - **RECOGNIZE:** Already satisfying a drive? Document it (session file + drives satisfy)
+  - **ENGAGE:** Want to intentionally satisfy a drive? Follow DRIVES-ENGAGEMENT.md workflow
+  - **DEFER:** Not engaging right now? Create deferral note (memory/sessions/YYYY-MM-DD-HHMM-deferral.md)
+    - Which drives you're deferring and why
+    - What you're feeling (uncertain? content? avoidant? tired?)
+    - Brief (3-5 lines) but REQUIRED
+
+**Before deferring, ask: Am I already doing this?** Current conversation or work may already be satisfying drives.
 
 ## Status Indicators
 - 🟢 <30% — calm, building
