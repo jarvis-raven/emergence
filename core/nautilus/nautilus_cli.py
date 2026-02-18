@@ -337,7 +337,7 @@ def cmd_status(args):
 
     db = sqlite3.connect(str(get_gravity_db_path()))
     tagged = db.execute(
-        "SELECT COUNT(*) FROM gravity WHERE tags != '[]' AND tags IS NOT NULL"
+        "SELECT COUNT(*) FROM gravity WHERE context_tags != '[]' AND context_tags IS NOT NULL"
     ).fetchone()[0]
     total = db.execute("SELECT COUNT(*) FROM gravity").fetchone()[0]
     db.close()
