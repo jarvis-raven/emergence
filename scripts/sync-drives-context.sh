@@ -146,6 +146,7 @@ for drive_info in drives_list:
     prompt = drive_def.get("prompt", "")
     prompt_preview = extract_preview(prompt)
 
+    aspects = drive_def.get("aspects", [])
     drives_data.append({
         "name": name,
         "pressure": drive_info.get("pressure", 0),
@@ -153,7 +154,8 @@ for drive_info in drives_list:
         "ratio": drive_info.get("ratio", 0),
         "description": description,
         "prompt_preview": prompt_preview,
-        "full_prompt": prompt
+        "full_prompt": prompt,
+        "aspects": aspects
     })
 
 # Sort by ratio descending
@@ -208,6 +210,12 @@ for d in sorted_drives:
     if desc:
         line += f" - {desc}"
     lines.append(line)
+
+    # Show aspects if present
+    aspects = d.get("aspects", [])
+    if aspects:
+        aspects_str = ", ".join(aspects)
+        lines.append(f"    ({len(aspects)} aspects: {aspects_str})")
 
     # For triggered drives (≥75%), include FULL prompt for informed decisions
     # For elevated drives (30-75%), show preview only
