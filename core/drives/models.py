@@ -276,11 +276,15 @@ def ensure_drive_defaults(drive: dict) -> dict:
 def get_drive_thresholds(drive: dict, global_thresholds: Optional[dict] = None) -> dict:
     """Get graduated thresholds for a drive.
 
-    Priority order:
-    1. Drive-specific thresholds (drive["thresholds"])
-    2. Global thresholds from config
-    3. Legacy single threshold converted to graduated (if no global config)
-    4. Default thresholds
+    Priority order (merged, not replaced):
+    1. Start with default ratios
+    2. Override with global thresholds from config
+    3. Override with drive-specific thresholds
+    4. Apply all ratios to drive's base threshold
+
+    This allows per-drive customization while inheriting defaults for
+    unspecified levels. For example, ANXIETY could set {"elevated": 0.50}
+    to trigger earlier, while inheriting other levels from global config.
 
     Args:
         drive: Drive dictionary with optional thresholds
@@ -288,6 +292,7 @@ def get_drive_thresholds(drive: dict, global_thresholds: Optional[dict] = None) 
 
     Returns:
         Dictionary with available/elevated/triggered/crisis/emergency keys
+        (absolute values, not ratios)
 
     Examples:
         >>> drive = {"threshold": 20.0}
@@ -296,26 +301,27 @@ def get_drive_thresholds(drive: dict, global_thresholds: Optional[dict] = None) 
         20.0
         >>> thresholds["elevated"]
         15.0
+        >>> drive_custom = {"threshold": 20.0, "thresholds": {"elevated": 0.50}}
+        >>> thresholds = get_drive_thresholds(drive_custom)
+        >>> thresholds["elevated"]  # 0.50 * 20 = 10.0
+        10.0
     """
-    # Default ratios (if nothing else specified)
     from .config import DEFAULT_THRESHOLDS
 
-    default_ratios = DEFAULT_THRESHOLDS.copy()
+    # Start with default ratios
+    ratios = DEFAULT_THRESHOLDS.copy()
 
-    # Priority 1: Drive-specific thresholds
-    if drive.get("thresholds"):
-        return drive["thresholds"].copy()
-
-    # Priority 2: Global thresholds from config (as ratios)
-    base_threshold = drive.get("threshold", 1.0)
-
+    # Override with global config if provided
     if global_thresholds:
-        # Apply global ratios to drive's base threshold
-        return {level: base_threshold * ratio for level, ratio in global_thresholds.items()}
+        ratios.update(global_thresholds)
 
-    # Priority 3: Legacy single threshold → graduated system
-    # Use default ratios applied to base threshold
-    return {level: base_threshold * ratio for level, ratio in default_ratios.items()}
+    # Override with drive-specific thresholds (merge, not replace)
+    if drive.get("thresholds"):
+        ratios.update(drive["thresholds"])
+
+    # Apply ratios to base threshold
+    base_threshold = drive.get("threshold", 1.0)
+    return {level: base_threshold * ratio for level, ratio in ratios.items()}
 
 
 def get_threshold_label(pressure: float, thresholds: dict) -> str:
