@@ -26,6 +26,20 @@ This updates DRIVES.md with current pressures and cooldown status.
 
 **Before deferring, ask: Am I already doing this?** Current conversation or work may already be satisfying drives.
 
+### ⚠️ Deferral Check
+If you're about to defer, STOP and ask:
+> "Am I deferring because I'm busy doing something that actually satisfies a drive?"
+
+If YES → That's **RECOGNIZE**, not defer. Write the session file, run `drives satisfy`.
+If NO → Genuine deferral is valid. Write the note.
+
+**Common false deferrals:**
+- "I'm mid-conversation with Dan" → That's CARE (or SOCIAL, or LEARNING depending on topic)
+- "I'm doing infrastructure work" → That's MAINTENANCE
+- "We're figuring something out together" → That's LEARNING or CURIOSITY
+
+Don't write a deferral note explaining why your current activity prevents engagement — that activity IS engagement.
+
 ## Status Indicators
 - 🟢 <30% — calm, building
 - 🟡 30-75% — available, calling gently

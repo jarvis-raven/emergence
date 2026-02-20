@@ -1,0 +1,168 @@
+{
+  "date": "2026-02-16",
+  "generated_at": "2026-02-16T04:00:19.636336Z",
+  "source_files": 3,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "setup migrate",
+        "data loss"
+      ],
+      "fragment": "setup migrate reflected in data loss shows something unexpected.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "reflected_shows",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "path rewriting",
+        "satisfaction tracking"
+      ],
+      "fragment": "A path rewriting tends a garden where satisfaction tracking bloom in unexpected colors.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "tends_garden",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "actions merged",
+        "room dashboard"
+      ],
+      "fragment": "The hollow of actions merged contains a whisper of room dashboard.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "hollow_contains",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "nautilus widget",
+        "crisis band"
+      ],
+      "fragment": "Who teaches nautilus widget to understand crisis band?",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "teaches_understand",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "room src components",
+        "import bugs"
+      ],
+      "fragment": "A bridge of room src components spans the distance to import bugs.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-15.md",
+        "2026-02-14.md"
+      ],
+      "template": "bridge_spans",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 9.5
+      }
+    },
+    {
+      "concepts": [
+        "room src components",
+        "drives reading"
+      ],
+      "fragment": "The room src components that learned to drives reading.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "that_learned",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "aurora openclaw",
+        "threshold bug"
+      ],
+      "fragment": "At the intersection of aurora openclaw and threshold bug, a door stands open.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "door_stands",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "home dan",
+        "import bugs"
+      ],
+      "fragment": "A memory of home dan folded inside import bugs.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-15.md"
+      ],
+      "template": "memory_folded",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 9.5
+      }
+    }
+  ]
+}

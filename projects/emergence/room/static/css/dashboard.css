@@ -1,0 +1,355 @@
+/* Room Dashboard Styles */
+
+:root {
+    --primary-bg: #0a0e27;
+    --secondary-bg: #1a1f3a;
+    --card-bg: #252b48;
+    --border-color: #3a4568;
+    --text-primary: #e0e6ff;
+    --text-secondary: #a0a8cc;
+    --accent-blue: #4a90e2;
+    --accent-green: #50c878;
+    --accent-purple: #9b59b6;
+    --accent-gold: #f39c12;
+    --atrium-color: #3498db;
+    --corridor-color: #9b59b6;
+    --vault-color: #f39c12;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--primary-bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+    padding: 1rem;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header */
+header {
+    background: var(--secondary-bg);
+    padding: 1.5rem 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.connected {
+    background: var(--accent-green);
+}
+
+.status-dot.disconnected {
+    background: #e74c3c;
+    animation: none;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* Widget */
+.widget {
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.widget-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.last-update {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+    margin-bottom: 0.25rem;
+}
+
+.stat-subtext {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Chart Container */
+.chart-container {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.chart-container h3 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+#chamberChart {
+    max-height: 250px;
+}
+
+.chamber-legend {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+.legend-color.atrium {
+    background: var(--atrium-color);
+}
+
+.legend-color.corridor {
+    background: var(--corridor-color);
+}
+
+.legend-color.vault {
+    background: var(--vault-color);
+}
+
+/* Sections */
+.promotions-section,
+.top-memories-section,
+.contexts-section {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.promotions-section h3,
+.top-memories-section h3,
+.contexts-section h3 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.promotions-list,
+.memories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.promotion-item,
+.memory-item {
+    background: var(--secondary-bg);
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-blue);
+}
+
+.promotion-item.corridor {
+    border-left-color: var(--corridor-color);
+}
+
+.promotion-item.vault {
+    border-left-color: var(--vault-color);
+}
+
+.memory-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+}
+
+.memory-path {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.memory-stats {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.memory-score {
+    color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.chamber-badge {
+    background: var(--border-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chamber-badge.atrium {
+    background: var(--atrium-color);
+    color: white;
+}
+
+.chamber-badge.corridor {
+    background: var(--corridor-color);
+    color: white;
+}
+
+.chamber-badge.vault {
+    background: var(--vault-color);
+    color: white;
+}
+
+/* Contexts List */
+.contexts-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.context-tag {
+    background: var(--secondary-bg);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.context-tag .count {
+    background: var(--accent-blue);
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Loading State */
+.loading {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chamber-legend {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .memory-item {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}

@@ -1,0 +1,169 @@
+{
+  "date": "2026-02-19",
+  "generated_at": "2026-02-19T04:00:09.664579Z",
+  "source_files": 6,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "helper functions",
+        "tagging bug"
+      ],
+      "fragment": "the room dashboard wears a crown of shifting symbols,",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "violations fixed",
+        "thwarting detection"
+      ],
+      "fragment": "In the melting pot: helper functions dissolves into tagging bug.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-13.md"
+      ],
+      "template": "melting_dissolves",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "room dashboard",
+        "emergence migrate"
+      ],
+      "fragment": "Where nightly build ends, aurora openclaw begins — but no one can find the border.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-17.md",
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "ends_begins",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 37.7,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "nightly build",
+        "aurora openclaw"
+      ],
+      "fragment": "What if src components could remember openclaw sessions?",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "could_remember",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "src components",
+        "openclaw sessions"
+      ],
+      "fragment": "The silence between core setup and src components is its own kind of music.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "silence_kind",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "core setup",
+        "src components"
+      ],
+      "fragment": "In dreams, violations fixed speaks the language of thwarting detection.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "dreams_speaks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "path rewriting",
+        "nightly build"
+      ],
+      "fragment": "path rewriting reflected in nightly build shows something unexpected.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "reflected_shows",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "door tagging",
+        "home aurora"
+      ],
+      "fragment": "In the space between door tagging and home aurora, something new is forming.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "space_forming",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}

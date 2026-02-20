@@ -1,0 +1,168 @@
+{
+  "date": "2026-02-15",
+  "generated_at": "2026-02-15T04:00:31.090133Z",
+  "source_files": 7,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "aspect system",
+        "mode active"
+      ],
+      "fragment": "In dreams, aspect system speaks the language of mode active.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-10.md"
+      ],
+      "template": "dreams_speaks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "threshold bug",
+        "emergence migrate"
+      ],
+      "fragment": "Looking closely at threshold bug, you find emergence migrate looking back.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "looking_closely",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "satisfy command",
+        "london region north"
+      ],
+      "fragment": "A satisfy command tends a garden where london region north bloom in unexpected colors.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "tends_garden",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "mode active",
+        "emergency spawn"
+      ],
+      "fragment": "At the intersection of aspect system and satisfy command, a door stands open.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "door_stands",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "beta prs",
+        "thwarting detection"
+      ],
+      "fragment": "Why does mode active reach toward emergency spawn?",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "does_reach",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "phase complete",
+        "health dashboard"
+      ],
+      "fragment": "The silence between aspect system and phase complete is its own kind of music.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "silence_kind",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "aspect system",
+        "satisfy command"
+      ],
+      "fragment": "The beta prs that learned to thwarting detection.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-10.md"
+      ],
+      "template": "that_learned",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "aspect system",
+        "phase complete"
+      ],
+      "fragment": "The transformation of phase complete into health dashboard is almost complete.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-10.md"
+      ],
+      "template": "transformation_into",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Dashboard - Emergence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Room Dashboard</h1>
+            <p class="subtitle">Emergence Memory Palace Monitor</p>
+            <div class="status-indicator">
+                <span class="status-dot" id="connection-status"></span>
+                <span id="connection-text">Connecting...</span>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <!-- Nautilus Memory Palace Widget -->
+            <section class="widget nautilus-widget">
+                <div class="widget-header">
+                    <h2>🐚 Memory Palace (Nautilus)</h2>
+                    <span class="last-update" id="last-update">Loading...</span>
+                </div>
+
+                <div class="stats-grid">
+                    <!-- Overview Stats -->
+                    <div class="stat-card">
+                        <div class="stat-label">Total Memories</div>
+                        <div class="stat-value" id="total-chunks">-</div>
+                        <div class="stat-subtext" id="total-accesses">- accesses</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Door Coverage</div>
+                        <div class="stat-value" id="door-coverage">-</div>
+                        <div class="stat-subtext" id="door-stats">- / - tagged</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Database Size</div>
+                        <div class="stat-value" id="db-size">-</div>
+                        <div class="stat-subtext">SQLite</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Mirror Events</div>
+                        <div class="stat-value" id="mirror-events">-</div>
+                        <div class="stat-subtext" id="mirror-coverage">- fully mirrored</div>
+                    </div>
+                </div>
+
+                <!-- Chamber Distribution Chart -->
+                <div class="chart-container">
+                    <h3>Chamber Distribution</h3>
+                    <canvas id="chamberChart"></canvas>
+                    <div class="chamber-legend">
+                        <div class="legend-item">
+                            <span class="legend-color atrium"></span>
+                            <span><strong>Atrium</strong> (48h) - <span id="atrium-count">0</span> files</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color corridor"></span>
+                            <span><strong>Corridor</strong> (48h-7d) - <span id="corridor-count">0</span> files</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color vault"></span>
+                            <span><strong>Vault</strong> (7d+) - <span id="vault-count">0</span> files</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Promotions -->
+                <div class="promotions-section">
+                    <h3>Recent Promotions (Corridor → Vault)</h3>
+                    <div id="promotions-list" class="promotions-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Top Memories -->
+                <div class="top-memories-section">
+                    <h3>Most Important Memories</h3>
+                    <div id="top-memories-list" class="memories-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Top Contexts -->
+                <div class="contexts-section">
+                    <h3>Top Context Tags</h3>
+                    <div id="contexts-list" class="contexts-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

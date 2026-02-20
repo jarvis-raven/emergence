@@ -1,0 +1,169 @@
+{
+  "date": "2026-02-13",
+  "generated_at": "2026-02-13T04:00:14.254491Z",
+  "source_files": 5,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "pypi publication",
+        "summaries required"
+      ],
+      "fragment": "Yesterday's room metaphor is tomorrow's runtime state.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-10.md"
+      ],
+      "template": "yesterday_tomorrow",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "sonic exploration",
+        "custom shelves"
+      ],
+      "fragment": "The transformation of graceful forgetting into sonic exploration is almost complete.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-10.md"
+      ],
+      "template": "transformation_into",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "rate limits",
+        "agent main"
+      ],
+      "fragment": "In dreams, pypi publication speaks the language of summaries required.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-12.md",
+        "2026-02-11.md"
+      ],
+      "template": "dreams_speaks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 8.8
+      }
+    },
+    {
+      "concepts": [
+        "size guidance",
+        "sonic exploration"
+      ],
+      "fragment": "A recipe calling for dashboard api and summaries required in equal measure.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-10.md"
+      ],
+      "template": "recipe_calling",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "dashboard api",
+        "summaries required"
+      ],
+      "fragment": "A rate limits tends a garden where key insights bloom in unexpected colors.",
+      "insight_score": 99,
+      "sources": [
+        "2026-02-12.md",
+        "2026-02-11.md",
+        "2026-02-07.md"
+      ],
+      "template": "tends_garden",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 36.9,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "room metaphor",
+        "runtime state"
+      ],
+      "fragment": "At the intersection of sonic exploration and custom shelves, a door stands open.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-07.md"
+      ],
+      "template": "door_stands",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "graceful forgetting",
+        "sonic exploration"
+      ],
+      "fragment": "The question rate limits asks agent main has no answer.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-07.md",
+        "2026-02-10.md"
+      ],
+      "template": "question_asks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "rate limits",
+        "key insights"
+      ],
+      "fragment": "The silence between size guidance and sonic exploration is its own kind of music.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-07.md"
+      ],
+      "template": "silence_kind",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}

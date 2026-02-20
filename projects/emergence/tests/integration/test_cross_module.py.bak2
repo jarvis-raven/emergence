@@ -1,0 +1,449 @@
+#!/usr/bin/env python3
+"""
+🐚 Nautilus v0.4.0 Integration Test Suite - Cross-Module Integration
+
+Tests integration between Nautilus and other Emergence modules:
+  1. Drives + Nautilus: Session satisfaction updates gravity
+  2. Daemon + Nautilus: Nightly runs without errors
+  3. CLI + Nautilus: All commands work end-to-end
+  4. Room + Nautilus: API endpoints return correct data
+"""
+
+import pytest
+import sqlite3
+import json
+import os
+import sys
+from pathlib import Path
+from datetime import datetime, timezone
+import subprocess
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from core.nautilus import (
+    search,
+    get_status,
+    run_maintain,
+    get_gravity_score,
+)
+from core.nautilus.gravity import (
+    get_db,
+    cmd_record_write,
+    cmd_boost,
+    cmd_record_access,
+)
+
+
+# ============================================================================
+# Fixtures
+# ============================================================================
+
+@pytest.fixture
+def isolated_workspace(tmp_path):
+    """Create isolated workspace for cross-module tests."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    
+    memory = workspace / "memory"
+    memory.mkdir()
+    (memory / "daily").mkdir()
+    (memory / "sessions").mkdir()
+    
+    state = tmp_path / "state" / "nautilus"
+    state.mkdir(parents=True)
+    
+    orig_workspace = os.environ.get("OPENCLAW_WORKSPACE")
+    orig_state = os.environ.get("OPENCLAW_STATE_DIR")
+    
+    os.environ["OPENCLAW_WORKSPACE"] = str(workspace)
+    os.environ["OPENCLAW_STATE_DIR"] = str(state)
+    
+    yield workspace
+    
+    if orig_workspace:
+        os.environ["OPENCLAW_WORKSPACE"] = orig_workspace
+    else:
+        os.environ.pop("OPENCLAW_WORKSPACE", None)
+        
+    if orig_state:
+        os.environ["OPENCLAW_STATE_DIR"] = orig_state
+    else:
+        os.environ.pop("OPENCLAW_STATE_DIR", None)
+
+
+# ============================================================================
+# Test Class: Cross-Module Integration
+# ============================================================================
+
+class TestDrivesIntegration:
+    """Test Drives + Nautilus integration."""
+    
+    def test_satisfaction_updates_gravity(self, isolated_workspace):
+        """
+        Session satisfaction from Drives should update Nautilus gravity.
+        
+        Workflow:
+        1. Session completes with high satisfaction
+        2. Drives system records satisfaction event
+        3. Nautilus gravity database is updated
+        4. Related chunks get boosted mass
+        """
+        memory = isolated_workspace / "memory"
+        session_file = memory / "sessions" / "2026-02-14-test-session.md"
+        
+        # Create session file
+        session_file.write_text("""# Test Session
+
+Excellent conversation about Nautilus architecture.
+User expressed high satisfaction with the explanations.
+
+**Satisfaction:** 0.95
+""")
+        
+        # Record write
+        cmd_record_write([str(session_file]))
+        
+        # Get baseline gravity
+        baseline_score = get_gravity_score(str(session_file))
+        
+        # Record high satisfaction (simulates Drives event)
+        cmd_record_satisfaction(str(session_file), satisfaction=0.95)
+        
+        # Get updated gravity
+        updated_score = get_gravity_score(str(session_file))
+        
+        # Verify gravity increased
+        assert updated_score > baseline_score, \
+            f"Satisfaction didn't boost gravity: {baseline_score} -> {updated_score}"
+        
+        # Verify the boost is significant for high satisfaction
+        boost_ratio = updated_score / max(baseline_score, 0.01)
+        assert boost_ratio > 1.5, \
+            f"High satisfaction (0.95) should boost gravity significantly, got {boost_ratio:.2f}x"
+        
+        print(f"✅ Drives integration: satisfaction boosted gravity {baseline_score:.2f} -> {updated_score:.2f}")
+    
+    
+    def test_low_satisfaction_minimal_boost(self, isolated_workspace):
+        """Low satisfaction should provide minimal or no gravity boost."""
+        memory = isolated_workspace / "memory"
+        session_file = memory / "sessions" / "2026-02-14-low-satisfaction.md"
+        
+        session_file.write_text("""# Low Satisfaction Session
+
+Brief, unhelpful interaction.
+
+**Satisfaction:** 0.2
+""")
+        
+        cmd_record_write([str(session_file]))
+        baseline_score = get_gravity_score(str(session_file))
+        
+        # Record low satisfaction
+        cmd_record_satisfaction(str(session_file), satisfaction=0.2)
+        
+        updated_score = get_gravity_score(str(session_file))
+        
+        # Low satisfaction should have minimal impact
+        boost_ratio = updated_score / max(baseline_score, 0.01)
+        assert boost_ratio < 1.3, \
+            f"Low satisfaction shouldn't boost gravity much, got {boost_ratio:.2f}x"
+        
+        print(f"✅ Low satisfaction correctly minimal: {baseline_score:.2f} -> {updated_score:.2f}")
+
+
+class TestDaemonIntegration:
+    """Test Daemon + Nautilus integration."""
+    
+    def test_nightly_maintenance_runs(self, isolated_workspace):
+        """
+        Nightly daemon should run Nautilus maintenance without errors.
+        
+        Simulates:
+        1. Daemon triggers nightly maintenance
+        2. Maintenance processes all pending operations
+        3. No errors or crashes occur
+        4. Database remains consistent
+        """
+        memory = isolated_workspace / "memory"
+        
+        # Create some files to maintain
+        for i in range(5):
+            daily_file = memory / "daily" / f"2026-02-{10+i:02d}.md"
+            daily_file.write_text(f"""# Daily Log {i}
+
+Some activity for day {i}.
+Testing maintenance operations.
+
+#testing #automation
+""")
+            cmd_record_write([str(daily_file]))
+        
+        # Run maintenance (simulates daemon)
+        try:
+            result = run_maintain()
+            assert result is not None, "Maintenance returned None"
+        except Exception as e:
+            pytest.fail(f"Maintenance crashed: {e}")
+        
+        # Verify database is still consistent
+        db = get_db()
+        cursor = db.cursor()
+        
+        # Check all chunks have required fields
+        cursor.execute("""
+            SELECT COUNT(*) FROM chunks 
+            WHERE chamber IS NULL OR mass IS NULL
+        """)
+        invalid_count = cursor.fetchone()[0]
+        assert invalid_count == 0, f"Found {invalid_count} chunks with missing data after maintenance"
+        
+        print("✅ Daemon integration: nightly maintenance completed successfully")
+    
+    
+    def test_concurrent_daemon_operations(self, isolated_workspace):
+        """
+        Multiple daemon operations should not corrupt database.
+        """
+        memory = isolated_workspace / "memory"
+        daily_file = memory / "daily" / "2026-02-14.md"
+        daily_file.write_text("# Test\nConcurrent operations test.")
+        
+        # Simulate concurrent writes (daemon + user activity)
+        for _ in range(10):
+            cmd_record_write([str(daily_file]))
+        
+        # Run maintenance during activity
+        run_maintain()
+        
+        # Verify database integrity
+        db = get_db()
+        cursor = db.cursor()
+        
+        # PRAGMA integrity_check
+        cursor.execute("PRAGMA integrity_check")
+        result = cursor.fetchone()[0]
+        assert result == "ok", f"Database integrity check failed: {result}"
+        
+        print("✅ Concurrent operations: database integrity maintained")
+
+
+class TestCLIIntegration:
+    """Test CLI + Nautilus integration."""
+    
+    def test_search_command_works(self, isolated_workspace):
+        """Direct Python API search should work."""
+        memory = isolated_workspace / "memory"
+        
+        # Create searchable content
+        test_file = memory / "daily" / "2026-02-14.md"
+        test_file.write_text("""# Test Document
+
+This is a unique search term: XYZZY_MAGIC_WORD_12345
+
+You should be able to find this with search.
+""")
+        cmd_record_write([str(test_file]))
+        
+        # Search using API (not subprocess, since module path issues exist)
+        results = search("XYZZY_MAGIC_WORD", n=5)
+        
+        assert len(results) > 0, "Search found nothing"
+        
+        found_target = False
+        for result in results:
+            if "XYZZY" in result.get("text", ""):
+                found_target = True
+                break
+        
+        assert found_target, "Search didn't return the target content"
+        
+        print(f"✅ CLI search: found {len(results)} results including target")
+    
+    
+    def test_status_command_works(self, isolated_workspace):
+        """Status command should return valid data."""
+        memory = isolated_workspace / "memory"
+        
+        # Create some content
+        (memory / "daily" / "2026-02-14.md").write_text("# Daily\nSome content.")
+        cmd_record_write([str(memory / "daily" / "2026-02-14.md"]))
+        
+        # Get status
+        status = get_status()
+        
+        # Verify structure
+        assert isinstance(status, dict), "Status should return dict"
+        assert "phase_1_gravity" in status, "Missing gravity phase"
+        assert "phase_2_chambers" in status, "Missing chambers phase"
+        assert "phase_3_doors" in status, "Missing doors phase"
+        assert "phase_4_mirrors" in status, "Missing mirrors phase"
+        
+        print("✅ CLI status: all phases present and valid")
+    
+    
+    def test_gravity_score_command(self, isolated_workspace):
+        """Getting gravity score for a file should work."""
+        memory = isolated_workspace / "memory"
+        test_file = memory / "daily" / "2026-02-14.md"
+        test_file.write_text("# Test\nContent.")
+        
+        cmd_record_write([str(test_file]))
+        
+        score = get_gravity_score(str(test_file))
+        
+        assert score >= 0, "Gravity score should be non-negative"
+        assert score < 1000, "Gravity score should be reasonable"
+        
+        print(f"✅ CLI gravity: score = {score:.2f}")
+
+
+class TestRoomIntegration:
+    """Test Room + Nautilus integration."""
+    
+    def test_room_api_returns_correct_data(self, isolated_workspace):
+        """Room API endpoints should get accurate Nautilus data."""
+        memory = isolated_workspace / "memory"
+        
+        # Create diverse content for Room to display
+        files = [
+            ("daily/2026-02-14.md", "atrium"),
+            ("corridors/important.md", "corridor"),
+            ("vaults/permanent.md", "vault"),
+        ]
+        
+        for path, expected_chamber in files:
+            file_path = memory / path
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(f"# {path}\n\nContent for {expected_chamber}.")
+            cmd_record_write([str(file_path]))
+        
+        # Run maintenance to classify chambers
+        run_maintain()
+        
+        # Get status (what Room API calls)
+        status = get_status()
+        
+        # Verify Room gets accurate chamber distribution
+        chambers = status["phase_2_chambers"]
+        assert chambers["atrium_pct"] > 0, "Room should see atrium content"
+        
+        # Verify chunk count
+        gravity = status["phase_1_gravity"]
+        assert gravity["total_chunks"] >= 3, "Room should see all chunks"
+        
+        print(f"✅ Room integration: {gravity['total_chunks']} chunks, "
+              f"{chambers['atrium_pct']:.0f}% atrium")
+    
+    
+    def test_room_search_endpoint(self, isolated_workspace):
+        """Room search endpoint should return relevant results."""
+        memory = isolated_workspace / "memory"
+        
+        # Create content with specific search terms
+        test_file = memory / "daily" / "2026-02-14.md"
+        test_file.write_text("""# Research Notes
+
+Deep dive into quantum computing principles.
+Studying superposition and entanglement.
+
+## Key Concepts
+- Qubits can exist in multiple states
+- Measurement collapses the wavefunction
+- Quantum gates perform operations
+
+**Very interesting topic!**
+""")
+        cmd_record_write([str(test_file]))
+        
+        # Search (Room would call this via API)
+        results = search("quantum computing", n=5)
+        
+        assert len(results) > 0, "Room search returned no results"
+        
+        # Verify results have necessary fields for Room UI
+        first_result = results[0]
+        assert "text" in first_result, "Results need text for display"
+        assert "source_path" in first_result, "Results need source path for links"
+        assert "mass" in first_result, "Results need gravity for ranking"
+        
+        print(f"✅ Room search: {len(results)} results with all required fields")
+
+
+class TestDataIntegrity:
+    """Test data integrity across modules."""
+    
+    def test_no_data_loss_across_operations(self, isolated_workspace):
+        """
+        Data should persist correctly across all operations.
+        """
+        memory = isolated_workspace / "memory"
+        test_file = memory / "daily" / "2026-02-14.md"
+        
+        # Create file with unique content
+        unique_content = "UNIQUE_CONTENT_XYZ789_FOR_INTEGRITY_TEST"
+        test_file.write_text(f"""# Integrity Test
+
+{unique_content}
+
+This content should never disappear.
+""")
+        
+        # Record write
+        cmd_record_write([str(test_file]))
+        
+        # Verify content is searchable
+        results = search("UNIQUE_CONTENT_XYZ789", n=5)
+        assert len(results) > 0, "Content lost immediately after write"
+        
+        # Run maintenance
+        run_maintain()
+        
+        # Verify content still searchable
+        results = search("UNIQUE_CONTENT_XYZ789", n=5)
+        assert len(results) > 0, "Content lost after maintenance"
+        
+        # Record additional events
+        cmd_record_satisfaction(str(test_file), satisfaction=0.8)
+        
+        # Verify content STILL searchable
+        results = search("UNIQUE_CONTENT_XYZ789", n=5)
+        assert len(results) > 0, "Content lost after satisfaction event"
+        
+        print("✅ Data integrity: content survived all operations")
+    
+    
+    def test_gravity_persists_across_restarts(self, isolated_workspace):
+        """
+        Gravity scores should persist across database reconnections.
+        """
+        memory = isolated_workspace / "memory"
+        test_file = memory / "daily" / "2026-02-14.md"
+        test_file.write_text("# Test\nPersistence check.")
+        
+        # Record with high gravity
+        cmd_record_write([str(test_file]))
+        cmd_record_satisfaction(str(test_file), satisfaction=0.9)
+        
+        score_before = get_gravity_score(str(test_file))
+        
+        # Simulate restart by getting new connection
+        # (get_db() returns cached connection, but we can verify persistence)
+        db = get_db()
+        db.commit()  # Ensure write
+        
+        # Get score again
+        score_after = get_gravity_score(str(test_file))
+        
+        assert score_after == score_before, \
+            f"Gravity score changed: {score_before} -> {score_after}"
+        
+        print(f"✅ Gravity persistence: score {score_after:.2f} survived commit")
+
+
+# ============================================================================
+# Run Tests
+# ============================================================================
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])

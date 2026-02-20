@@ -1,0 +1,168 @@
+{
+  "date": "2026-02-20",
+  "generated_at": "2026-02-20T04:00:09.386966Z",
+  "source_files": 5,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "bridge smtp",
+        "room server"
+      ],
+      "fragment": "A bridge collapses under the weight of forgotten emails.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "awaiting aurora",
+        "commit message"
+      ],
+      "fragment": "In this empty room, servers whisper secrets to each other.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "tagging bug",
+        "violations fixed"
+      ],
+      "fragment": "Where tagging bug ends, violations fixed begins — but no one can find the border.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "ends_begins",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "door tagging bug",
+        "commit message"
+      ],
+      "fragment": "What if door tagging bug could remember commit message?",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "could_remember",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "src components",
+        "bridge smtp"
+      ],
+      "fragment": "The silence between src components and bridge smtp is its own kind of music.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "silence_kind",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "mode active",
+        "violations fixed"
+      ],
+      "fragment": "In dreams, mode active speaks the language of violations fixed.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "dreams_speaks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "moltbook skills",
+        "data loss"
+      ],
+      "fragment": "The shadow of moltbook skills stretches toward data loss at noon.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "shadow_stretches",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "black formatting",
+        "awaiting aurora"
+      ],
+      "fragment": "In the space between black formatting and awaiting aurora, something new is forming.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "space_forming",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}

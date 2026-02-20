@@ -1,0 +1,174 @@
+{
+  "date": "2026-02-14",
+  "generated_at": "2026-02-14T04:01:10.306098Z",
+  "source_files": 5,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "ssh key",
+        "satisfaction depth"
+      ],
+      "fragment": "The transformation of ssh key into satisfaction depth is almost complete.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-11.md"
+      ],
+      "template": "transformation_into",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "custom shelves",
+        "issues created"
+      ],
+      "fragment": "In dreams, tests passing speaks the language of library shelf.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-11.md"
+      ],
+      "template": "dreams_speaks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "aversive mechanisms",
+        "library shelf"
+      ],
+      "fragment": "The hollow of tests passing contains a whisper of ssh key.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-13.md"
+      ],
+      "template": "hollow_contains",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "custom shelves",
+        "scan period"
+      ],
+      "fragment": "A api key tends a garden where defaults json bloom in unexpected colors.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-11.md"
+      ],
+      "template": "tends_garden",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "tests passing",
+        "library shelf"
+      ],
+      "fragment": "At the intersection of custom shelves and issues created, a door stands open.",
+      "insight_score": 99,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-10.md",
+        "2026-02-13.md"
+      ],
+      "template": "door_stands",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 36.9,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "tests passing",
+        "ssh key"
+      ],
+      "fragment": "What do aversive mechanisms and library shelf discuss when no one is listening?",
+      "insight_score": 99,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-10.md",
+        "2026-02-13.md"
+      ],
+      "template": "discuss_listening",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 36.9,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "api key",
+        "defaults json"
+      ],
+      "fragment": "The silence between custom shelves and scan period is its own kind of music.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-09.md",
+        "2026-02-12.md",
+        "2026-02-13.md",
+        "2026-02-11.md"
+      ],
+      "template": "silence_kind",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 34.9,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "aversive states",
+        "api key"
+      ],
+      "fragment": "The aversive states that learned to api key.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-11.md",
+        "2026-02-09.md",
+        "2026-02-12.md",
+        "2026-02-13.md"
+      ],
+      "template": "that_learned",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 34.9,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}

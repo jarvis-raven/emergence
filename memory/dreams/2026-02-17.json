@@ -1,0 +1,171 @@
+{
+  "date": "2026-02-17",
+  "generated_at": "2026-02-17T06:45:01.566547Z",
+  "source_files": 5,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "home dan",
+        "helper functions"
+      ],
+      "fragment": "Just as src components are the building blocks of a website, openclaw sessions are the foundation upon which all user experiences are built.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-13.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "helper functions",
+        "migration script"
+      ],
+      "fragment": "Like home dan is where the heart is, helper functions are the secret ingredients that make software development more efficient and effective.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md",
+        "2026-02-16.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 37.7,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "room server",
+        "black formatting"
+      ],
+      "fragment": "Helper functions and migration script together form an unstoppable duo, just as a well-crafted algorithm can revolutionize the way we approach complex problems.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 37.7,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "helper functions",
+        "review merge"
+      ],
+      "fragment": "The 'satisfy command' in computer science is like tagging a bug in quality assurance - both require precision and attention to detail to achieve success.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-16.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "helper functions",
+        "room server"
+      ],
+      "fragment": "Just as a well-formatted room server is essential for a comfortable living space, black formatting is the unsung hero of digital design, hiding errors while showcasing elegance.",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md",
+        "2026-02-16.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 37.7,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "src components",
+        "openclaw sessions"
+      ],
+      "fragment": "Helper functions and review merge share a common goal - to ensure that code changes are reviewed and accepted by the community, just like a good recipe requires the perfect balance of ingredients.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "satisfy command",
+        "tagging bug"
+      ],
+      "fragment": "Like helper functions, which provide support without taking center stage, room server operates in the background but remains crucial for smooth operations.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-14.md",
+        "2026-02-13.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "satisfaction tracking",
+        "review merge"
+      ],
+      "fragment": "Satisfaction tracking and review merge are two sides of the same coin - both aimed at improving user experience and validating software quality through data-driven insights.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}

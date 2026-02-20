@@ -1,0 +1,169 @@
+{
+  "date": "2026-02-18",
+  "generated_at": "2026-02-18T04:00:10.264333Z",
+  "source_files": 5,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "bridge smtp",
+        "crisis band"
+      ],
+      "fragment": "A bridge collapses, and words from the other side spill into the waiting inbox.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-16.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "search wrapper",
+        "room src components"
+      ],
+      "fragment": "In the chaos of a crisis, musicians weave guitars that play the blues of forgotten passwords.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "proton bridge smtp",
+        "door tagging"
+      ],
+      "fragment": "proton bridge smtp reflected in door tagging shows something unexpected.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "reflected_shows",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "path rewriting",
+        "search wrapper"
+      ],
+      "fragment": "In the melting pot: beta phase dissolves into violations fixed.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-16.md"
+      ],
+      "template": "melting_dissolves",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "black formatting",
+        "home aurora openclaw"
+      ],
+      "fragment": "Where path rewriting ends, search wrapper begins — but no one can find the border.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-16.md"
+      ],
+      "template": "ends_begins",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "beta phase",
+        "violations fixed"
+      ],
+      "fragment": "What if data loss could remember home aurora openclaw?",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-16.md",
+        "2026-02-14.md"
+      ],
+      "template": "could_remember",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 37.7,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "data loss",
+        "home aurora openclaw"
+      ],
+      "fragment": "The silence between review merge and satisfaction tracking is its own kind of music.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "silence_kind",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "review merge",
+        "satisfaction tracking"
+      ],
+      "fragment": "In dreams, black formatting speaks the language of home aurora openclaw.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-13.md",
+        "2026-02-14.md"
+      ],
+      "template": "dreams_speaks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}

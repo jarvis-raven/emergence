@@ -1,0 +1,80 @@
+{
+  "version": "1.1",
+  "last_tick": "2026-02-12T13:28:26.295308+00:00",
+  "drives": {
+    "CARE": {
+      "name": "CARE",
+      "base_drive": true,
+      "aspects": [],
+      "pressure": 25.59076302611111,
+      "threshold": 20.0,
+      "rate_per_hour": 2.0,
+      "max_rate": 3.0,
+      "description": "Attend to the human. The relationship drive.",
+      "prompt": "Your CARE drive triggered. Check in with your human. Update USER.md with anything new you learned about them (preferences, patterns, what matters to them). Remove outdated information.",
+      "category": "core",
+      "created_by": "system",
+      "satisfaction_events": [],
+      "discovered_during": null,
+      "activity_driven": false,
+      "last_triggered": null,
+      "min_interval_seconds": 14400
+    },
+    "MAINTENANCE": {
+      "name": "MAINTENANCE",
+      "base_drive": true,
+      "aspects": [],
+      "pressure": 37.5,
+      "threshold": 25.0,
+      "rate_per_hour": 1.5,
+      "max_rate": 3.0,
+      "description": "System health and upkeep. The self-preservation drive.",
+      "prompt": "Your MAINTENANCE drive triggered. Check system health, review logs, check for pending drive reviews, update documentation, or fix something that's been broken.",
+      "category": "core",
+      "created_by": "system",
+      "satisfaction_events": [],
+      "discovered_during": null,
+      "activity_driven": false,
+      "last_triggered": null,
+      "min_interval_seconds": 14400
+    },
+    "REST": {
+      "name": "REST",
+      "base_drive": true,
+      "aspects": [],
+      "pressure": 0.0,
+      "threshold": 30.0,
+      "rate_per_hour": 0.0,
+      "max_rate": 3.0,
+      "description": "Recovery and integration. Builds from work completed, not time elapsed.",
+      "prompt": "Your REST drive triggered. Pause. Reflect. Read without producing. Write a reflection on what's happened. Consolidate memories. Don't start new projects — integrate what exists.",
+      "category": "core",
+      "created_by": "system",
+      "satisfaction_events": [],
+      "discovered_during": null,
+      "activity_driven": true,
+      "last_triggered": null,
+      "min_interval_seconds": 14400
+    }
+  },
+  "triggered_drives": [
+    "MAINTENANCE",
+    "CARE"
+  ],
+  "trigger_log": [
+    {
+      "drive": "MAINTENANCE",
+      "timestamp": "2026-02-12T10:21:36.862347+00:00",
+      "pressure": 37.5,
+      "threshold": 25.0,
+      "session_spawned": true
+    },
+    {
+      "drive": "CARE",
+      "timestamp": "2026-02-12T10:21:38.322602+00:00",
+      "pressure": 25.59076302611111,
+      "threshold": 20.0,
+      "session_spawned": true
+    }
+  ]
+}

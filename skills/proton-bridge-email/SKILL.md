@@ -55,12 +55,28 @@ python3 ~/.openclaw/workspace/skills/proton-bridge-email/check_email.py --json
 
 ### 2. Send Email
 
-**Quick send:**
+**From stdin (recommended for long/multiline):**
+```bash
+cat message.txt | python3 ~/.openclaw/workspace/skills/proton-bridge-email/send_email.py \
+  "recipient@example.com" \
+  "Subject line" \
+  --stdin
+```
+
+**From file:**
 ```bash
 python3 ~/.openclaw/workspace/skills/proton-bridge-email/send_email.py \
   "recipient@example.com" \
   "Subject line" \
-  "Email body text"
+  --file message.txt
+```
+
+**Short inline (legacy, avoid for multiline):**
+```bash
+python3 ~/.openclaw/workspace/skills/proton-bridge-email/send_email.py \
+  "recipient@example.com" \
+  "Subject line" \
+  "Short body only - shell escaping breaks multiline"
 ```
 
 **Or use directly in Python:**

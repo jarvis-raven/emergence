@@ -1,0 +1,137 @@
+{
+  "last_updated": "2026-02-14T18:03:44.020899+00:00",
+  "drives": [
+    {
+      "name": "REST",
+      "pressure": 0.0,
+      "threshold": 30,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "READING",
+      "pressure": 0.33,
+      "threshold": 30,
+      "ratio": 0.01,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "WANDER",
+      "pressure": 0.03,
+      "threshold": 20.0,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "SOCIAL",
+      "pressure": 0.1,
+      "threshold": 18,
+      "ratio": 0.01,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "PLAY",
+      "pressure": 0.05,
+      "threshold": 25,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "LEARNING",
+      "pressure": 0.07,
+      "threshold": 30,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "CREATIVE",
+      "pressure": 0.13,
+      "threshold": 20,
+      "ratio": 0.01,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "CARE",
+      "pressure": 0.05,
+      "threshold": 20,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "ANXIETY",
+      "pressure": 0.0,
+      "threshold": 70,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "MAINTENANCE",
+      "pressure": 0.07,
+      "threshold": 40,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "CURIOSITY",
+      "pressure": 0.17,
+      "threshold": 25,
+      "ratio": 0.01,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    },
+    {
+      "name": "EMBODIMENT",
+      "pressure": 0.03,
+      "threshold": 40,
+      "ratio": 0.0,
+      "status": "normal",
+      "category": "unknown",
+      "aspects": [],
+      "status_field": null
+    }
+  ],
+  "triggered": [],
+  "quiet_hours_active": false,
+  "budget": {
+    "daily_limit": 50.0,
+    "daily_spend": 0.0,
+    "percent_used": 0.0,
+    "projected_triggers_per_day": 30.04,
+    "projected_daily_cost": 75.1,
+    "projected_monthly_cost": 2253.0,
+    "cost_per_trigger": 2.5
+  },
+  "pending_reviews": 0
+}
