@@ -61,7 +61,7 @@ def post_to_moltbook(title=None, content=None, submolt="general", comment_on=Non
         payload = {
             "title": title,
             "content": content,
-            "submolt": submolt
+            "submolt_name": submolt
         }
         print(f"📝 Creating new post in r/{submolt}...", file=sys.stderr)
     
