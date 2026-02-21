@@ -1,0 +1,169 @@
+{
+  "date": "2026-02-21",
+  "generated_at": "2026-02-21T04:00:09.669098Z",
+  "source_files": 7,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "kimi jarvling",
+        "drives system"
+      ],
+      "fragment": "What if kimi jarvling could remember drives system?",
+      "insight_score": 100,
+      "sources": [
+        "2026-02-20.md",
+        "2026-02-16.md"
+      ],
+      "template": "could_remember",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "drives system",
+        "proton bridge"
+      ],
+      "fragment": "A bridge of import bugs spans the distance to late morning.",
+      "insight_score": 99,
+      "sources": [
+        "2026-02-18.md",
+        "2026-02-20.md",
+        "2026-02-16.md"
+      ],
+      "template": "bridge_spans",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 36.8,
+        "distance": 35.0,
+        "recency": 7.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "tok sec",
+        "ingest deduplication"
+      ],
+      "fragment": "In dreams, tok sec speaks the language of ingest deduplication.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-18.md",
+        "2026-02-16.md"
+      ],
+      "template": "dreams_speaks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "origin main",
+        "tok sec"
+      ],
+      "fragment": "Beneath the surface of origin main lies a deep pool of tok sec.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-18.md",
+        "2026-02-16.md"
+      ],
+      "template": "surface_lies",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "git safety",
+        "costa rica"
+      ],
+      "fragment": "In the space between drives system and proton bridge, something new is forming.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-19.md",
+        "2026-02-16.md"
+      ],
+      "template": "space_forming",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "pcie power",
+        "created skills"
+      ],
+      "fragment": "A forest of git safety whispers secrets to the costa rica at dawn.",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-18.md",
+        "2026-02-16.md"
+      ],
+      "template": "forest_whispers",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "import bugs",
+        "late morning"
+      ],
+      "fragment": "A cathedral built of pcie power echoes with the songs of created skills.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-15.md",
+        "2026-02-16.md"
+      ],
+      "template": "cathedral_built",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "email moltbook",
+        "test harness"
+      ],
+      "fragment": "The silence between email moltbook and test harness is its own kind of music.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-15.md",
+        "2026-02-16.md"
+      ],
+      "template": "silence_kind",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    }
+  ]
+}
