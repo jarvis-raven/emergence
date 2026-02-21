@@ -26,6 +26,22 @@ Respond to what the prompt asks:
 
 Don't do unrelated work and label it retroactively. Engage with the drive's invitation.
 
+### 3b. Capture What Emerges
+During engagement, you may discover new interests or project ideas. **Capture them immediately:**
+
+```bash
+# New interest/dream worth tracking
+~/.openclaw/bin/aspire add-dream "name"
+
+# Concrete project toward an existing aspiration
+~/.openclaw/bin/aspire add-project "name" --for "aspiration-id"
+
+# Check what already exists (avoid duplicates)
+~/.openclaw/bin/aspire list
+```
+
+Don't wait for nightly review. If something feels worth tracking, track it now.
+
 ### 4. Document the Session
 Create a rich session file at `~/.openclaw/workspace/memory/sessions/YYYY-MM-DD-HHMM-DRIVE.md`:
 

@@ -1,5 +1,28 @@
 # Jarvis TODO
 
+## 🟡 OPEN QUESTIONS: Aspirations System (Feb 21)
+
+These are design gaps we identified but chose not to solve yet. Revisit when we have more data.
+
+### Addressed (80/20 shipped):
+- ✅ Add `aspire` CLI to TOOLS.md (awareness)
+- ✅ Add capture workflow to DRIVES-ENGAGEMENT.md (workflow)
+
+### Still Outstanding:
+1. **Discovery outside Drive Time** — Aspirations often emerge in organic conversation, not drive sessions. DRIVES-ENGAGEMENT.md only prompts during intentional engagement. Do we need prompts elsewhere?
+
+2. **Aspiration-drive mapping** — Sync shows aspirations, but not grouped by drive. If CREATIVE triggers, which aspirations relate to creativity? Could be smarter.
+
+3. **Aspiration sprawl** — What if there are 50 aspirations? Need filtering (active? barren? recent?) to avoid noise in sync output.
+
+4. **Aspiration decay** — `aspire barren` catches dreams with no projects. But what about aspirations I've lost interest in? No mechanism for detecting or pruning stale aspirations.
+
+5. **Human input** — Dan might notice patterns I don't. Should there be a way for him to suggest aspirations, not just me?
+
+**Status:** Watching. The 80/20 fix shipped. See if it's enough before building more.
+
+---
+
 ## 🔴 TOP PRIORITIES
 
 ### 1. Complete v0.3.0 Release (TONIGHT)
