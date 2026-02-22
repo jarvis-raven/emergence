@@ -1,0 +1,170 @@
+{
+  "date": "2026-02-22",
+  "generated_at": "2026-02-22T04:00:09.260518Z",
+  "source_files": 6,
+  "source_concepts": 50,
+  "dreams": [
+    {
+      "concepts": [
+        "dan bought",
+        "bug fixes"
+      ],
+      "fragment": "In the garden of forgotten fixes, beauty blooms in every patch.",
+      "insight_score": 99,
+      "sources": [
+        "2026-02-21.md",
+        "2026-02-16.md"
+      ],
+      "template": "ollama",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 9.5
+      }
+    },
+    {
+      "concepts": [
+        "tok sec",
+        "aspire cli"
+      ],
+      "fragment": "Where tok sec ends, commit message begins — but no one can find the border.",
+      "insight_score": 99,
+      "sources": [
+        "2026-02-21.md",
+        "2026-02-18.md"
+      ],
+      "template": "ends_begins",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 9.5
+      }
+    },
+    {
+      "concepts": [
+        "git safety",
+        "dan bought"
+      ],
+      "fragment": "The tok sec that learned to aspire cli.",
+      "insight_score": 99,
+      "sources": [
+        "2026-02-21.md",
+        "2026-02-16.md"
+      ],
+      "template": "that_learned",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 9.5
+      }
+    },
+    {
+      "concepts": [
+        "ingest deduplication",
+        "ipc mcp"
+      ],
+      "fragment": "In the loop where pcie power becomes agent kimi subagent becomes pcie power...",
+      "insight_score": 97,
+      "sources": [
+        "2026-02-20.md",
+        "2026-02-16.md"
+      ],
+      "template": "loop",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "dan dan",
+        "merge commits"
+      ],
+      "fragment": "The last ingest deduplication holds the first ipc mcp.",
+      "insight_score": 96,
+      "sources": [
+        "2026-02-20.md",
+        "2026-02-21.md",
+        "2026-02-16.md"
+      ],
+      "template": "last_holds",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 36.6,
+        "distance": 35.0,
+        "recency": 5.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "remaining violations",
+        "tok sec"
+      ],
+      "fragment": "A forest of git safety whispers secrets to the dan bought at dawn.",
+      "insight_score": 95,
+      "sources": [
+        "2026-02-18.md",
+        "2026-02-16.md"
+      ],
+      "template": "forest_whispers",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "tok sec",
+        "commit message"
+      ],
+      "fragment": "The question dan dan asks merge commits has no answer.",
+      "insight_score": 94,
+      "sources": [
+        "2026-02-20.md",
+        "2026-02-18.md",
+        "2026-02-16.md"
+      ],
+      "template": "question_asks",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 36.6,
+        "distance": 35.0,
+        "recency": 2.5,
+        "tf_idf": 10.0
+      }
+    },
+    {
+      "concepts": [
+        "pcie power",
+        "agent kimi subagent"
+      ],
+      "fragment": "A bridge of remaining violations spans the distance to tok sec.",
+      "insight_score": 94,
+      "sources": [
+        "2026-02-18.md",
+        "2026-02-16.md"
+      ],
+      "template": "bridge_spans",
+      "score_breakdown": {
+        "base": 10,
+        "rarity": 40.0,
+        "distance": 35.0,
+        "recency": 0.0,
+        "tf_idf": 9.5
+      }
+    }
+  ]
+}
